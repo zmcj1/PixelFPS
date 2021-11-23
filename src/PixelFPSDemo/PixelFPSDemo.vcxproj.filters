@@ -2,8 +2,17 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="source.cpp" />
+    <ClCompile Include="Audio.cpp" />
+    <ClCompile Include="File.cpp" />
+    <ClCompile Include="String.cpp" />
+    <ClCompile Include="AudioPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="olcPixelGameEngine.h" />
+    <ClInclude Include="Audio.hpp" />
+    <ClInclude Include="MinDefines.hpp" />
+    <ClInclude Include="File.hpp" />
+    <ClInclude Include="String.hpp" />
+    <ClInclude Include="AudioPool.hpp" />
   </ItemGroup>
 </Project>

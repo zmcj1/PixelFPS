@@ -7,12 +7,15 @@
 
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
+#include "Audio.hpp"
+#include "AudioPool.hpp"
 #include <cmath>
 #include <list>
 #include <map>
 
 using namespace olc;
 using namespace std;
+using namespace MinConsoleNative;
 
 enum class ConsoleColor
 {
@@ -245,6 +248,17 @@ private:
     //depth buffer:
     float* fDepthBuffer = nullptr;
 
+    //audios:
+    Audio* bgm = nullptr;
+    Audio* bgm2 = nullptr;
+    bool startedPlayBGM = false;
+
+    //sounds:
+    Audio* explosionSound = nullptr;
+    Audio* fireBallSound = nullptr;
+    AudioPool* explosionPool = nullptr;
+    AudioPool* fireBallPool = nullptr;
+
 public:
     PixelFPSDemo()
     {
@@ -319,6 +333,17 @@ public:
 
         this->fDepthBuffer = new float[ScreenWidth()];
 
+        this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
+        this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
+        this->explosionSound = new Audio(L"../../res/audios/548_Effect.Explosion.wav.mp3");
+        this->fireBallSound = new Audio(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
+
+        this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
+        this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
+
+        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
+        this->bgm2->Play(false, false);
+
         return true;
     }
 
@@ -326,6 +351,19 @@ public:
     bool OnUserUpdate(float fElapsedTime) override
     {
         float deltaTime = fElapsedTime;
+
+        //check audio state:
+        if (this->bgm2->IsOver() && !startedPlayBGM)
+        {
+            startedPlayBGM = true;
+
+            this->bgm->SetVolume(MCI_MAX_VOLUME / 3);
+            this->bgm->Play(true, false);
+        }
+
+        //clean audiopool:
+        explosionPool->Clean();
+        fireBallPool->Clean();
 
         if (GetKey(Key::ESCAPE).bPressed)
         {
@@ -402,18 +440,21 @@ public:
         if (GetKey(Key::SPACE).bPressed)
         {
             sObject fireBall(playerX, playerY, this->spriteFireBall);
-            
+
             //set velocity:
             //fireBall.vx = cosf(playerAngle) * 8.0f;
             //fireBall.vy = sinf(playerAngle) * 8.0f;
-            
+
             //make noise:
             float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
             fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
             fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
-            
+
             //add to list
             listObjects.push_back(fireBall);
+
+            //play fire sound:
+            fireBallPool->PlayOneShot(0.8f);
         }
 
         //raycast
@@ -527,7 +568,11 @@ public:
             if (object.x >= 0 && object.x < mapWidth && object.y >= 0 && object.y < mapHeight)
             {
                 if (map[(int)object.y * mapWidth + (int)object.x] == L'#')
+                {
                     object.remove = true;
+                    //play explosion sound:
+                    explosionPool->PlayOneShot();
+                }
             }
             else
             {
@@ -632,8 +677,13 @@ public:
         delete this->spriteWall;
         delete this->spriteLamp;
         delete this->spriteFireBall;
+        delete this->bgm;
+        delete this->bgm2;
+        delete this->explosionSound;
+        delete this->fireBallSound;
+        delete this->explosionPool;
+        delete this->fireBallPool;
         delete[] this->fDepthBuffer;
-
         return true;
     }
 };
