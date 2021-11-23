@@ -402,10 +402,17 @@ public:
         if (GetKey(Key::SPACE).bPressed)
         {
             sObject fireBall(playerX, playerY, this->spriteFireBall);
+            
             //set velocity:
-            fireBall.vx = cosf(playerAngle) * 8.0f;
-            fireBall.vy = sinf(playerAngle) * 8.0f;
-            //add
+            //fireBall.vx = cosf(playerAngle) * 8.0f;
+            //fireBall.vy = sinf(playerAngle) * 8.0f;
+            
+            //make noise:
+            float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+            fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
+            fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
+            
+            //add to list
             listObjects.push_back(fireBall);
         }
 
