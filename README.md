@@ -14,4 +14,7 @@ massive massive thx javidx9!
 
 1. Explosion Texture
 1. Better character controller
+1. Simple AI Enemy(zombie is coming), pathfinding and state machine
+1. Maze Generator!
 1. Multiplayer mode
+1. make a tutorial video for beginners(on bilibili or Youtube)
