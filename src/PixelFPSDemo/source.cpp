@@ -688,12 +688,95 @@ public:
     }
 };
 
+//editor for olcSprite and Color32!
+class PixelEditor : public PixelGameEngine
+{
+private:
+    //palette:
+    std::map<ConsoleColor, Color24> palette;
+
+    void DisplaySprite(const wstring& path)
+    {
+
+    }
+
+public:
+    PixelEditor()
+    {
+        sAppName = "PixelEditor";
+    }
+
+    bool OnUserCreate() override
+    {
+        this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
+        this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
+        this->palette[ConsoleColor::DARKGREEN] = { 0, 128, 0 };
+        this->palette[ConsoleColor::DARKCYAN] = { 0, 128, 128 };
+        this->palette[ConsoleColor::DARKRED] = { 128, 0, 0 };
+        this->palette[ConsoleColor::DARKMAGENTA] = { 128, 0, 128 };
+        this->palette[ConsoleColor::DARKYELLOW] = { 128, 128, 0 };
+        this->palette[ConsoleColor::GRAY] = { 192, 192, 192 };
+        this->palette[ConsoleColor::DARKGRAY] = { 128, 128, 128 };
+        this->palette[ConsoleColor::BLUE] = { 0, 0, 255 };
+        this->palette[ConsoleColor::GREEN] = { 0, 255, 0 };
+        this->palette[ConsoleColor::CYAN] = { 0, 255, 255 };
+        this->palette[ConsoleColor::RED] = { 255, 0, 0 };
+        this->palette[ConsoleColor::MAGENTA] = { 255, 0, 255 };
+        this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
+        this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
+
+        olcSprite sprite(L"../../res/fps_wall1.spr");
+        for (size_t i = 0; i < sprite.nHeight; i++)
+        {
+            for (size_t j = 0; j < sprite.nWidth; j++)
+            {
+                short att = sprite.GetColour(j, i);
+
+                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                Color24 pixelColor = palette[foreColor];
+                UNUSED(backColor);
+
+                Draw(j, i, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+            }
+        }
+
+        return true;
+    }
+
+    bool OnUserUpdate(float fElapsedTime) override
+    {
+        return true;
+    }
+
+    bool OnUserDestroy() override
+    {
+        return true;
+    }
+};
+
 int main()
 {
-    PixelFPSDemo game;
+    char input = '\0';
+    cout << "welcome to PixelFPSDemo!\n";
+    cout << "Press 'E' open Editor, Press any other key open Game.\n";
+    cin >> input;
 
-    if (game.Construct(320, 180, 4, 4))
-        game.Start();
+    if (tolower(input) == 'e')
+    {
+        PixelEditor editor;
+
+        if (editor.Construct(320, 180, 4, 4))
+            editor.Start();
+    }
+    else
+    {
+        PixelFPSDemo game;
+
+        if (game.Construct(320, 180, 4, 4))
+            game.Start();
+    }
 
     return 0;
 }
