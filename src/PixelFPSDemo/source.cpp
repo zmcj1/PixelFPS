@@ -454,7 +454,7 @@ public:
             listObjects.push_back(fireBall);
 
             //play fire sound:
-            fireBallPool->PlayOneShot(0.8f);
+            fireBallPool->PlayOneShot(0.5f);
         }
 
         //raycast
