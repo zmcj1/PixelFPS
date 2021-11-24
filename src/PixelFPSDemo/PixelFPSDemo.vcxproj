@@ -155,6 +155,7 @@
     <ClInclude Include="Audio.hpp" />
     <ClInclude Include="AudioPool.hpp" />
     <ClInclude Include="File.hpp" />
+    <ClInclude Include="json.hpp" />
     <ClInclude Include="MinDefines.hpp" />
     <ClInclude Include="olcPGEX_RayCastWorld.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
