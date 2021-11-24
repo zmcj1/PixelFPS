@@ -6,6 +6,7 @@
     <ClCompile Include="File.cpp" />
     <ClCompile Include="String.cpp" />
     <ClCompile Include="AudioPool.cpp" />
+    <ClCompile Include="RaycastWorldExample.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="olcPixelGameEngine.h" />
