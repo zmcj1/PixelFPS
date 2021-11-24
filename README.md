@@ -1,8 +1,8 @@
 # PixelFPS
 
-author:zmcj1
+authors : zmcj1 and Vladimir_Maks
 
-date:2021/11/23
+date:2021/11/24
 
 game repo:https://github.com/zmcj1/PixelFPS
 
