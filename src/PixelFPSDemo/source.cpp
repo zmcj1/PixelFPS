@@ -547,7 +547,7 @@ public:
                 }
             }
 
-            int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
+            int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall * cos(FOV) );
             int floor = ScreenHeight() - ceiling;
 
             //update depth buffer:
