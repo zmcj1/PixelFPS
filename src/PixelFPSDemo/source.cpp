@@ -9,6 +9,7 @@
 #include "olcPixelGameEngine.h"
 #include "Audio.hpp"
 #include "AudioPool.hpp"
+#include "File.hpp"
 #include <cmath>
 #include <list>
 #include <map>
@@ -207,6 +208,11 @@ public:
     bool remove = false;
     olcSprite* sprite;
 
+    //collision with wall and border of map
+    bool enableCollision = true;
+    bool enableLifeTime = false;
+    float lifeTime = 1.0f; //just a defualt value
+
     sObject(float x, float y, olcSprite* sprite)
     {
         this->x = x;
@@ -214,6 +220,31 @@ public:
         this->sprite = sprite;
     }
 };
+
+//from:https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
+//extension without dot(.)
+vector<wstring> get_all_files_names_within_folder(const wstring& folder, const wstring& extension)
+{
+    vector<wstring> names;
+    wstring search_path = folder + L"/*." + extension;
+    WIN32_FIND_DATA fd;
+    HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            // read all (real) files in current folder
+            // , delete '!' read other 2 default folder . and ..
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                names.push_back(fd.cFileName);
+            }
+        }
+        while (::FindNextFile(hFind, &fd));
+        ::FindClose(hFind);
+    }
+    return names;
+}
 
 class PixelFPSDemo : public PixelGameEngine
 {
@@ -238,6 +269,7 @@ private:
     olcSprite* spriteWall;
     olcSprite* spriteLamp;
     olcSprite* spriteFireBall;
+    olcSprite* spriteExplosion;
 
     //objects:
     list<sObject> listObjects;
@@ -306,6 +338,7 @@ public:
         this->spriteWall = new olcSprite(L"../../res/fps_wall1.spr");
         this->spriteLamp = new olcSprite(L"../../res/fps_lamp1.spr");
         this->spriteFireBall = new olcSprite(L"../../res/fps_fireball1.spr");
+        this->spriteExplosion = new olcSprite(L"../../res/fps_explosion.spr");
 
         listObjects =
         {
@@ -564,19 +597,49 @@ public:
             object.x += object.vx * deltaTime;
             object.y += object.vy * deltaTime;
 
-            // Check if object is inside wall - set flag for removal
-            if (object.x >= 0 && object.x < mapWidth && object.y >= 0 && object.y < mapHeight)
+            //lifetime detect:
+            if (object.enableLifeTime)
             {
-                if (map[(int)object.y * mapWidth + (int)object.x] == L'#')
+                object.lifeTime -= deltaTime;
+                if (object.lifeTime <= 0)
                 {
                     object.remove = true;
-                    //play explosion sound:
-                    explosionPool->PlayOneShot();
                 }
             }
-            else
+
+            //collision detect:
+            if (object.enableCollision)
             {
-                object.remove = true;
+                // Check if object is inside wall - set flag for removal
+                if (object.x >= 0 && object.x < mapWidth && object.y >= 0 && object.y < mapHeight)
+                {
+                    //collsion with walls:
+                    if (map[(int)object.y * mapWidth + (int)object.x] == L'#')
+                    {
+                        object.remove = true;
+
+                        //play explosion sound:
+                        explosionPool->PlayOneShot();
+
+                        //instantiate explosion:
+                        sObject explosion(
+                            object.x - object.vx * deltaTime,
+                            object.y - object.vy * deltaTime,
+                            this->spriteExplosion);
+                        //enable lifetime destuction:
+                        explosion.enableLifeTime = true;
+                        explosion.lifeTime = 0.15f;
+                        //dont detect collision with this object
+                        explosion.enableCollision = false;
+
+                        //add to list
+                        listObjects.push_back(explosion);
+                    }
+                }
+                else
+                {
+                    object.remove = true;
+                }
             }
 
             // Can object be seen?
@@ -677,13 +740,17 @@ public:
         delete this->spriteWall;
         delete this->spriteLamp;
         delete this->spriteFireBall;
+        delete this->spriteExplosion;
+
         delete this->bgm;
         delete this->bgm2;
         delete this->explosionSound;
         delete this->fireBallSound;
         delete this->explosionPool;
         delete this->fireBallPool;
+
         delete[] this->fDepthBuffer;
+
         return true;
     }
 };
@@ -696,9 +763,15 @@ void debug_output_line(const wstring& info)
 //editor for olcSprite and Color32!
 class PixelEditor : public PixelGameEngine
 {
+public:
+    wstring spritePath;
+    int initialSpriteSizeX = 32;
+    int initialSpriteSizeY = 32;
+
 private:
     //palette:
     std::map<ConsoleColor, Color24> palette;
+
     olcSprite* spritePtr;
     int spriteSizeX;
     int spriteSizeY;
@@ -720,6 +793,9 @@ private:
     int prevMousePosX = 0;
     int prevMousePosY = 0;
 
+    //save setting:
+    bool isDirty = false;
+
     void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
         //load olcSprite:
@@ -734,8 +810,15 @@ private:
         {
             for (size_t j = 0; j < sprite->nWidth * zoomPixelScaler; j++)
             {
-                short att = sprite->GetColour(j / zoomPixelScaler, i / zoomPixelScaler);
+                short c = sprite->GetGlyph(j / zoomPixelScaler, i / zoomPixelScaler);
 
+                //ignore alpha
+                if (c == L' ')
+                {
+                    continue;
+                }
+
+                short att = sprite->GetColour(j / zoomPixelScaler, i / zoomPixelScaler);
                 ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
                 ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
 
@@ -777,7 +860,22 @@ public:
         this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
         this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
 
-        spritePtr = new olcSprite(L"../../res/fps_wall1.spr");
+        //empty check
+        if (spritePath == L"")
+        {
+            return false;
+        }
+
+        if (!File::Exists(spritePath))
+        {
+            spritePtr = new olcSprite(initialSpriteSizeX, initialSpriteSizeY);
+            //save
+            spritePtr->Save(spritePath);
+        }
+        else
+        {
+            spritePtr = new olcSprite(spritePath);
+        }
         spriteSizeX = spritePtr->nWidth;
         spriteSizeY = spritePtr->nHeight;
 
@@ -812,10 +910,17 @@ public:
             this->defaultZoomPixelScaler = 1;
         }
 
+        //choose erase:
+        if (GetKey(Key::E).bPressed)
+        {
+            this->choosenPaletteColorIndex = -1;
+        }
+
         //save:
         if (GetKey(Key::S).bPressed)
         {
-            spritePtr->Save(L"../../res/fps_wall1.spr");
+            spritePtr->Save(spritePath);
+            isDirty = false;
         }
 
         int mouseX = GetMouseX();
@@ -862,7 +967,7 @@ public:
 
             //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY) + L" " + to_wstring(heldLeftMouseButton) + L" in area!");
 
-            //select pixel:
+            //select pixel(drawing):
             if (GetMouse(Mouse::LEFT).bHeld)
             {
                 int mouseInSpritePosX = mouseX - spritePosX;
@@ -873,16 +978,24 @@ public:
 
                 //debug_output_line(to_wstring(selectIndexX) + L" " + to_wstring(selectIndexY));
 
+                //draw alpha(erase):
                 if (this->choosenPaletteColorIndex == -1)
                 {
-                    ushort att = ToUshort(ConsoleColor::BLACK, ConsoleColor::BLACK);
-                    this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
+                    //set it to 0:
+                    this->spritePtr->SetColour(selectIndexX, selectIndexY, 0);
+                    //disable draw this pixel:
+                    this->spritePtr->SetGlyph(selectIndexX, selectIndexY, ' ');
                 }
                 else
                 {
                     ushort att = ToUshort((ConsoleColor)this->choosenPaletteColorIndex, ConsoleColor::BLACK);
                     this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
+                    //fill
+                    this->spritePtr->SetGlyph(selectIndexX, selectIndexY, 'a');
                 }
+
+                //set dirty sign:
+                isDirty = true;
             }
         }
         else
@@ -893,7 +1006,8 @@ public:
             //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)+ L" " + to_wstring(heldLeftMouseButton) + L" not in area.");
         }
 
-        this->Clear(olc::BLACK);
+        //clear screen:
+        this->Clear(Pixel(44, 44, 44));
 
         vi2d textSize = GetTextSize("Welcome to Pixel Editor");
         vi2d text2Size = GetTextSize("Choosen Color:");
@@ -901,6 +1015,15 @@ public:
         //draw texts:
         DrawString({ 50, 0 }, "Welcome to Pixel Editor");
         DrawString({ 50, textSize.y }, "Choosen Color:");
+
+        //draw dirty sign:
+        if (isDirty)
+        {
+            DrawString({ 50 + textSize.x,0 }, "*");
+        }
+
+        //draw sprite size:
+        DrawString({ 50, textSize.y * 2 }, "Size:" + to_string(spriteSizeX) + "X" + to_string(spriteSizeY));
 
         //draw choosen color:
         if (this->choosenPaletteColorIndex != -1)
@@ -912,6 +1035,20 @@ public:
                     Color24 color = palette[(ConsoleColor)this->choosenPaletteColorIndex];
                     Draw({ x + 50 + text2Size.x, y + text2Size.y }, Pixel(color.r, color.g, color.b));
                 }
+            }
+        }
+        //choosen is erase:
+        else
+        {
+            DrawString({ 50 + text2Size.x, text2Size.y }, "erase", Pixel(125, 0, 66));
+        }
+
+        //draw sprite bg(ex info for painting):
+        for (int i = 0; i < spriteSizeY * defaultZoomPixelScaler; i++)
+        {
+            for (int j = 0; j < spriteSizeX * defaultZoomPixelScaler; j++)
+            {
+                Draw(j + spritePosX, i + spritePosY, Pixel(88, 88, 88));
             }
         }
 
@@ -978,10 +1115,64 @@ int main(int argc, char** argv)
 
     if (tolower(input) == 'e')
     {
-        PixelEditor editor;
+        wstring folderPath = L"../../res/";
 
-        if (editor.Construct(320, 180, 4, 4))
-            editor.Start();
+        //choose sprite file:
+        vector<wstring> fileNames = get_all_files_names_within_folder(folderPath, L"spr");
+        //display all .spr files:
+        cout << "pls choose file:\n";
+        cout << "0.create new file\n";
+        for (size_t i = 0; i < fileNames.size(); i++)
+        {
+            string fileName = String::WstringToString(fileNames[i]);
+            cout << i + 1 << "." << fileName << "\n";
+        }
+        //choose:
+        int chooseIndex;
+        cin >> chooseIndex;
+
+        if (chooseIndex >= 0 && chooseIndex < fileNames.size() + 1)
+        {
+            PixelEditor editor;
+            wstring finalFilePath;
+
+            //create new file
+            if (chooseIndex == 0)
+            {
+                cout << "pls input your new file name(without extension):\n";
+                string newFileName;
+                cin >> newFileName;
+
+                //extension check
+                if (newFileName.find(".spr") != -1)
+                {
+                    cout << "dont include extension!\n";
+                    system("pause");
+                    return -1;
+                }
+
+                cout << "pls input sprite width and height(split them by using space):\n";
+                cin >> editor.initialSpriteSizeX >> editor.initialSpriteSizeY;
+
+                //combine:
+                finalFilePath = folderPath + String::StringToWstring(newFileName) + L".spr";
+            }
+            else
+            {
+                finalFilePath = folderPath + fileNames[chooseIndex - 1];
+            }
+
+            editor.spritePath = finalFilePath;
+
+            if (editor.Construct(320, 180, 4, 4))
+                editor.Start();
+        }
+        else
+        {
+            cout << "incorrect input!\n";
+            system("pause");
+            return -1;
+        }
     }
     else
     {
