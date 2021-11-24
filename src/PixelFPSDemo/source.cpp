@@ -688,16 +688,49 @@ public:
     }
 };
 
+void debug_output_line(const wstring& info)
+{
+    OutputDebugString((info + L"\n").c_str());
+}
+
 //editor for olcSprite and Color32!
 class PixelEditor : public PixelGameEngine
 {
 private:
     //palette:
     std::map<ConsoleColor, Color24> palette;
+    olcSprite* spritePtr;
+    int spriteSizeX;
+    int spriteSizeY;
+    int spritePosX = 0;
+    int spritePosY = 0;
+    int defaultZoomPixelScaler = 1;
 
-    void DisplaySprite(const wstring& path)
+    void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
+        //load olcSprite:
+        olcSprite sprite(path);
+        DisplaySprite(&sprite, x, y, zoomPixelScaler);
+    }
 
+    void DisplaySprite(olcSprite* sprite, int x, int y, int zoomPixelScaler)
+    {
+        //draw with scaler:
+        for (size_t i = 0; i < sprite->nHeight * zoomPixelScaler; i++)
+        {
+            for (size_t j = 0; j < sprite->nWidth * zoomPixelScaler; j++)
+            {
+                short att = sprite->GetColour(j / zoomPixelScaler, i / zoomPixelScaler);
+
+                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                Color24 pixelColor = palette[foreColor];
+                UNUSED(backColor);
+
+                Draw(x + j, y + i, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+            }
+        }
     }
 
 public:
@@ -725,39 +758,131 @@ public:
         this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
         this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
 
-        olcSprite sprite(L"../../res/fps_wall1.spr");
-        for (size_t i = 0; i < sprite.nHeight; i++)
-        {
-            for (size_t j = 0; j < sprite.nWidth; j++)
-            {
-                short att = sprite.GetColour(j, i);
-
-                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
-                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
-
-                Color24 pixelColor = palette[foreColor];
-                UNUSED(backColor);
-
-                Draw(j, i, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
-            }
-        }
+        spritePtr = new olcSprite(L"../../res/fps_wall1.spr");
+        spriteSizeX = spritePtr->nWidth;
+        spriteSizeY = spritePtr->nHeight;
 
         return true;
     }
 
+    int prevMousePosX = 0;
+    int prevMousePosY = 0;
+
     bool OnUserUpdate(float fElapsedTime) override
     {
+        int mw = GetMouseWheel();
+
+        //debug_output_line(to_wstring(mw));
+
+        if (mw > 0)
+        {
+            this->defaultZoomPixelScaler++;
+        }
+        else if (mw < 0)
+        {
+            this->defaultZoomPixelScaler--;
+            //at least 1
+            if (this->defaultZoomPixelScaler < 1)
+            {
+                this->defaultZoomPixelScaler = 1;
+            }
+        }
+
+        if (GetKey(Key::R).bPressed)
+        {
+            this->spritePosX = 0;
+            this->spritePosY = 0;
+            this->defaultZoomPixelScaler = 1;
+        }
+
+        int mouseX = GetMouseX();
+        int mouseY = GetMouseY();
+        int heldLeftMouseButton = GetMouse(Mouse::LEFT).bHeld;
+
+        //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY));
+
+        if (mouseX >= spritePosX && mouseY >= spritePosY &&
+            mouseX < spritePosX + spriteSizeX * defaultZoomPixelScaler &&
+            mouseY < spritePosY + spriteSizeY * defaultZoomPixelScaler)
+        {
+            //NOTE!!! 注意GetMouse并不会获取真实鼠标物理状态, 如果按住鼠标的同时把鼠标移出窗口则会导致鼠标状态无法及时更新
+            if (GetMouse(Mouse::LEFT).bHeld)
+            {
+                //drag sprite:
+                if (prevMousePosX != 0 && prevMousePosY != 0)
+                {
+                    int diffX = mouseX - prevMousePosX;
+                    int diffY = mouseY - prevMousePosY;
+
+                    spritePosX += diffX;
+                    spritePosY += diffY;
+                }
+
+                prevMousePosX = mouseX;
+                prevMousePosY = mouseY;
+            }
+            else
+            {
+                prevMousePosX = 0;
+                prevMousePosY = 0;
+            }
+
+            debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)
+                + L" " + to_wstring(heldLeftMouseButton) + L" in area!");
+        }
+        else
+        {
+            prevMousePosX = 0;
+            prevMousePosY = 0;
+
+            debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)
+                + L" " + to_wstring(heldLeftMouseButton) + L" not in area.");
+        }
+
+        this->Clear(olc::BLACK);
+
+        DisplaySprite(spritePtr, spritePosX, spritePosY, defaultZoomPixelScaler);
+
         return true;
     }
 
     bool OnUserDestroy() override
     {
+        delete this->spritePtr;
+
         return true;
     }
 };
 
-int main()
+//#define CMD_EDITOR_CONFIG
+
+int main(int argc, char** argv)
 {
+
+#if defined(CMD_EDITOR_CONFIG)
+    //try to open editor
+    if (argc > 1)
+    {
+        const char* cmd1 = argv[1];
+        //bool eqauls = strcmpi(cmd1, "") == 0;
+
+        PixelEditor editor;
+
+        if (editor.Construct(320, 180, 4, 4))
+            editor.Start();
+    }
+    else
+    {
+        PixelFPSDemo game;
+
+        if (game.Construct(320, 180, 4, 4))
+            game.Start();
+    }
+
+    return 0;
+
+#else
+
     char input = '\0';
     cout << "welcome to PixelFPSDemo!\n";
     cout << "Press 'E' open Editor, Press any other key open Game.\n";
@@ -779,4 +904,6 @@ int main()
     }
 
     return 0;
+
+#endif
 }
