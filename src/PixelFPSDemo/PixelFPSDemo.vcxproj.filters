@@ -15,5 +15,6 @@
     <ClInclude Include="File.hpp" />
     <ClInclude Include="String.hpp" />
     <ClInclude Include="AudioPool.hpp" />
+    <ClInclude Include="olcPGEX_RayCastWorld.h" />
   </ItemGroup>
 </Project>

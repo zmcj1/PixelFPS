@@ -702,9 +702,23 @@ private:
     olcSprite* spritePtr;
     int spriteSizeX;
     int spriteSizeY;
-    int spritePosX = 0;
-    int spritePosY = 0;
+
+    int defaultSpritePosX = 20;
+    int defaultSpritePosY = 20;
+
+    int spritePosX = defaultSpritePosX;
+    int spritePosY = defaultSpritePosY;
     int defaultZoomPixelScaler = 1;
+
+    //palette setting props:
+    //-1 means you didn't choose any color yet.
+    int choosenPaletteColorIndex = -1;
+
+    int paletteColorSizeX = 10;
+    int paletteColorSizeY = 10;
+
+    int prevMousePosX = 0;
+    int prevMousePosY = 0;
 
     void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
@@ -731,6 +745,11 @@ private:
                 Draw(x + j, y + i, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
             }
         }
+    }
+
+    ushort ToUshort(ConsoleColor foreColor, ConsoleColor backColor)
+    {
+        return (ushort)((ushort)foreColor | ((ushort)backColor << 4));
     }
 
 public:
@@ -765,9 +784,6 @@ public:
         return true;
     }
 
-    int prevMousePosX = 0;
-    int prevMousePosY = 0;
-
     bool OnUserUpdate(float fElapsedTime) override
     {
         int mw = GetMouseWheel();
@@ -788,25 +804,42 @@ public:
             }
         }
 
+        //reset:
         if (GetKey(Key::R).bPressed)
         {
-            this->spritePosX = 0;
-            this->spritePosY = 0;
+            this->spritePosX = defaultSpritePosX;
+            this->spritePosY = defaultSpritePosY;
             this->defaultZoomPixelScaler = 1;
+        }
+
+        //save:
+        if (GetKey(Key::S).bPressed)
+        {
+            spritePtr->Save(L"../../res/fps_wall1.spr");
         }
 
         int mouseX = GetMouseX();
         int mouseY = GetMouseY();
-        int heldLeftMouseButton = GetMouse(Mouse::LEFT).bHeld;
+        int heldLeftMouseButton = GetMouse(Mouse::RIGHT).bHeld;
 
         //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY));
+
+        //choose color:
+        if (mouseX >= 0 && mouseX < paletteColorSizeX &&
+            mouseY >= 0 && mouseY < paletteColorSizeY * palette.size())
+        {
+            if (GetMouse(Mouse::LEFT).bHeld)
+            {
+                this->choosenPaletteColorIndex = mouseY / paletteColorSizeY;
+            }
+        }
 
         if (mouseX >= spritePosX && mouseY >= spritePosY &&
             mouseX < spritePosX + spriteSizeX * defaultZoomPixelScaler &&
             mouseY < spritePosY + spriteSizeY * defaultZoomPixelScaler)
         {
-            //NOTE!!! 注意GetMouse并不会获取真实鼠标物理状态, 如果按住鼠标的同时把鼠标移出窗口则会导致鼠标状态无法及时更新
-            if (GetMouse(Mouse::LEFT).bHeld)
+            //NOTE!!! 注意该API并不会获取真实鼠标物理状态, 如果按住鼠标的同时把鼠标移出窗口则会导致鼠标状态无法及时更新
+            if (GetMouse(Mouse::RIGHT).bHeld)
             {
                 //drag sprite:
                 if (prevMousePosX != 0 && prevMousePosY != 0)
@@ -827,21 +860,76 @@ public:
                 prevMousePosY = 0;
             }
 
-            debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)
-                + L" " + to_wstring(heldLeftMouseButton) + L" in area!");
+            //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY) + L" " + to_wstring(heldLeftMouseButton) + L" in area!");
+
+            //select pixel:
+            if (GetMouse(Mouse::LEFT).bHeld)
+            {
+                int mouseInSpritePosX = mouseX - spritePosX;
+                int mouseInSpritePosY = mouseY - spritePosY;
+
+                int selectIndexX = mouseInSpritePosX / defaultZoomPixelScaler;
+                int selectIndexY = mouseInSpritePosY / defaultZoomPixelScaler;
+
+                //debug_output_line(to_wstring(selectIndexX) + L" " + to_wstring(selectIndexY));
+
+                if (this->choosenPaletteColorIndex == -1)
+                {
+                    ushort att = ToUshort(ConsoleColor::BLACK, ConsoleColor::BLACK);
+                    this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
+                }
+                else
+                {
+                    ushort att = ToUshort((ConsoleColor)this->choosenPaletteColorIndex, ConsoleColor::BLACK);
+                    this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
+                }
+            }
         }
         else
         {
             prevMousePosX = 0;
             prevMousePosY = 0;
 
-            debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)
-                + L" " + to_wstring(heldLeftMouseButton) + L" not in area.");
+            //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)+ L" " + to_wstring(heldLeftMouseButton) + L" not in area.");
         }
 
         this->Clear(olc::BLACK);
 
+        vi2d textSize = GetTextSize("Welcome to Pixel Editor");
+        vi2d text2Size = GetTextSize("Choosen Color:");
+
+        //draw texts:
+        DrawString({ 50, 0 }, "Welcome to Pixel Editor");
+        DrawString({ 50, textSize.y }, "Choosen Color:");
+
+        //draw choosen color:
+        if (this->choosenPaletteColorIndex != -1)
+        {
+            for (int y = 0; y < paletteColorSizeY; y++)
+            {
+                for (int x = 0; x < paletteColorSizeX; x++)
+                {
+                    Color24 color = palette[(ConsoleColor)this->choosenPaletteColorIndex];
+                    Draw({ x + 50 + text2Size.x, y + text2Size.y }, Pixel(color.r, color.g, color.b));
+                }
+            }
+        }
+
+        //draw sprite:
         DisplaySprite(spritePtr, spritePosX, spritePosY, defaultZoomPixelScaler);
+
+        //draw palette color:
+        for (int i = 0; i < palette.size(); i++)
+        {
+            for (int y = 0; y < paletteColorSizeY; y++)
+            {
+                for (int x = 0; x < paletteColorSizeX; x++)
+                {
+                    Color24 color = palette[(ConsoleColor)i];
+                    Draw({ x, y + i * paletteColorSizeY }, Pixel(color.r, color.g, color.b));
+                }
+            }
+        }
 
         return true;
     }

@@ -143,9 +143,11 @@
     <ClCompile Include="Audio.cpp" />
     <ClCompile Include="AudioPool.cpp" />
     <ClCompile Include="File.cpp" />
-    <ClCompile Include="RaycastWorldExample.cpp" />
-    <ClCompile Include="source.cpp">
+    <ClCompile Include="RaycastWorldExample.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="source.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="String.cpp" />
   </ItemGroup>
@@ -154,6 +156,7 @@
     <ClInclude Include="AudioPool.hpp" />
     <ClInclude Include="File.hpp" />
     <ClInclude Include="MinDefines.hpp" />
+    <ClInclude Include="olcPGEX_RayCastWorld.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="String.hpp" />
   </ItemGroup>
