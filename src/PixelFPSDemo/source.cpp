@@ -295,6 +295,7 @@ private:
     olcSprite* spriteLamp;
     olcSprite* spriteFireBall;
     olcSprite* spriteExplosion;
+    olcSprite* spriteFlower;
 
     //objects:
     list<sObject> listObjects;
@@ -364,12 +365,14 @@ public:
         this->spriteLamp = new olcSprite(L"../../res/fps_lamp1.spr");
         this->spriteFireBall = new olcSprite(L"../../res/fps_fireball1.spr");
         this->spriteExplosion = new olcSprite(L"../../res/fps_explosion.spr");
+        this->spriteFlower = new olcSprite(L"../../res/flower.spr");
 
         listObjects =
         {
             sObject(8.5f, 8.5f, this->spriteLamp),
             sObject(7.5f, 7.5f, this->spriteLamp),
             sObject(10.5f, 3.5f, this->spriteLamp),
+            sObject(11.5f, 6.5f, this->spriteFlower),
         };
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
@@ -623,7 +626,7 @@ public:
             }
         }
 
-        //draw objects:
+        //update objects(render object & update physics):
         for (auto& object : listObjects)
         {
             //update physics:
@@ -643,7 +646,7 @@ public:
             //collision detect:
             if (object.enableCollision)
             {
-                // Check if object is inside wall - set flag for removal
+                // Check if object is inside wall - set flag for removing
                 if (object.x >= 0 && object.x < mapWidth && object.y >= 0 && object.y < mapHeight)
                 {
                     //collsion with walls:
@@ -668,6 +671,9 @@ public:
                         //add to list
                         listObjects.push_back(explosion);
                     }
+
+                    //collsion with other objects:
+                    //todo:
                 }
                 else
                 {
@@ -776,6 +782,7 @@ public:
         delete this->spriteLamp;
         delete this->spriteFireBall;
         delete this->spriteExplosion;
+        delete this->spriteFlower;
 
         delete this->bgm;
         delete this->bgm2;
@@ -795,14 +802,24 @@ void debug_output_line(const wstring& info)
     OutputDebugString((info + L"\n").c_str());
 }
 
+//writeline:
+void debug_output_vector2(const vi2d& vec2)
+{
+    debug_output_line(to_wstring(vec2.x) + L" " + to_wstring(vec2.y));
+}
+
 //editor for olcSprite and Color32!
 class PixelEditor : public PixelGameEngine
 {
 public:
     string spriteName = "unknown"; //include extension .spr
     wstring spritePath;
+
     int initialSpriteSizeX = 32;
     int initialSpriteSizeY = 32;
+
+    int resizeSpriteWidth = 32;
+    int resizeSpriteHeight = 32;
 
 private:
     //palette:
@@ -957,7 +974,7 @@ public:
         //resize:
         if (GetKey(Key::X).bPressed)
         {
-            this->spritePtr->Resize(32, 32);
+            this->spritePtr->Resize(resizeSpriteWidth, resizeSpriteHeight);
             isDirty = true;
         }
 
@@ -975,10 +992,16 @@ public:
             }
         }
 
+        //mouse pos in sprite:
         if (mouseX >= spritePosX && mouseY >= spritePosY &&
             mouseX < spritePosX + spritePtr->nWidth * defaultZoomPixelScaler &&
             mouseY < spritePosY + spritePtr->nHeight * defaultZoomPixelScaler)
         {
+            int mouseInSpritePosX = mouseX - spritePosX;
+            int mouseInSpritePosY = mouseY - spritePosY;
+            int selectIndexX = mouseInSpritePosX / defaultZoomPixelScaler;
+            int selectIndexY = mouseInSpritePosY / defaultZoomPixelScaler;
+
             //NOTE!!! 注意该API并不会获取真实鼠标物理状态, 如果按住鼠标的同时把鼠标移出窗口则会导致鼠标状态无法及时更新
             if (GetMouse(Mouse::RIGHT).bHeld)
             {
@@ -1004,13 +1027,6 @@ public:
             //select pixel(drawing):
             if (GetMouse(Mouse::LEFT).bHeld)
             {
-                int mouseInSpritePosX = mouseX - spritePosX;
-                int mouseInSpritePosY = mouseY - spritePosY;
-
-                int selectIndexX = mouseInSpritePosX / defaultZoomPixelScaler;
-                int selectIndexY = mouseInSpritePosY / defaultZoomPixelScaler;
-                //debug_output_line(to_wstring(selectIndexX) + L" " + to_wstring(selectIndexY));
-
                 //draw alpha(erase):
                 if (this->chosenPaletteColorIndex == -1)
                 {
@@ -1029,6 +1045,24 @@ public:
 
                 //set dirty sign:
                 isDirty = true;
+            }
+
+            //drag pixel of sprite:
+            if (GetMouse(Mouse::MIDDLE).bHeld)
+            {
+                //short* changedGlyphs = new short[this->spritePtr->nWidth * this->spritePtr->nHeight];
+                //short* changedColours = new short[this->spritePtr->nWidth * this->spritePtr->nHeight];
+                //olcSprite* buffer = new olcSprite(this->spritePtr->nWidth, this->spritePtr->nHeight);
+                //for (int y = 0; y < this->spritePtr->nHeight; y++)
+                //{
+                //    for (int x = 0; x < this->spritePtr->nWidth; x++)
+                //    {
+                //        short glyph = this->spritePtr->GetGlyph(x, y);
+                //        short color = this->spritePtr->GetColour(x, y);
+                //        buffer->SetGlyph(x, y, glyph);
+                //        buffer->SetColour(x, y, color);
+                //    }
+                //}
             }
         }
         else
@@ -1147,7 +1181,7 @@ int main()
             PixelEditor editor;
             wstring finalFilePath;
 
-            //create new file
+            //create new file:
             if (chooseIndex == 0)
             {
                 cout << "pls input your new file name(without extension):\n";
@@ -1170,11 +1204,35 @@ int main()
 
                 editor.spriteName = newFileName;
             }
+            //open exsist file:
             else
             {
                 finalFilePath = folderPath + fileNames[chooseIndex - 1];
 
                 editor.spriteName = String::WstringToString(fileNames[chooseIndex - 1]);
+
+                //ask for resizing sprite:
+                cout << "do you want to resize sprite? (Y/N)";
+                char yes_or_no_char;
+                cin >> yes_or_no_char;
+
+                bool yes = false;
+
+                if (tolower(yes_or_no_char) == 'y')
+                {
+                    yes = true;
+                }
+                else
+                {
+                    yes = false;
+                }
+
+                if (yes)
+                {
+                    cout << "pls input new size of your sprite:(split size by space)\n";
+                    cout << "you can press X to resize in editor window.\n";
+                    cin >> editor.resizeSpriteWidth >> editor.resizeSpriteHeight;
+                }
             }
 
             editor.spritePath = finalFilePath;
