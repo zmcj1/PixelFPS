@@ -678,7 +678,7 @@ public:
 
                 float objectAspectRatio = (float)object.sprite->nHeight / (float)object.sprite->nWidth;
                 float objectWidth = objectHeight / objectAspectRatio;
-                float middleOfObject = (0.5f * (objectAngle / (FOV / 2.0f)) + 0.5f) * (float)ScreenWidth();
+                float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
 
                 // Draw Lamp:
                 for (float lx = 0; lx < objectWidth; lx++)
@@ -774,6 +774,7 @@ void debug_output_line(const wstring& info)
 class PixelEditor : public PixelGameEngine
 {
 public:
+    string spriteName = "unknown"; //include extension .spr
     wstring spritePath;
     int initialSpriteSizeX = 32;
     int initialSpriteSizeY = 32;
@@ -795,7 +796,7 @@ private:
 
     //palette setting props:
     //-1 means you didn't choose any color yet.
-    int choosenPaletteColorIndex = -1;
+    int chosenPaletteColorIndex = -1;
 
     int paletteColorSizeX = 10;
     int paletteColorSizeY = 10;
@@ -848,7 +849,7 @@ private:
 public:
     PixelEditor()
     {
-        sAppName = "PixelEditor";
+        sAppName = "Pixel Editor";
     }
 
     bool OnUserCreate() override
@@ -923,7 +924,7 @@ public:
         //choose erase:
         if (GetKey(Key::E).bPressed)
         {
-            this->choosenPaletteColorIndex = -1;
+            this->chosenPaletteColorIndex = -1;
         }
 
         //save:
@@ -945,7 +946,7 @@ public:
         {
             if (GetMouse(Mouse::LEFT).bHeld)
             {
-                this->choosenPaletteColorIndex = mouseY / paletteColorSizeY;
+                this->chosenPaletteColorIndex = mouseY / paletteColorSizeY;
             }
         }
 
@@ -989,7 +990,7 @@ public:
                 //debug_output_line(to_wstring(selectIndexX) + L" " + to_wstring(selectIndexY));
 
                 //draw alpha(erase):
-                if (this->choosenPaletteColorIndex == -1)
+                if (this->chosenPaletteColorIndex == -1)
                 {
                     //set it to 0:
                     this->spritePtr->SetColour(selectIndexX, selectIndexY, 0);
@@ -998,7 +999,7 @@ public:
                 }
                 else
                 {
-                    ushort att = ToUshort((ConsoleColor)this->choosenPaletteColorIndex, ConsoleColor::BLACK);
+                    ushort att = ToUshort((ConsoleColor)this->chosenPaletteColorIndex, ConsoleColor::BLACK);
                     this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
                     //fill
                     this->spritePtr->SetGlyph(selectIndexX, selectIndexY, 'a');
@@ -1019,30 +1020,37 @@ public:
         //clear screen:
         this->Clear(Pixel(44, 44, 44));
 
-        vi2d textSize = GetTextSize("Welcome to Pixel Editor");
-        vi2d text2Size = GetTextSize("Choosen Color:");
+        string text = "Welcome to Pixel Editor";
+        string text2 = "Chosen Color:";
+        string text3 = "Size:";
+        string text4 = "Sprite Name:";
+
+        vi2d textSize = GetTextSize(text);
+        vi2d text2Size = GetTextSize(text2);
+        //vi2d text3Size = GetTextSize(text3);
+        //vi2d text4Size = GetTextSize(text4);
 
         //draw texts:
-        DrawString({ 50, 0 }, "Welcome to Pixel Editor");
-        DrawString({ 50, textSize.y }, "Choosen Color:");
-
+        DrawString({ 50, 0 }, text);
+        DrawString({ 50, textSize.y }, text2);
         //draw dirty sign:
         if (isDirty)
         {
-            DrawString({ 50 + textSize.x,0 }, "*");
+            DrawString({ 50 + textSize.x, 0 }, "*");
         }
-
         //draw sprite size:
-        DrawString({ 50, textSize.y * 2 }, "Size:" + to_string(spriteSizeX) + "X" + to_string(spriteSizeY));
+        DrawString({ 50, textSize.y * 2 }, text3 + to_string(spriteSizeX) + "X" + to_string(spriteSizeY));
+        //draw sprite name
+        DrawString({ 50, textSize.y * 3 }, text4 + this->spriteName);
 
         //draw choosen color:
-        if (this->choosenPaletteColorIndex != -1)
+        if (this->chosenPaletteColorIndex != -1)
         {
             for (int y = 0; y < paletteColorSizeY; y++)
             {
                 for (int x = 0; x < paletteColorSizeX; x++)
                 {
-                    Color24 color = palette[(ConsoleColor)this->choosenPaletteColorIndex];
+                    Color24 color = palette[(ConsoleColor)this->chosenPaletteColorIndex];
                     Draw({ x + 50 + text2Size.x, y + text2Size.y }, Pixel(color.r, color.g, color.b));
                 }
             }
@@ -1139,10 +1147,14 @@ int main()
 
                 //combine:
                 finalFilePath = folderPath + String::StringToWstring(newFileName) + L".spr";
+
+                editor.spriteName = newFileName;
             }
             else
             {
                 finalFilePath = folderPath + fileNames[chooseIndex - 1];
+
+                editor.spriteName = String::WstringToString(fileNames[chooseIndex - 1]);
             }
 
             editor.spritePath = finalFilePath;
