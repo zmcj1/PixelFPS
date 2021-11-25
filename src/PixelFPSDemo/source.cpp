@@ -1,6 +1,6 @@
 ﻿//  PixelFPS
 //  author : zmcj1
-//  date : 2021 / 11 / 24
+//  date : 2021 / 11 / 25
 //  game repo : https://github.com/zmcj1/PixelFPS
 //  game engine : https://github.com/OneLoneCoder/olcPixelGameEngine
 //  massive massive thx javidx9!
@@ -518,36 +518,44 @@ public:
                     distanceToWall = depth;
                 }
                 //与墙壁发生了碰撞
+                //collsion detect
                 else if (map[testY * mapWidth + testX] == L'#')
                 {
                     hitWall = true;
 
                     //墙壁中心点(假设每一堵墙壁都是1X1大小)
+                    //suppose wall' size is 1X1
                     float blockMidX = (float)testX + 0.5f;
                     float blockMidY = (float)testY + 0.5f;
                     //射线命中点
+                    //hit point position
                     float testPointX = playerX + eyeX * distanceToWall;
                     float testPointY = playerY + eyeY * distanceToWall;
 
                     //testAngle为从block中点出发, 射向射线命中点的向量与X轴的夹角
+                    //angle between vector and x axis
                     float testAngle = atan2f(testPointY - blockMidY, testPointX - blockMidX);
 
                     //命中右方
+                    //hit right side
                     if (testAngle >= -3.14159f * 0.25f && testAngle < 3.14159f * 0.25f)
                         sampleX = testPointY - (float)testY;
                     //命中上方
+                    //hit top side
                     if (testAngle >= 3.14159f * 0.25f && testAngle < 3.14159f * 0.75f)
                         sampleX = testPointX - (float)testX;
                     //命中下方
+                    //hit bottom side
                     if (testAngle < -3.14159f * 0.25f && testAngle >= -3.14159f * 0.75f)
                         sampleX = testPointX - (float)testX;
                     //命中左方
+                    //hit left side
                     if (testAngle >= 3.14159f * 0.75f || testAngle < -3.14159f * 0.75f)
                         sampleX = testPointY - (float)testY;
                 }
             }
 
-            int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall );
+            int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int floor = ScreenHeight() - ceiling;
 
             //update depth buffer:
@@ -652,6 +660,7 @@ public:
             float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
             //限制取值范围在+PI与-PI之间
+            //set limit : [-PI, PI]
             if (objectAngle < -3.14159f)
                 objectAngle += 2.0f * 3.14159f;
             if (objectAngle > 3.14159f)
@@ -660,6 +669,7 @@ public:
             bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
 
             //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+            //draw object witch is in FOV
             if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
             {
                 float objectCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)distanceFromPlayer);
@@ -1079,41 +1089,14 @@ public:
     }
 };
 
-//#define CMD_EDITOR_CONFIG
-
-int main(int argc, char** argv)
+int main()
 {
-
-#if defined(CMD_EDITOR_CONFIG)
-    //try to open editor
-    if (argc > 1)
-    {
-        const char* cmd1 = argv[1];
-        //bool eqauls = strcmpi(cmd1, "") == 0;
-
-        PixelEditor editor;
-
-        if (editor.Construct(320, 180, 4, 4))
-            editor.Start();
-    }
-    else
-    {
-        PixelFPSDemo game;
-
-        if (game.Construct(320, 180, 4, 4))
-            game.Start();
-    }
-
-    return 0;
-
-#else
-
-    char input = '\0';
+    char input_char = '\0';
     cout << "welcome to PixelFPSDemo!\n";
     cout << "Press 'E' open Editor, Press any other key open Game.\n";
-    cin >> input;
+    cin >> input_char;
 
-    if (tolower(input) == 'e')
+    if (tolower(input_char) == 'e')
     {
         wstring folderPath = L"../../res/";
 
@@ -1183,6 +1166,4 @@ int main(int argc, char** argv)
     }
 
     return 0;
-
-#endif
 }
