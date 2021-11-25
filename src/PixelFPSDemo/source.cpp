@@ -195,6 +195,31 @@ public:
         std::fclose(f);
         return true;
     }
+
+    //new function resize
+    void Resize(int newWidth, int newHeight)
+    {
+        short* newGlyphs = new short[newWidth * newHeight];
+        short* newColours = new short[newWidth * newHeight];
+
+        for (int y = 0; y < newHeight; y++)
+        {
+            for (int x = 0; x < newWidth; x++)
+            {
+                newGlyphs[y * newWidth + x] = this->GetGlyph(x, y);
+                newColours[y * newWidth + x] = this->GetColour(x, y);
+            }
+        }
+
+        delete[] this->m_Glyphs;
+        delete[] this->m_Colours;
+
+        this->m_Glyphs = newGlyphs;
+        this->m_Colours = newColours;
+
+        this->nWidth = newWidth;
+        this->nHeight = newHeight;
+    }
 };
 
 class sObject
@@ -782,17 +807,15 @@ public:
 private:
     //palette:
     std::map<ConsoleColor, Color24> palette;
-
+    //sprite pointer:
     olcSprite* spritePtr;
-    int spriteSizeX;
-    int spriteSizeY;
 
     int defaultSpritePosX = 20;
     int defaultSpritePosY = 20;
+    int defaultZoomPixelScaler = 1;
 
     int spritePosX = defaultSpritePosX;
     int spritePosY = defaultSpritePosY;
-    int defaultZoomPixelScaler = 1;
 
     //palette setting props:
     //-1 means you didn't choose any color yet.
@@ -887,8 +910,6 @@ public:
         {
             spritePtr = new olcSprite(spritePath);
         }
-        spriteSizeX = spritePtr->nWidth;
-        spriteSizeY = spritePtr->nHeight;
 
         return true;
     }
@@ -896,7 +917,6 @@ public:
     bool OnUserUpdate(float fElapsedTime) override
     {
         int mw = GetMouseWheel();
-
         //debug_output_line(to_wstring(mw));
 
         if (mw > 0)
@@ -934,10 +954,15 @@ public:
             isDirty = false;
         }
 
+        //resize:
+        if (GetKey(Key::X).bPressed)
+        {
+            this->spritePtr->Resize(32, 32);
+            isDirty = true;
+        }
+
         int mouseX = GetMouseX();
         int mouseY = GetMouseY();
-        int heldLeftMouseButton = GetMouse(Mouse::RIGHT).bHeld;
-
         //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY));
 
         //choose color:
@@ -951,8 +976,8 @@ public:
         }
 
         if (mouseX >= spritePosX && mouseY >= spritePosY &&
-            mouseX < spritePosX + spriteSizeX * defaultZoomPixelScaler &&
-            mouseY < spritePosY + spriteSizeY * defaultZoomPixelScaler)
+            mouseX < spritePosX + spritePtr->nWidth * defaultZoomPixelScaler &&
+            mouseY < spritePosY + spritePtr->nHeight * defaultZoomPixelScaler)
         {
             //NOTE!!! 注意该API并不会获取真实鼠标物理状态, 如果按住鼠标的同时把鼠标移出窗口则会导致鼠标状态无法及时更新
             if (GetMouse(Mouse::RIGHT).bHeld)
@@ -976,8 +1001,6 @@ public:
                 prevMousePosY = 0;
             }
 
-            //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY) + L" " + to_wstring(heldLeftMouseButton) + L" in area!");
-
             //select pixel(drawing):
             if (GetMouse(Mouse::LEFT).bHeld)
             {
@@ -986,7 +1009,6 @@ public:
 
                 int selectIndexX = mouseInSpritePosX / defaultZoomPixelScaler;
                 int selectIndexY = mouseInSpritePosY / defaultZoomPixelScaler;
-
                 //debug_output_line(to_wstring(selectIndexX) + L" " + to_wstring(selectIndexY));
 
                 //draw alpha(erase):
@@ -1013,8 +1035,6 @@ public:
         {
             prevMousePosX = 0;
             prevMousePosY = 0;
-
-            //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY)+ L" " + to_wstring(heldLeftMouseButton) + L" not in area.");
         }
 
         //clear screen:
@@ -1039,7 +1059,7 @@ public:
             DrawString({ 50 + textSize.x, 0 }, "*");
         }
         //draw sprite size:
-        DrawString({ 50, textSize.y * 2 }, text3 + to_string(spriteSizeX) + "X" + to_string(spriteSizeY));
+        DrawString({ 50, textSize.y * 2 }, text3 + to_string(spritePtr->nWidth) + "X" + to_string(spritePtr->nHeight));
         //draw sprite name
         DrawString({ 50, textSize.y * 3 }, text4 + this->spriteName);
 
@@ -1062,9 +1082,9 @@ public:
         }
 
         //draw sprite bg(ex info for painting):
-        for (int i = 0; i < spriteSizeY * defaultZoomPixelScaler; i++)
+        for (int i = 0; i < spritePtr->nHeight * defaultZoomPixelScaler; i++)
         {
-            for (int j = 0; j < spriteSizeX * defaultZoomPixelScaler; j++)
+            for (int j = 0; j < spritePtr->nWidth * defaultZoomPixelScaler; j++)
             {
                 Draw(j + spritePosX, i + spritePosY, Pixel(88, 88, 88));
             }
