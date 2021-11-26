@@ -63,6 +63,55 @@ public:
     }
 };
 
+struct Color32
+{
+public:
+    ::byte r;
+    ::byte g;
+    ::byte b;
+    ::byte a;
+
+    Color32()
+    {
+        this->r = 0;
+        this->g = 0;
+        this->b = 0;
+        this->a = 0;
+    }
+
+    Color32(::byte r, ::byte g, ::byte b, ::byte a)
+    {
+        this->r = r;
+        this->g = g;
+        this->b = b;
+        this->a = a;
+    }
+
+    bool operator ==(const Color32& other) const
+    {
+        if (r == other.r && g == other.g && b == other.b && a == other.a)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool operator !=(const Color32& other) const
+    {
+        if (r == other.r && g == other.g && b == other.b && a == other.a)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+};
+
 class olcSprite
 {
 public:
@@ -888,6 +937,47 @@ private:
     }
 
 public:
+    const wstring PxsFolder = L"../../res/pxs/";
+
+    static vector<wstring> ConvertSprToPxs(olcSprite* sprite, std::map<ConsoleColor, Color24>& palette)
+    {
+        vector<wstring> lines;
+
+        //first line:
+        lines.push_back(to_wstring(sprite->nWidth) + L"," + to_wstring(sprite->nHeight));
+
+        //color32 lines:
+        for (int y = 0; y < sprite->nHeight; y++)
+        {
+            wstring line;
+            for (int x = 0; x < sprite->nWidth; x++)
+            {
+                short att = sprite->GetColour(x, y);
+                short c = sprite->GetGlyph(x, y);
+
+                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                Color24 pixelColor = palette[foreColor];
+                UNUSED(backColor);
+
+                Color32 saveColor(pixelColor.r, pixelColor.g, pixelColor.b, 255);
+
+                //set alpha to 0
+                if (c == ' ')
+                {
+                    saveColor.a = 0;
+                }
+
+                line += L"(" + to_wstring(saveColor.r) + L"," + to_wstring(saveColor.g) + L"," + to_wstring(saveColor.b) + L"," + to_wstring(saveColor.a) + L"),";
+            }
+            lines.push_back(line);
+        }
+
+        return lines;
+    }
+
+public:
     PixelEditor()
     {
         sAppName = "Pixel Editor";
@@ -974,14 +1064,29 @@ public:
         if (GetKey(Key::S).bPressed)
         {
             spritePtr->Save(spritePath);
-            isDirty = false;
+
+            //save as .pxs file:
+            vector<wstring> pxs_lines = ConvertSprToPxs(this->spritePtr, palette);
+
+            string spriteNameWithoutEx = this->spriteName.substr(0, this->spriteName.find('.'));
+            wstring saveFileName = String::StringToWstring(spriteNameWithoutEx) + L".pxs";
+
+            wstring __path = PxsFolder + saveFileName;
+
+            if (!File::Exists(__path))
+            {
+                File::Creat(__path);
+            }
+            File::WriteAllLines(__path, pxs_lines);
+
+            this->isDirty = false;
         }
 
         //resize:
         if (GetKey(Key::X).bPressed)
         {
             this->spritePtr->Resize(resizeSpriteWidth, resizeSpriteHeight);
-            isDirty = true;
+            this->isDirty = true;
         }
 
         int mouseX = GetMouseX();
