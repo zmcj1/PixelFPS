@@ -20,8 +20,8 @@ int main()
     console.SetTitle(L"PixelFPSDemo2 Console");
 
     char input_char = '\0';
-    cout << "welcome to PixelFPSDemo2!\n";
-    cout << "Press 'E' open Editor, Press any other key open Game.\n";
+    console.WriteLine(L"welcome to PixelFPSDemo2!", { 255, 75, 43 });
+    console.WriteLine(L"Press 'E' open Editor, Press any other key open Game.", { 107, 198, 237 });
     cin >> input_char;
 
     if (tolower(input_char) == 'e')
