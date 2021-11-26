@@ -146,6 +146,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="olcSprite.hpp" />
+    <ClInclude Include="PixelEditor.hpp" />
+    <ClInclude Include="PixelFPSDemo2.hpp" />
     <ClInclude Include="sObject.hpp" />
     <ClInclude Include="tool.hpp" />
   </ItemGroup>

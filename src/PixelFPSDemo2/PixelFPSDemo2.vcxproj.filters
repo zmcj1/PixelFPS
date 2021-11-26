@@ -23,5 +23,11 @@
     <ClInclude Include="tool.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="PixelFPSDemo2.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="PixelEditor.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
