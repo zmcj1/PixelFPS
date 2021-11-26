@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "Navigation.hpp"
+
 class PixelFPSDemo2 : public PixelGameEngine
 {
 private:
@@ -45,6 +47,15 @@ private:
     Audio* fireBallSound = nullptr;
     AudioPool* explosionPool = nullptr;
     AudioPool* fireBallPool = nullptr;
+
+    //obstacles:
+    std::vector<Vector2> obstacles;
+    //for AI:
+    //NOTE, sObject and listObjects can't interact normally with Navigation system.
+    //So, im writing a new system.
+    sObject* simple_ai;
+    float nav_timer = 0;
+    bool enableNav = false;
 
 public:
     PixelFPSDemo2()
@@ -134,6 +145,21 @@ public:
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
         this->bgm2->Play(false, false);
 
+        //set obstacles:
+        if (this->enableNav)
+        {
+            for (int y = 0; y < mapHeight; y++)
+            {
+                for (int x = 0; x < mapWidth; x++)
+                {
+                    if (this->map[y * mapWidth + x] == L'#')
+                    {
+                        obstacles.push_back({ x, y });
+                    }
+                }
+            }
+            simple_ai = new sObject(2, 2, this->spriteFlower);
+        }
         return true;
     }
 
@@ -142,6 +168,23 @@ public:
     {
         float deltaTime = fElapsedTime;
 
+        //ai nav:
+        if (enableNav)
+        {
+            nav_timer += deltaTime;
+            if (nav_timer >= 1.0f)
+            {
+                nav_timer = 0;
+                auto sr = Navigation::Navigate({ (int)simple_ai->x, (int)simple_ai->y }, { (int)playerX, (int)playerY }, SearchDirection::Eight, 100, obstacles, SearchMethod::DFS);
+                if (sr.success)
+                {
+                    auto tar_vec = sr.path[1].position - sr.path[0].position;
+                    simple_ai->x += tar_vec.x;
+                    simple_ai->y += tar_vec.y;
+                    debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
+                }
+            }
+        }
         //check audio state:
         if (this->bgm2->IsOver() && !startedPlayBGM)
         {
