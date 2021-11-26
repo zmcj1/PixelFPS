@@ -12,8 +12,7 @@ massive massive thx javidx9!
 
 ### TODO
 
-1. new Editor for sprites.
-1. Explosion Texture
+1. update Sprite Editor.
 1. Better character controller
 1. Simple AI Enemy(zombie is coming), pathfinding and state machine
 1. Maze Generator!
