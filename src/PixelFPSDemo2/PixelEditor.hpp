@@ -85,6 +85,27 @@ private:
 public:
     const wstring PxsFolder = L"../../res/pxs/";
 
+    static wstring GetIndentValue(MinConsoleNative::byte value)
+    {
+        wstring result;
+
+        if (value / 100 == 0) //必定是2位数
+        {
+            int indent = 1;
+            if (value / 10 == 0) //必定是1位数
+            {
+                indent++;
+            }
+            for (int k = 0; k < indent; k++)
+            {
+                result += L" ";
+            }
+        }
+
+        result += to_wstring(value);
+        return result;
+    }
+
     static vector<wstring> ConvertSprToPxs(olcSprite* sprite, std::map<ConsoleColor, Color24>& palette)
     {
         vector<wstring> lines;
@@ -115,7 +136,10 @@ public:
                     saveColor.a = 0;
                 }
 
-                line += L"(" + to_wstring(saveColor.r) + L"," + to_wstring(saveColor.g) + L"," + to_wstring(saveColor.b) + L"," + to_wstring(saveColor.a) + L"),";
+                //normal:
+                //line += L"(" + to_wstring(saveColor.r) + L"," + to_wstring(saveColor.g) + L"," + to_wstring(saveColor.b) + L"," + to_wstring(saveColor.a) + L"),";
+                //add indent:
+                line += L"(" + GetIndentValue(saveColor.r) + L"," + GetIndentValue(saveColor.g) + L"," + GetIndentValue(saveColor.b) + L"," + GetIndentValue(saveColor.a) + L"),";
             }
             lines.push_back(line);
         }
