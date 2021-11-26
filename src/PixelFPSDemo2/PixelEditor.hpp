@@ -40,6 +40,9 @@ private:
     //save setting:
     bool isDirty = false;
 
+    //play music while painting :D
+    Audio* theme_of_laura = nullptr;
+
     void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
         //load olcSprite:
@@ -161,6 +164,9 @@ public:
         {
             spritePtr = new olcSprite(spritePath);
         }
+
+        theme_of_laura = new Audio(L"../../res/audios/Theme of Laura.mp3");
+        theme_of_laura->Play(true, false);
 
         return true;
     }
@@ -447,6 +453,7 @@ public:
     bool OnUserDestroy() override
     {
         delete this->spritePtr;
+        delete this->theme_of_laura;
 
         return true;
     }
