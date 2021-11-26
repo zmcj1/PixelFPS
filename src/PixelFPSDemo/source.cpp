@@ -635,13 +635,13 @@ public:
                 }
             }
 
+            //update depth buffer:
+            fDepthBuffer[x] = distanceToWall;
+
             //note!!! this will cause noise on screen, but we fixed fisheye problem.
             distanceToWall *= ::cosf(diffAngle);
             int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int floor = ScreenHeight() - ceiling;
-
-            //update depth buffer:
-            fDepthBuffer[x] = distanceToWall;
 
             for (int y = 0; y < ScreenHeight(); y++)
             {
