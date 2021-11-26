@@ -992,6 +992,9 @@ public:
             }
         }
 
+        int selectIndexX = -1;
+        int selectIndexY = -1;
+
         //mouse pos in sprite:
         if (mouseX >= spritePosX && mouseY >= spritePosY &&
             mouseX < spritePosX + spritePtr->nWidth * defaultZoomPixelScaler &&
@@ -999,8 +1002,8 @@ public:
         {
             int mouseInSpritePosX = mouseX - spritePosX;
             int mouseInSpritePosY = mouseY - spritePosY;
-            int selectIndexX = mouseInSpritePosX / defaultZoomPixelScaler;
-            int selectIndexY = mouseInSpritePosY / defaultZoomPixelScaler;
+            selectIndexX = mouseInSpritePosX / defaultZoomPixelScaler;
+            selectIndexY = mouseInSpritePosY / defaultZoomPixelScaler;
 
             //NOTE!!! 注意该API并不会获取真实鼠标物理状态, 如果按住鼠标的同时把鼠标移出窗口则会导致鼠标状态无法及时更新
             if (GetMouse(Mouse::RIGHT).bHeld)
@@ -1050,6 +1053,9 @@ public:
             //drag pixel of sprite:
             if (GetMouse(Mouse::MIDDLE).bHeld)
             {
+                //todo:
+                // 
+                // 
                 //short* changedGlyphs = new short[this->spritePtr->nWidth * this->spritePtr->nHeight];
                 //short* changedColours = new short[this->spritePtr->nWidth * this->spritePtr->nHeight];
                 //olcSprite* buffer = new olcSprite(this->spritePtr->nWidth, this->spritePtr->nHeight);
@@ -1096,6 +1102,8 @@ public:
         DrawString({ 50, textSize.y * 2 }, text3 + to_string(spritePtr->nWidth) + "X" + to_string(spritePtr->nHeight));
         //draw sprite name
         DrawString({ 50, textSize.y * 3 }, text4 + this->spriteName);
+        //draw current cursor pos in sprite:
+        DrawString({ 50, textSize.y * 4 }, "(" + to_string(selectIndexX) + ", " + to_string(selectIndexY) + ")");
 
         //draw choosen color:
         if (this->chosenPaletteColorIndex != -1)
@@ -1126,6 +1134,33 @@ public:
 
         //draw sprite:
         DisplaySprite(spritePtr, spritePosX, spritePosY, defaultZoomPixelScaler);
+
+        //draw painting preview:
+        if (selectIndexX != -1 && selectIndexY != -1)
+        {
+            for (int i = 0; i < defaultZoomPixelScaler; i++)
+            {
+                for (int j = 0; j < defaultZoomPixelScaler; j++)
+                {
+                    Color24 color;
+                    //color
+                    if (this->chosenPaletteColorIndex != -1)
+                    {
+                        color = palette[(ConsoleColor)this->chosenPaletteColorIndex];
+                    }
+                    //erase
+                    else
+                    {
+                        color = Color24(88, 88, 88);
+                    }
+
+                    Draw({
+                        j + selectIndexX * defaultZoomPixelScaler + spritePosX,
+                        i + selectIndexY * defaultZoomPixelScaler + spritePosY },
+                        Pixel(color.r, color.g, color.b));
+                }
+            }
+        }
 
         //draw palette color:
         for (int i = 0; i < palette.size(); i++)
