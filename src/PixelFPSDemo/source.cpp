@@ -1,6 +1,6 @@
 ﻿//  PixelFPS
 //  author : zmcj1
-//  date : 2021 / 11 / 25
+//  date : 2021 / 11 / 26
 //  game repo : https://github.com/zmcj1/PixelFPS
 //  game engine : https://github.com/OneLoneCoder/olcPixelGameEngine
 //  massive massive thx javidx9!
@@ -837,6 +837,7 @@ private:
     //palette setting props:
     //-1 means you didn't choose any color yet.
     int chosenPaletteColorIndex = -1;
+    bool chosenErase = false;
 
     int paletteColorSizeX = 10;
     int paletteColorSizeY = 10;
@@ -934,7 +935,6 @@ public:
     bool OnUserUpdate(float fElapsedTime) override
     {
         int mw = GetMouseWheel();
-        //debug_output_line(to_wstring(mw));
 
         if (mw > 0)
         {
@@ -961,7 +961,13 @@ public:
         //choose erase:
         if (GetKey(Key::E).bPressed)
         {
-            this->chosenPaletteColorIndex = -1;
+            chosenErase = true;
+        }
+
+        //choose color:
+        if (GetKey(Key::B).bPressed)
+        {
+            chosenErase = false;
         }
 
         //save:
@@ -980,7 +986,6 @@ public:
 
         int mouseX = GetMouseX();
         int mouseY = GetMouseY();
-        //debug_output_line(to_wstring(mouseX) + L" " + to_wstring(mouseY));
 
         //choose color:
         if (mouseX >= 0 && mouseX < paletteColorSizeX &&
@@ -989,6 +994,7 @@ public:
             if (GetMouse(Mouse::LEFT).bHeld)
             {
                 this->chosenPaletteColorIndex = mouseY / paletteColorSizeY;
+                this->chosenErase = false;
             }
         }
 
@@ -1031,23 +1037,27 @@ public:
             if (GetMouse(Mouse::LEFT).bHeld)
             {
                 //draw alpha(erase):
-                if (this->chosenPaletteColorIndex == -1)
+                if (this->chosenErase)
                 {
                     //set it to 0:
                     this->spritePtr->SetColour(selectIndexX, selectIndexY, 0);
                     //disable draw this pixel:
                     this->spritePtr->SetGlyph(selectIndexX, selectIndexY, ' ');
+                    //set dirty sign:
+                    this->isDirty = true;
                 }
                 else
                 {
-                    ushort att = ToUshort((ConsoleColor)this->chosenPaletteColorIndex, ConsoleColor::BLACK);
-                    this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
-                    //fill
-                    this->spritePtr->SetGlyph(selectIndexX, selectIndexY, 'a');
+                    if (this->chosenPaletteColorIndex != -1)
+                    {
+                        ushort att = ToUshort((ConsoleColor)this->chosenPaletteColorIndex, ConsoleColor::BLACK);
+                        this->spritePtr->SetColour(selectIndexX, selectIndexY, att);
+                        //fill
+                        this->spritePtr->SetGlyph(selectIndexX, selectIndexY, 'a');
+                        //set dirty sign:
+                        this->isDirty = true;
+                    }
                 }
-
-                //set dirty sign:
-                isDirty = true;
             }
 
             //drag pixel of sprite:
@@ -1105,22 +1115,25 @@ public:
         //draw current cursor pos in sprite:
         DrawString({ 50, textSize.y * 4 }, "(" + to_string(selectIndexX) + ", " + to_string(selectIndexY) + ")");
 
-        //draw choosen color:
-        if (this->chosenPaletteColorIndex != -1)
-        {
-            for (int y = 0; y < paletteColorSizeY; y++)
-            {
-                for (int x = 0; x < paletteColorSizeX; x++)
-                {
-                    Color24 color = palette[(ConsoleColor)this->chosenPaletteColorIndex];
-                    Draw({ x + 50 + text2Size.x, y + text2Size.y }, Pixel(color.r, color.g, color.b));
-                }
-            }
-        }
         //choosen is erase:
-        else
+        if (this->chosenErase)
         {
             DrawString({ 50 + text2Size.x, text2Size.y }, "erase", Pixel(125, 0, 66));
+        }
+        //draw choosen color:
+        else
+        {
+            if (this->chosenPaletteColorIndex != -1)
+            {
+                for (int y = 0; y < paletteColorSizeY; y++)
+                {
+                    for (int x = 0; x < paletteColorSizeX; x++)
+                    {
+                        Color24 color = palette[(ConsoleColor)this->chosenPaletteColorIndex];
+                        Draw({ x + 50 + text2Size.x, y + text2Size.y }, Pixel(color.r, color.g, color.b));
+                    }
+                }
+            }
         }
 
         //draw sprite bg(ex info for painting):
@@ -1142,22 +1155,27 @@ public:
             {
                 for (int j = 0; j < defaultZoomPixelScaler; j++)
                 {
-                    Color24 color;
-                    //color
-                    if (this->chosenPaletteColorIndex != -1)
+                    //erase:
+                    if (this->chosenErase)
                     {
-                        color = palette[(ConsoleColor)this->chosenPaletteColorIndex];
+                        Color24 color = Color24(88, 88, 88);
+                        Draw({
+                            j + selectIndexX * defaultZoomPixelScaler + spritePosX,
+                            i + selectIndexY * defaultZoomPixelScaler + spritePosY },
+                            Pixel(color.r, color.g, color.b));
                     }
-                    //erase
+                    //color:
                     else
                     {
-                        color = Color24(88, 88, 88);
+                        if (this->chosenPaletteColorIndex != -1)
+                        {
+                            Color24 color = palette[(ConsoleColor)this->chosenPaletteColorIndex];
+                            Draw({
+                                j + selectIndexX * defaultZoomPixelScaler + spritePosX,
+                                i + selectIndexY * defaultZoomPixelScaler + spritePosY },
+                                Pixel(color.r, color.g, color.b));
+                        }
                     }
-
-                    Draw({
-                        j + selectIndexX * defaultZoomPixelScaler + spritePosX,
-                        i + selectIndexY * defaultZoomPixelScaler + spritePosY },
-                        Pixel(color.r, color.g, color.b));
                 }
             }
         }
