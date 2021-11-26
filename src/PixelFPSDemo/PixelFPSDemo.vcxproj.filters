@@ -17,7 +17,6 @@
     <ClInclude Include="String.hpp" />
     <ClInclude Include="AudioPool.hpp" />
     <ClInclude Include="olcPGEX_RayCastWorld.h" />
-    <ClInclude Include="json.hpp" />
     <ClInclude Include="GameObject.hpp" />
   </ItemGroup>
 </Project>

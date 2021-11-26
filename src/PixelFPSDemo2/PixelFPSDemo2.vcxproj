@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{619752f0-bcd7-49bd-9cc1-540db7a93608}</ProjectGuid>
-    <RootNamespace>PixelFPSDemo</RootNamespace>
+    <ProjectGuid>{0c47f7bb-51c7-4322-89b6-ae17d7f4e202}</ProjectGuid>
+    <RootNamespace>PixelFPSDemo2</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -116,7 +116,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,29 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Audio.cpp" />
-    <ClCompile Include="AudioPool.cpp" />
-    <ClCompile Include="File.cpp" />
-    <ClCompile Include="OneLoneCoder_PGE_RayCastWorld_Simple.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="RaycastWorldExample.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="source.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="String.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Audio.hpp" />
-    <ClInclude Include="AudioPool.hpp" />
-    <ClInclude Include="File.hpp" />
-    <ClInclude Include="GameObject.hpp" />
-    <ClInclude Include="MinDefines.hpp" />
-    <ClInclude Include="olcPGEX_RayCastWorld.h" />
-    <ClInclude Include="olcPixelGameEngine.h" />
-    <ClInclude Include="String.hpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
