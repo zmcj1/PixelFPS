@@ -571,6 +571,7 @@ public:
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
+            float diffAngle = playerAngle - rayAngle;
 
             float stepSize = 0.01f;
             float distanceToWall = 0.0f;
@@ -589,6 +590,8 @@ public:
                 int testX = (int)(playerX + eyeX * distanceToWall);
                 int testY = (int)(playerY + eyeY * distanceToWall);
 
+                //超出地图边界
+                //out of map:
                 if (testX < 0 || testX >= mapWidth || testY < 0 || testY >= mapHeight)
                 {
                     hitWall = true;
@@ -632,6 +635,8 @@ public:
                 }
             }
 
+            //note!!! this will cause noise on screen, but we fixed fisheye problem.
+            distanceToWall *= ::cosf(diffAngle);
             int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int floor = ScreenHeight() - ceiling;
 
