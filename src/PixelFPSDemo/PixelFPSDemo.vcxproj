@@ -143,11 +143,12 @@
     <ClCompile Include="Audio.cpp" />
     <ClCompile Include="AudioPool.cpp" />
     <ClCompile Include="File.cpp" />
+    <ClCompile Include="OneLoneCoder_PGE_RayCastWorld_Simple.cpp" />
     <ClCompile Include="RaycastWorldExample.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="source.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="String.cpp" />
   </ItemGroup>

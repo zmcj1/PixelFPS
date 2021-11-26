@@ -7,6 +7,7 @@
     <ClCompile Include="String.cpp" />
     <ClCompile Include="AudioPool.cpp" />
     <ClCompile Include="RaycastWorldExample.cpp" />
+    <ClCompile Include="OneLoneCoder_PGE_RayCastWorld_Simple.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="olcPixelGameEngine.h" />

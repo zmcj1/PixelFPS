@@ -639,6 +639,7 @@ public:
             fDepthBuffer[x] = distanceToWall;
 
             //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
+            //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / (distanceToWall * cosf(diffAngle)));
             int floor = ScreenHeight() - ceiling;
 
