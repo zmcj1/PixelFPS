@@ -4,16 +4,16 @@
 #include "MinConsoleNative.hpp"
 #include <iostream>
 
+using namespace olc;
+using namespace MinConsoleNative;
+using namespace std;
+
 //include current:
 #include "olcSprite.hpp"
 #include "sObject.hpp"
 #include "tool.hpp"
 #include "PixelFPSDemo2.hpp"
 #include "PixelEditor.hpp"
-
-using namespace olc;
-using namespace MinConsoleNative;
-using namespace std;
 
 int main()
 {
