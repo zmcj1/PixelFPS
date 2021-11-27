@@ -58,6 +58,42 @@ private:
     bool enableNav = false;
 
 private:
+    //tool functions:
+    void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
+    {
+        //load olcSprite:
+        olcSprite sprite(path);
+        DisplaySprite(&sprite, x, y, zoomPixelScaler);
+    }
+
+    void DisplaySprite(olcSprite* sprite, int x, int y, int zoomPixelScaler)
+    {
+        //draw with scaler:
+        for (size_t i = 0; i < sprite->nHeight * zoomPixelScaler; i++)
+        {
+            for (size_t j = 0; j < sprite->nWidth * zoomPixelScaler; j++)
+            {
+                short c = sprite->GetGlyph(j / zoomPixelScaler, i / zoomPixelScaler);
+
+                //ignore alpha
+                if (c == L' ')
+                {
+                    continue;
+                }
+
+                short att = sprite->GetColour(j / zoomPixelScaler, i / zoomPixelScaler);
+                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                Color24 pixelColor = palette[foreColor];
+                UNUSED(backColor);
+
+                Draw(x + j, y + i, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+            }
+        }
+    }
+
+private:
     void update_audio()
     {
         //check audio state:
