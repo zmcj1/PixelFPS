@@ -57,134 +57,9 @@ private:
     float nav_timer = 0;
     bool enableNav = false;
 
-public:
-    PixelFPSDemo2()
+private:
+    void update_audio()
     {
-        this->sAppName = "PixelFPS Demo2";
-    }
-
-    // Called once on application startup, use to load your resources
-    bool OnUserCreate() override
-    {
-        //create map:
-        map += L"################################";
-        map += L"#...............#..............#";
-        map += L"#.......#########.......########";
-        map += L"#..............##..............#";
-        map += L"#......##......##......##......#";
-        map += L"#......##..............##......#";
-        map += L"#..............##..............#";
-        map += L"###............####............#";
-        map += L"##.............###.............#";
-        map += L"#............####............###";
-        map += L"#..............................#";
-        map += L"#..............##..............#";
-        map += L"#..............##..............#";
-        map += L"#...........#####...........####";
-        map += L"#..............................#";
-        map += L"###..####....########....#######";
-        map += L"####.####.......######.........#";
-        map += L"#...............#..............#";
-        map += L"#.......#########.......##..####";
-        map += L"#..............##..............#";
-        map += L"#......##......##.......#......#";
-        map += L"#......##......##......##......#";
-        map += L"#..............##..............#";
-        map += L"###............####............#";
-        map += L"##.............###.............#";
-        map += L"#............####............###";
-        map += L"#..............................#";
-        map += L"#..............................#";
-        map += L"#..............##..............#";
-        map += L"#...........##..............####";
-        map += L"#..............##..............#";
-        map += L"################################";
-
-        //load res:
-        this->spriteWall = new olcSprite(L"../../res/fps_wall1.spr");
-        this->spriteLamp = new olcSprite(L"../../res/fps_lamp1.spr");
-        this->spriteFireBall = new olcSprite(L"../../res/fps_fireball1.spr");
-        this->spriteExplosion = new olcSprite(L"../../res/fps_explosion.spr");
-        this->spriteFlower = new olcSprite(L"../../res/flower.spr");
-
-        listObjects =
-        {
-            sObject(8.5f, 8.5f, this->spriteLamp),
-            sObject(7.5f, 7.5f, this->spriteLamp),
-            sObject(10.5f, 3.5f, this->spriteLamp),
-            sObject(11.5f, 6.5f, this->spriteFlower),
-        };
-
-        this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
-        this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
-        this->palette[ConsoleColor::DARKGREEN] = { 0, 128, 0 };
-        this->palette[ConsoleColor::DARKCYAN] = { 0, 128, 128 };
-        this->palette[ConsoleColor::DARKRED] = { 128, 0, 0 };
-        this->palette[ConsoleColor::DARKMAGENTA] = { 128, 0, 128 };
-        this->palette[ConsoleColor::DARKYELLOW] = { 128, 128, 0 };
-        this->palette[ConsoleColor::GRAY] = { 192, 192, 192 };
-        this->palette[ConsoleColor::DARKGRAY] = { 128, 128, 128 };
-        this->palette[ConsoleColor::BLUE] = { 0, 0, 255 };
-        this->palette[ConsoleColor::GREEN] = { 0, 255, 0 };
-        this->palette[ConsoleColor::CYAN] = { 0, 255, 255 };
-        this->palette[ConsoleColor::RED] = { 255, 0, 0 };
-        this->palette[ConsoleColor::MAGENTA] = { 255, 0, 255 };
-        this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
-        this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
-
-        this->fDepthBuffer = new float[ScreenWidth()];
-
-        this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
-        this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
-        this->explosionSound = new Audio(L"../../res/audios/548_Effect.Explosion.wav.mp3");
-        this->fireBallSound = new Audio(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
-
-        this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
-        this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
-
-        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
-        this->bgm2->Play(false, false);
-
-        //set obstacles:
-        if (this->enableNav)
-        {
-            for (int y = 0; y < mapHeight; y++)
-            {
-                for (int x = 0; x < mapWidth; x++)
-                {
-                    if (this->map[y * mapWidth + x] == L'#')
-                    {
-                        obstacles.push_back({ x, y });
-                    }
-                }
-            }
-            simple_ai = new sObject(2, 2, this->spriteFlower);
-        }
-        return true;
-    }
-
-    // Called every frame, and provides you with a time per frame value
-    bool OnUserUpdate(float fElapsedTime) override
-    {
-        float deltaTime = fElapsedTime;
-
-        //ai nav:
-        if (enableNav)
-        {
-            nav_timer += deltaTime;
-            if (nav_timer >= 1.0f)
-            {
-                nav_timer = 0;
-                auto sr = Navigation::Navigate({ (int)simple_ai->x, (int)simple_ai->y }, { (int)playerX, (int)playerY }, SearchDirection::Eight, 100, obstacles, SearchMethod::DFS);
-                if (sr.success)
-                {
-                    auto tar_vec = sr.path[1].position - sr.path[0].position;
-                    simple_ai->x += tar_vec.x;
-                    simple_ai->y += tar_vec.y;
-                    debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
-                }
-            }
-        }
         //check audio state:
         if (this->bgm2->IsOver() && !startedPlayBGM)
         {
@@ -198,11 +73,10 @@ public:
         explosionPool->Clean();
         fireBallPool->Clean();
 
-        if (GetKey(Key::ESCAPE).bPressed)
-        {
-            return false;
-        }
+    }
 
+    void receive_user_input(float deltaTime)
+    {
         //rotation
         if (GetKey(Key::A).bHeld)
         {
@@ -290,6 +164,10 @@ public:
             fireBallPool->PlayOneShot(0.5f);
         }
 
+    }
+
+    void render_world(float deltaTime)
+    {
         //raycast
         for (int x = 0; x < ScreenWidth(); x++)
         {
@@ -525,12 +403,6 @@ public:
             }
         }
 
-        //GC for fireball:
-        listObjects.remove_if([](sObject& o)
-            {
-                return o.remove;
-            });
-
         //draw map
         for (int y = 0; y < mapHeight; y++)
         {
@@ -546,8 +418,157 @@ public:
                 }
             }
         }
+
         //draw player
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
+
+    }
+
+public:
+    PixelFPSDemo2()
+    {
+        this->sAppName = "PixelFPS Demo2";
+    }
+
+    // Called once on application startup, use to load your resources
+    bool OnUserCreate() override
+    {
+        //create map:
+        map += L"################################";
+        map += L"#...............#..............#";
+        map += L"#.......#########.......########";
+        map += L"#..............##..............#";
+        map += L"#......##......##......##......#";
+        map += L"#......##..............##......#";
+        map += L"#..............##..............#";
+        map += L"###............####............#";
+        map += L"##.............###.............#";
+        map += L"#............####............###";
+        map += L"#..............................#";
+        map += L"#..............##..............#";
+        map += L"#..............##..............#";
+        map += L"#...........#####...........####";
+        map += L"#..............................#";
+        map += L"###..####....########....#######";
+        map += L"####.####.......######.........#";
+        map += L"#...............#..............#";
+        map += L"#.......#########.......##..####";
+        map += L"#..............##..............#";
+        map += L"#......##......##.......#......#";
+        map += L"#......##......##......##......#";
+        map += L"#..............##..............#";
+        map += L"###............####............#";
+        map += L"##.............###.............#";
+        map += L"#............####............###";
+        map += L"#..............................#";
+        map += L"#..............................#";
+        map += L"#..............##..............#";
+        map += L"#...........##..............####";
+        map += L"#..............##..............#";
+        map += L"################################";
+
+        //load res:
+        this->spriteWall = new olcSprite(L"../../res/fps_wall1.spr");
+        this->spriteLamp = new olcSprite(L"../../res/fps_lamp1.spr");
+        this->spriteFireBall = new olcSprite(L"../../res/fps_fireball1.spr");
+        this->spriteExplosion = new olcSprite(L"../../res/fps_explosion.spr");
+        this->spriteFlower = new olcSprite(L"../../res/flower.spr");
+
+        listObjects =
+        {
+            sObject(8.5f, 8.5f, this->spriteLamp),
+            sObject(7.5f, 7.5f, this->spriteLamp),
+            sObject(10.5f, 3.5f, this->spriteLamp),
+            sObject(11.5f, 6.5f, this->spriteFlower),
+        };
+
+        this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
+        this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
+        this->palette[ConsoleColor::DARKGREEN] = { 0, 128, 0 };
+        this->palette[ConsoleColor::DARKCYAN] = { 0, 128, 128 };
+        this->palette[ConsoleColor::DARKRED] = { 128, 0, 0 };
+        this->palette[ConsoleColor::DARKMAGENTA] = { 128, 0, 128 };
+        this->palette[ConsoleColor::DARKYELLOW] = { 128, 128, 0 };
+        this->palette[ConsoleColor::GRAY] = { 192, 192, 192 };
+        this->palette[ConsoleColor::DARKGRAY] = { 128, 128, 128 };
+        this->palette[ConsoleColor::BLUE] = { 0, 0, 255 };
+        this->palette[ConsoleColor::GREEN] = { 0, 255, 0 };
+        this->palette[ConsoleColor::CYAN] = { 0, 255, 255 };
+        this->palette[ConsoleColor::RED] = { 255, 0, 0 };
+        this->palette[ConsoleColor::MAGENTA] = { 255, 0, 255 };
+        this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
+        this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
+
+        this->fDepthBuffer = new float[ScreenWidth()];
+
+        this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
+        this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
+        this->explosionSound = new Audio(L"../../res/audios/548_Effect.Explosion.wav.mp3");
+        this->fireBallSound = new Audio(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
+
+        this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
+        this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
+
+        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
+        this->bgm2->Play(false, false);
+
+        //set obstacles:
+        if (this->enableNav)
+        {
+            for (int y = 0; y < mapHeight; y++)
+            {
+                for (int x = 0; x < mapWidth; x++)
+                {
+                    if (this->map[y * mapWidth + x] == L'#')
+                    {
+                        obstacles.push_back({ x, y });
+                    }
+                }
+            }
+            simple_ai = new sObject(2, 2, this->spriteFlower);
+        }
+        return true;
+    }
+
+    // Called every frame, and provides you with a time per frame value
+    bool OnUserUpdate(float fElapsedTime) override
+    {
+        float deltaTime = fElapsedTime;
+
+        //ai nav:
+        if (enableNav)
+        {
+            nav_timer += deltaTime;
+            if (nav_timer >= 1.0f)
+            {
+                nav_timer = 0;
+                auto sr = Navigation::Navigate({ (int)simple_ai->x, (int)simple_ai->y }, { (int)playerX, (int)playerY }, SearchDirection::Eight, 100, obstacles, SearchMethod::DFS);
+                if (sr.success)
+                {
+                    auto tar_vec = sr.path[1].position - sr.path[0].position;
+                    simple_ai->x += tar_vec.x;
+                    simple_ai->y += tar_vec.y;
+                    debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
+                }
+            }
+        }
+
+        if (GetKey(Key::ESCAPE).bPressed)
+        {
+            return false;
+        }
+
+        update_audio();
+
+        receive_user_input(deltaTime);
+
+        render_world(deltaTime);
+
+        //GC for fireball:
+        listObjects.remove_if([](sObject& o)
+            {
+                return o.remove;
+            });
 
         return true;
     }
