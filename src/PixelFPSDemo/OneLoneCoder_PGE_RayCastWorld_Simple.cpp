@@ -141,9 +141,9 @@ protected:
 		float fDistance = 1.0f - std::min(distance / 32.0f, 1.0f);
 
 		// ...and applying it to sampled pixel
-		p.r = uint8_t(float(p.r) * fDistance);
-		p.g = uint8_t(float(p.g) * fDistance);
-		p.b = uint8_t(float(p.b) * fDistance);
+		p.r = uint8_t(float(p.r) * fDistance * fShadow);
+		p.g = uint8_t(float(p.g) * fDistance * fShadow);
+		p.b = uint8_t(float(p.b) * fDistance * fShadow);
 
 		return p;
 	}
