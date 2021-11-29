@@ -376,7 +376,8 @@ private:
                 //draw ceiling
                 if (y <= ceiling)
                 {
-                    Draw(x, y, Pixel(0, 0, 255));
+                    Pixel pixel = shadeFloorAndCeiling(Color24(0, 0, 255));
+                    Draw(x, y, pixel);
                 }
                 //draw wall
                 else if (y > ceiling && y <= floor)
@@ -393,7 +394,9 @@ private:
                         Color24 pixelColor = palette[foreColor];
                         UNUSED(backColor);
 
-                        Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+                        //Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall);
+                        Draw(x, y, pixel);
                     }
                     else
                     {
@@ -403,7 +406,8 @@ private:
                 //draw floor
                 else
                 {
-                    Draw(x, y, Pixel(0, 128, 0));
+                    Pixel pixel = shadeFloorAndCeiling(Color24(0, 128, 0));
+                    Draw(x, y, pixel);
                 }
             }
         }
@@ -569,6 +573,7 @@ private:
     {
     public:
         vf2d hitPos;
+        vi2d hitMapPos;
         float sampleX;
         CellSide side;
     };
@@ -627,6 +632,8 @@ private:
             //hit wall
             if (checkFunc(mapPos.x, mapPos.y, mapWidth, mapHeight, map))
             {
+                hitInfo.hitMapPos = mapPos;
+
                 // Find accurate Hit Location
                 float m = dir.y / dir.x;
 
@@ -654,7 +661,6 @@ private:
                         intersection.x = (mapPos.y - origin.y) / m + origin.x;
                         hitInfo.sampleX = intersection.x - std::floor(intersection.x);
                     }
-
 
                     if (intersection.y < mapPos.y)
                     {
@@ -721,6 +727,55 @@ private:
         }
 
         return false;
+    }
+
+    //you can add shader code here:
+    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance)
+    {
+        Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+
+        float shadow = 1.0f;
+
+        switch (side)
+        {
+        case CellSide::East:
+        case CellSide::South:
+            shadow = 0.75f;
+            break;
+        }
+
+        vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+        vf2d flowerPos(playerX, playerY);
+        float distanceToFlower = (flowerPos - pixelPos).mag();
+        float flowerLight = max(0.1f, 1.0f - min(distanceToFlower / 10.0f, 1.0f));
+
+        //pixel.r = pixel.r * flowerLight;
+        //pixel.g = pixel.g * flowerLight;
+        //pixel.b = pixel.b * flowerLight;
+        float fDistance = 1.0f;
+        if (distance > 5)
+        {
+            fDistance = 1.0f - std::min(distance / depth, 1.0f);
+        }
+        
+        pixel.r = pixel.r * fDistance * shadow;
+        pixel.g = pixel.g * fDistance * shadow;
+        pixel.b = pixel.b * fDistance * shadow;
+
+        return pixel;
+    }
+
+    Pixel shadeFloorAndCeiling(Color24 pixelColor)
+    {
+        Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+        
+        //float intensity = 0.3f;
+        float intensity = 1.0f;
+
+        pixel.r = pixel.r * intensity;
+        pixel.g = pixel.g * intensity;
+        pixel.b = pixel.b * intensity;
+        return pixel;
     }
 
 public:
