@@ -17,6 +17,17 @@ private:
     float moveSpeed = 5.0f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
+    //gameplay
+    const int fullHealth = 100;
+    int selfDamage = 1;
+    int playerHealth = 100;
+    int weapon_current = 1;
+
+    //hud
+    float weapon_Ypos = 1.0f;
+    float weapon_Xcof = 1.0f;
+    bool bobbing_side = false;
+
     //camera:
     const float FOV = 3.14159f / 4; // Field of view
     const float depth = 32.0f;      // Maximum rendering distance
@@ -27,6 +38,8 @@ private:
     olcSprite* spriteFireBall;
     olcSprite* spriteExplosion;
     olcSprite* spriteFlower;
+    olcSprite* sptireWeapon_aek;
+    olcSprite* spriteBullet;
 
     //objects:
     list<sObject> listObjects;
@@ -135,6 +148,22 @@ private:
                 playerX -= x;
                 playerY -= y;
             }
+            if (bobbing_side)
+            {
+                weapon_Xcof+=0.3f;
+                if (weapon_Xcof >= 3.5f)
+                {
+                    bobbing_side = false;
+                }
+            }
+            else
+            {
+                weapon_Xcof-=0.3f;
+                if (weapon_Xcof <= -3.5f)
+                {
+                    bobbing_side = true;
+                }
+            }
         }
 
         //movement backward
@@ -179,27 +208,54 @@ private:
             }
         }
 
-        //fire:
-        if (GetKey(Key::SPACE).bPressed)
+        //self Damage
+        if (GetKey(Key::K).bHeld)
         {
-            sObject fireBall(playerX, playerY, this->spriteFireBall);
-
-            //set velocity:
-            //fireBall.vx = cosf(playerAngle) * 8.0f;
-            //fireBall.vy = sinf(playerAngle) * 8.0f;
-
-            //make noise:
-            float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-            fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
-            fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
-
-            //add to list
-            listObjects.push_back(fireBall);
-
-            //play fire sound:
-            fireBallPool->PlayOneShot(0.5f);
+            playerHealth -= selfDamage;
         }
 
+        //switch weapon 
+        if (GetKey(Key::K1).bPressed) weapon_current = 1;
+
+        if (GetKey(Key::K2).bPressed) weapon_current = 2;
+
+        //fire:
+        
+        if (GetKey(Key::SPACE).bPressed)
+        {
+            
+            if (weapon_current == 1) // rocket launchet
+            {
+                sObject fireBall(playerX, playerY, this->spriteFireBall);
+
+                //set velocity:
+                //fireBall.vx = cosf(playerAngle) * 8.0f;
+                //fireBall.vy = sinf(playerAngle) * 8.0f;
+
+                //make noise:
+                float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+                fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
+                fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
+
+                //add to list
+                listObjects.push_back(fireBall);
+
+                //play fire sound:
+                fireBallPool->PlayOneShot(0.5f);
+            }
+            if(weapon_current==2) // rifle
+            {
+                sObject bullet(playerX, playerY, this->spriteBullet);
+
+                float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+                bullet.vx = cosf(playerAngle + fNoise);
+                bullet.vy = sinf(playerAngle + fNoise);
+
+                listObjects.push_back(bullet);
+                            
+             
+            }
+        }
     }
 
     void render_world(float deltaTime)
@@ -534,7 +590,10 @@ private:
                 }
             }
         }
+    }
 
+    void render_hud(float deltaTime)
+    {
         //draw map
         for (int y = 0; y < mapHeight; y++)
         {
@@ -550,10 +609,30 @@ private:
                 }
             }
         }
-
-        //draw player
+        //draw player dot on the map
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
 
+        //draw weapon
+
+        weapon_Ypos = weapon_Xcof * weapon_Xcof;
+
+        switch (weapon_current)
+        {
+        case 1://rocket launcher (pls make sprite)
+            DisplaySprite(spriteFlower, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 1);
+            break;
+        case 2://rifle aeksu 971
+            DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 3);
+            break;
+        }
+        //draw health bar
+        for (int y = 160, effect = 0; y <= 170; y++, effect++)
+        {
+            for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+            {
+                Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+            }
+        }       
     }
 
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
@@ -827,6 +906,8 @@ public:
         this->spriteFireBall = new olcSprite(L"../../res/fps_fireball1.spr");
         this->spriteExplosion = new olcSprite(L"../../res/fps_explosion.spr");
         this->spriteFlower = new olcSprite(L"../../res/flower.spr");
+        this->sptireWeapon_aek = new olcSprite(L"../../res/aeksu_weapon.spr");
+        this->spriteBullet = new olcSprite(L"../../res/fps_bullet.spr");
 
         listObjects =
         {
@@ -922,6 +1003,8 @@ public:
 
         render_world(deltaTime);
 
+        render_hud(deltaTime);
+
         //GC for fireball:
         listObjects.remove_if([](sObject& o)
             {
@@ -946,6 +1029,7 @@ public:
         delete this->fireBallSound;
         delete this->explosionPool;
         delete this->fireBallPool;
+        delete this->sptireWeapon_aek;
 
         delete[] this->fDepthBuffer;
 
