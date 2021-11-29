@@ -200,7 +200,7 @@ public:
 
 		// Add an object "player"
 		std::shared_ptr<olc::rcw::Object> player = std::make_shared<olc::rcw::Object>();
-		player->pos = { 2.1f, 2.1f };
+		player->pos = { 2.0f, 2.0f };
 		player->bVisible = false;
 
 		// Insert into game world

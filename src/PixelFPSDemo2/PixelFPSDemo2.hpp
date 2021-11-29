@@ -204,6 +204,8 @@ private:
 
     void render_world(float deltaTime)
     {
+        //#define OLD_RAYCAST
+#ifdef OLD_RAYCAST
         //raycast
         for (int x = 0; x < ScreenWidth(); x++)
         {
@@ -316,6 +318,96 @@ private:
                 }
             }
         }
+#else
+//raycast
+        for (int x = 0; x < ScreenWidth(); x++)
+        {
+            float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
+            float diffAngle = playerAngle - rayAngle;
+
+            const float stepSize = 0.01f;
+
+            float distanceToWall = 0.0f;
+            bool hitWall = false;
+
+            float eyeX = ::cosf(rayAngle);
+            float eyeY = ::sinf(rayAngle);
+
+            float sampleX = 0.0f;
+
+            //DDA raycast:
+            HitInfo hitInfo;
+            CheckFunc checkFunc = [](int x, int y, int width, int height, const std::wstring& map)
+            {
+                //超出地图边界
+                //out of map:
+                if (x < 0 || x >= width || y < 0 || y >= height)
+                {
+                    return true;
+                }
+                //与墙壁发生了碰撞
+                //collsion detect
+                else if (map[y * width + x] == L'#')
+                {
+                    return true;
+                }
+                return false;
+            };
+            if (raycastDDA({ playerX, playerY }, { eyeX, eyeY }, checkFunc, hitInfo))
+            {
+                distanceToWall = (hitInfo.hitPos - vf2d(playerX, playerY)).mag();
+                sampleX = hitInfo.sampleX;
+            }
+            else
+            {
+                throw "?";
+            }
+
+            //update depth buffer:
+            fDepthBuffer[x] = distanceToWall;
+
+            //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
+            //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
+            int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / (distanceToWall * cosf(diffAngle)));
+            int floor = ScreenHeight() - ceiling;
+
+            for (int y = 0; y < ScreenHeight(); y++)
+            {
+                //draw ceiling
+                if (y <= ceiling)
+                {
+                    Draw(x, y, Pixel(0, 0, 255));
+                }
+                //draw wall
+                else if (y > ceiling && y <= floor)
+                {
+                    if (distanceToWall < depth)
+                    {
+                        float sampleY = ((float)y - (float)ceiling) / ((float)floor - (float)ceiling);
+
+                        short att = spriteWall->SampleColour(sampleX, sampleY);
+
+                        ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                        ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                        Color24 pixelColor = palette[foreColor];
+                        UNUSED(backColor);
+
+                        Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+                    }
+                    else
+                    {
+                        Draw(x, y, Pixel(0, 0, 0));
+                    }
+                }
+                //draw floor
+                else
+                {
+                    Draw(x, y, Pixel(0, 128, 0));
+                }
+            }
+        }
+#endif
 
         //update objects(render object & update physics):
         for (auto& object : listObjects)
@@ -460,6 +552,180 @@ private:
 
     }
 
+    typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
+
+    // Identifies side of cell
+    enum class CellSide
+    {
+        North,
+        East,
+        South,
+        West,
+        Top,
+        Bottom,
+    };
+
+    struct HitInfo
+    {
+    public:
+        vf2d hitPos;
+        float sampleX;
+        CellSide side;
+    };
+
+    bool raycastDDA(const vf2d& origin, const vf2d& dir, CheckFunc checkFunc, HitInfo& hitInfo)
+    {
+        vf2d rayDelta = {
+            sqrtf(1 + powf(dir.y / dir.x, 2)),
+            sqrtf(1 + powf(dir.x / dir.y, 2)) };
+
+        vi2d mapPos = origin;
+        vi2d step;
+        vf2d rayLength;
+
+        if (dir.x < 0)
+        {
+            step.x = -1;
+            rayLength.x = (origin.x - mapPos.x) * rayDelta.x;
+        }
+        else
+        {
+            step.x = 1;
+            rayLength.x = (mapPos.x + 1 - origin.x) * rayDelta.x;
+        }
+
+        if (dir.y < 0)
+        {
+            step.y = -1;
+            rayLength.y = (origin.y - mapPos.y) * rayDelta.y;
+        }
+        else
+        {
+            step.y = 1;
+            rayLength.y = (mapPos.y + 1 - origin.y) * rayDelta.y;
+        }
+
+        olc::vf2d vIntersection;
+        float maxDistance = 100.0f; //just a random large value
+        float distanceToWall = 0.0f;
+
+        while (distanceToWall < maxDistance)
+        {
+            if (rayLength.x < rayLength.y)
+            {
+                rayLength.x += rayDelta.x;
+                mapPos.x += step.x;
+            }
+            else
+            {
+                rayLength.y += rayDelta.y;
+                mapPos.y += step.y;
+            }
+
+            distanceToWall = vf2d((float)mapPos.x - origin.x, (float)mapPos.y - origin.y).mag();
+
+            //hit wall
+            if (checkFunc(mapPos.x, mapPos.y, mapWidth, mapHeight, map))
+            {
+                // Find accurate Hit Location
+
+                float m = dir.y / dir.x;
+
+
+                // From Top Left
+
+                if (origin.y <= mapPos.y)
+                {
+                    if (origin.x <= mapPos.x)
+                    {
+                        hitInfo.side = CellSide::West;
+                        vIntersection.y = m * (mapPos.x - origin.x) + origin.y;
+                        vIntersection.x = float(mapPos.x);
+                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                    }
+                    else if (origin.x >= (mapPos.x + 1))
+                    {
+                        hitInfo.side = CellSide::East;
+                        vIntersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
+                        vIntersection.x = float(mapPos.x + 1);
+                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                    }
+                    else
+                    {
+                        hitInfo.side = CellSide::North;
+                        vIntersection.y = float(mapPos.y);
+                        vIntersection.x = (mapPos.y - origin.y) / m + origin.x;
+                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                    }
+
+
+                    if (vIntersection.y < mapPos.y)
+                    {
+                        hitInfo.side = CellSide::North;
+                        vIntersection.y = float(mapPos.y);
+                        vIntersection.x = (mapPos.y - origin.y) / m + origin.x;
+                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                    }
+                }
+                else if (origin.y >= mapPos.y + 1)
+                {
+                    if (origin.x <= mapPos.x)
+                    {
+                        hitInfo.side = CellSide::West;
+                        vIntersection.y = m * (mapPos.x - origin.x) + origin.y;
+                        vIntersection.x = float(mapPos.x);
+                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                    }
+                    else if (origin.x >= (mapPos.x + 1))
+                    {
+                        hitInfo.side = CellSide::East;
+                        vIntersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
+                        vIntersection.x = float(mapPos.x + 1);
+                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                    }
+                    else
+                    {
+                        hitInfo.side = CellSide::South;
+                        vIntersection.y = float(mapPos.y + 1);
+                        vIntersection.x = ((mapPos.y + 1) - origin.y) / m + origin.x;
+                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                    }
+
+                    if (vIntersection.y > (mapPos.y + 1))
+                    {
+                        hitInfo.side = CellSide::South;
+                        vIntersection.y = float(mapPos.y + 1);
+                        vIntersection.x = ((mapPos.y + 1) - origin.y) / m + origin.x;
+                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                    }
+                }
+                else
+                {
+                    if (origin.x <= mapPos.x)
+                    {
+                        hitInfo.side = CellSide::West;
+                        vIntersection.y = m * (mapPos.x - origin.x) + origin.y;
+                        vIntersection.x = float(mapPos.x);
+                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                    }
+                    else if (origin.x >= (mapPos.x + 1))
+                    {
+                        hitInfo.side = CellSide::East;
+                        vIntersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
+                        vIntersection.x = float(mapPos.x + 1);
+                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                    }
+                }
+
+                hitInfo.hitPos = vIntersection;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 public:
     PixelFPSDemo2()
     {
@@ -536,6 +802,10 @@ public:
         this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
 
         this->fDepthBuffer = new float[ScreenWidth()];
+        for (size_t i = 0; i < ScreenWidth(); i++)
+        {
+            this->fDepthBuffer[i] = 999999;
+        }
 
         this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
         this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
