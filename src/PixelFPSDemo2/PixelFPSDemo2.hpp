@@ -800,6 +800,16 @@ private:
         //pixel.g = pixel.g * fDistance * shadow;
         //pixel.b = pixel.b * fDistance * shadow;
 
+        switch (side)
+        {
+        case CellSide::Bottom:
+        case CellSide::Top:
+            pixel.r = pixel.r * 0.25f;
+            pixel.g = pixel.g * 0.25f;
+            pixel.b = pixel.b * 0.25f;
+            break;
+        }
+
         //fog:
         Color24 fogColor(192, 192, 192);
         float fDistance = 1.0f;
@@ -808,6 +818,13 @@ private:
         pixel.r = fDistance * pixel.r + fog * fogColor.r;
         pixel.g = fDistance * pixel.g + fog * fogColor.g;
         pixel.b = fDistance * pixel.b + fog * fogColor.b;
+
+        //distance:
+        float _d = 1.0f;
+        _d = 1.0f - std::min(distance / depth, 0.4f);
+        pixel.r = pixel.r * _d;
+        pixel.g = pixel.g * _d;
+        pixel.b = pixel.b * _d;
 
         return pixel;
     }
@@ -907,8 +924,10 @@ public:
             this->fDepthBuffer[i] = INFINITY;
         }
 
-        this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
-        this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
+        //this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
+        //this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
+        this->bgm = new Audio(L"../../res/audios/Silent Hill 2 OST - Laura Plays The Piano.mp3");
+        this->bgm2 = new Audio(L"../../res/audios/Silent Hill 2 OST - True.mp3");
         this->explosionSound = new Audio(L"../../res/audios/548_Effect.Explosion.wav.mp3");
         this->fireBallSound = new Audio(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
 
@@ -916,7 +935,7 @@ public:
         this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
 
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
-        //this->bgm2->Play(false, false);
+        this->bgm2->Play(false, false);
 
         //set obstacles:
         if (this->enableNav)
