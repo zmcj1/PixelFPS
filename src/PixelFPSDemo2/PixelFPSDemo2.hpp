@@ -605,11 +605,11 @@ private:
             rayLength.y = (mapPos.y + 1 - origin.y) * rayDelta.y;
         }
 
-        olc::vf2d vIntersection;
+        olc::vf2d intersection;
         float maxDistance = 100.0f; //just a random large value
-        float distanceToWall = 0.0f;
+        float distance = 0.0f;
 
-        while (distanceToWall < maxDistance)
+        while (distance < maxDistance)
         {
             if (rayLength.x < rayLength.y)
             {
@@ -622,49 +622,46 @@ private:
                 mapPos.y += step.y;
             }
 
-            distanceToWall = vf2d((float)mapPos.x - origin.x, (float)mapPos.y - origin.y).mag();
+            distance = vf2d((float)mapPos.x - origin.x, (float)mapPos.y - origin.y).mag();
 
             //hit wall
             if (checkFunc(mapPos.x, mapPos.y, mapWidth, mapHeight, map))
             {
                 // Find accurate Hit Location
-
                 float m = dir.y / dir.x;
 
-
                 // From Top Left
-
                 if (origin.y <= mapPos.y)
                 {
                     if (origin.x <= mapPos.x)
                     {
                         hitInfo.side = CellSide::West;
-                        vIntersection.y = m * (mapPos.x - origin.x) + origin.y;
-                        vIntersection.x = float(mapPos.x);
-                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                        intersection.y = m * (mapPos.x - origin.x) + origin.y;
+                        intersection.x = float(mapPos.x);
+                        hitInfo.sampleX = intersection.y - std::floor(intersection.y);
                     }
                     else if (origin.x >= (mapPos.x + 1))
                     {
                         hitInfo.side = CellSide::East;
-                        vIntersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
-                        vIntersection.x = float(mapPos.x + 1);
-                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                        intersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
+                        intersection.x = float(mapPos.x + 1);
+                        hitInfo.sampleX = intersection.y - std::floor(intersection.y);
                     }
                     else
                     {
                         hitInfo.side = CellSide::North;
-                        vIntersection.y = float(mapPos.y);
-                        vIntersection.x = (mapPos.y - origin.y) / m + origin.x;
-                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                        intersection.y = float(mapPos.y);
+                        intersection.x = (mapPos.y - origin.y) / m + origin.x;
+                        hitInfo.sampleX = intersection.x - std::floor(intersection.x);
                     }
 
 
-                    if (vIntersection.y < mapPos.y)
+                    if (intersection.y < mapPos.y)
                     {
                         hitInfo.side = CellSide::North;
-                        vIntersection.y = float(mapPos.y);
-                        vIntersection.x = (mapPos.y - origin.y) / m + origin.x;
-                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                        intersection.y = float(mapPos.y);
+                        intersection.x = (mapPos.y - origin.y) / m + origin.x;
+                        hitInfo.sampleX = intersection.x - std::floor(intersection.x);
                     }
                 }
                 else if (origin.y >= mapPos.y + 1)
@@ -672,31 +669,31 @@ private:
                     if (origin.x <= mapPos.x)
                     {
                         hitInfo.side = CellSide::West;
-                        vIntersection.y = m * (mapPos.x - origin.x) + origin.y;
-                        vIntersection.x = float(mapPos.x);
-                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                        intersection.y = m * (mapPos.x - origin.x) + origin.y;
+                        intersection.x = float(mapPos.x);
+                        hitInfo.sampleX = intersection.y - std::floor(intersection.y);
                     }
                     else if (origin.x >= (mapPos.x + 1))
                     {
                         hitInfo.side = CellSide::East;
-                        vIntersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
-                        vIntersection.x = float(mapPos.x + 1);
-                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                        intersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
+                        intersection.x = float(mapPos.x + 1);
+                        hitInfo.sampleX = intersection.y - std::floor(intersection.y);
                     }
                     else
                     {
                         hitInfo.side = CellSide::South;
-                        vIntersection.y = float(mapPos.y + 1);
-                        vIntersection.x = ((mapPos.y + 1) - origin.y) / m + origin.x;
-                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                        intersection.y = float(mapPos.y + 1);
+                        intersection.x = ((mapPos.y + 1) - origin.y) / m + origin.x;
+                        hitInfo.sampleX = intersection.x - std::floor(intersection.x);
                     }
 
-                    if (vIntersection.y > (mapPos.y + 1))
+                    if (intersection.y > (mapPos.y + 1))
                     {
                         hitInfo.side = CellSide::South;
-                        vIntersection.y = float(mapPos.y + 1);
-                        vIntersection.x = ((mapPos.y + 1) - origin.y) / m + origin.x;
-                        hitInfo.sampleX = vIntersection.x - std::floor(vIntersection.x);
+                        intersection.y = float(mapPos.y + 1);
+                        intersection.x = ((mapPos.y + 1) - origin.y) / m + origin.x;
+                        hitInfo.sampleX = intersection.x - std::floor(intersection.x);
                     }
                 }
                 else
@@ -704,20 +701,20 @@ private:
                     if (origin.x <= mapPos.x)
                     {
                         hitInfo.side = CellSide::West;
-                        vIntersection.y = m * (mapPos.x - origin.x) + origin.y;
-                        vIntersection.x = float(mapPos.x);
-                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                        intersection.y = m * (mapPos.x - origin.x) + origin.y;
+                        intersection.x = float(mapPos.x);
+                        hitInfo.sampleX = intersection.y - std::floor(intersection.y);
                     }
                     else if (origin.x >= (mapPos.x + 1))
                     {
                         hitInfo.side = CellSide::East;
-                        vIntersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
-                        vIntersection.x = float(mapPos.x + 1);
-                        hitInfo.sampleX = vIntersection.y - std::floor(vIntersection.y);
+                        intersection.y = m * ((mapPos.x + 1) - origin.x) + origin.y;
+                        intersection.x = float(mapPos.x + 1);
+                        hitInfo.sampleX = intersection.y - std::floor(intersection.y);
                     }
                 }
 
-                hitInfo.hitPos = vIntersection;
+                hitInfo.hitPos = intersection;
 
                 return true;
             }
@@ -804,7 +801,7 @@ public:
         this->fDepthBuffer = new float[ScreenWidth()];
         for (size_t i = 0; i < ScreenWidth(); i++)
         {
-            this->fDepthBuffer[i] = 999999;
+            this->fDepthBuffer[i] = INFINITY;
         }
 
         this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
