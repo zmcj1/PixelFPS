@@ -432,7 +432,19 @@ private:
                 //draw ceiling
                 if (y <= ceiling)
                 {
-                    Pixel pixel = shadeFloorAndCeiling(Color24(0, 0, 255));
+                    float planeZ = (ScreenHeight() / 2.0f) / ((ScreenHeight() / 2.0f) - y);
+                    vf2d planePoint = vf2d(playerX, playerY) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
+
+                    // Work out which planar tile we are in
+                    int planeTileX = int(planePoint.x);
+                    int planeTileY = int(planePoint.y);
+
+                    // Work out normalised offset into planar tile
+                    float planeSampleX = planePoint.x - planeTileX;
+                    float planeSampleY = planePoint.y - planeTileY;
+
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ);
+                    //Pixel pixel = shadeFloorAndCeiling(Color24(0, 0, 255));
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -462,7 +474,19 @@ private:
                 //draw floor
                 else
                 {
-                    Pixel pixel = shadeFloorAndCeiling(Color24(0, 128, 0));
+                    float planeZ = (ScreenHeight() / 2.0f) / (y - (ScreenHeight() / 2.0f));
+                    vf2d planePoint = vf2d(playerX, playerY) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
+
+                    // Work out which planar tile we are in
+                    int planeTileX = int(planePoint.x);
+                    int planeTileY = int(planePoint.y);
+
+                    // Work out normalised offset into planar tile
+                    float planeSampleX = planePoint.x - planeTileX;
+                    float planeSampleY = planePoint.y - planeTileY;
+
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ);
+                    //Pixel pixel = shadeFloorAndCeiling(Color24(0, 128, 0));
                     Draw(x, y, pixel);
                 }
             }
@@ -815,39 +839,80 @@ private:
 
         float shadow = 1.0f;
 
-        switch (side)
-        {
-        case CellSide::East:
-        case CellSide::South:
-            shadow = 0.75f;
-            break;
-        }
+        ////point light:
+        //switch (side)
+        //{
+        //case CellSide::Top:
+        //    pixel.r = pixel.r * 0.5f;
+        //    pixel.g = pixel.g * 0.5f;
+        //    pixel.b = pixel.b * 0.5f;
+        //    break;
+        //default:
+        //    vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+        //    vf2d playerPos(playerX, playerY);
+        //    float distanceToPlayer = (playerPos - pixelPos).mag();
+        //    if (distanceToPlayer > 5)
+        //    {
+        //        pixel.r = pixel.r * 0.5f;
+        //        pixel.g = pixel.g * 0.5f;
+        //        pixel.b = pixel.b * 0.5f;
+        //    }
+        //    break;
+        //}
 
-        vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-        vf2d flowerPos(playerX, playerY);
-        float distanceToFlower = (flowerPos - pixelPos).mag();
-        float flowerLight = max(0.1f, 1.0f - min(distanceToFlower / 10.0f, 1.0f));
-
+        //based on distance between player and pixel:
+        //vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+        //vf2d flowerPos(playerX, playerY);
+        //float distanceToFlower = (flowerPos - pixelPos).mag();
+        //float flowerLight = max(0.2f, 1.0f - min(distanceToFlower / 5, 1.0f));
         //pixel.r = pixel.r * flowerLight;
         //pixel.g = pixel.g * flowerLight;
         //pixel.b = pixel.b * flowerLight;
-        float fDistance = 1.0f;
-        if (distance > 5)
+
+        //directional light and distance:
+        //float fDistance = 1.0f;
+        //if (distance > 5)
+        //{
+        //    //fDistance = 1.0f - std::min(distance / depth, 1.0f);
+        //}
+        //pixel.r = pixel.r * fDistance * shadow;
+        //pixel.g = pixel.g * fDistance * shadow;
+        //pixel.b = pixel.b * fDistance * shadow;
+
+        switch (side)
         {
-            fDistance = 1.0f - std::min(distance / depth, 1.0f);
+        case CellSide::Bottom:
+        case CellSide::Top:
+            pixel.r = pixel.r * 0.25f;
+            pixel.g = pixel.g * 0.25f;
+            pixel.b = pixel.b * 0.25f;
+            break;
         }
-        
-        pixel.r = pixel.r * fDistance * shadow;
-        pixel.g = pixel.g * fDistance * shadow;
-        pixel.b = pixel.b * fDistance * shadow;
+
+        //fog:
+        Color24 fogColor(192, 192, 192);
+        float fDistance = 1.0f;
+        fDistance = 1.0f - std::min(distance / 15, 1.0f);
+        float fog = 1.0 - fDistance;
+        pixel.r = fDistance * pixel.r + fog * fogColor.r;
+        pixel.g = fDistance * pixel.g + fog * fogColor.g;
+        pixel.b = fDistance * pixel.b + fog * fogColor.b;
+
+        //distance:
+        float _d = 1.0f;
+        _d = 1.0f - std::min(distance / depth, 0.4f);
+        pixel.r = pixel.r * _d;
+        pixel.g = pixel.g * _d;
+        pixel.b = pixel.b * _d;
 
         return pixel;
     }
 
+    //legacy function, use shade instead.
     Pixel shadeFloorAndCeiling(Color24 pixelColor)
     {
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
-        
+
         //float intensity = 0.3f;
         float intensity = 1.0f;
 
@@ -914,7 +979,7 @@ public:
             sObject(8.5f, 8.5f, this->spriteLamp),
             sObject(7.5f, 7.5f, this->spriteLamp),
             sObject(10.5f, 3.5f, this->spriteLamp),
-            sObject(11.5f, 6.5f, this->spriteFlower),
+            //sObject(11.5f, 6.5f, this->spriteFlower),
         };
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
@@ -940,8 +1005,10 @@ public:
             this->fDepthBuffer[i] = INFINITY;
         }
 
-        this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
-        this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
+        //this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
+        //this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
+        this->bgm = new Audio(L"../../res/audios/Silent Hill 2 OST - Laura Plays The Piano.mp3");
+        this->bgm2 = new Audio(L"../../res/audios/Silent Hill 2 OST - True.mp3");
         this->explosionSound = new Audio(L"../../res/audios/548_Effect.Explosion.wav.mp3");
         this->fireBallSound = new Audio(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
 
