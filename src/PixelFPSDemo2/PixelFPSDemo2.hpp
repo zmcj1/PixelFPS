@@ -152,7 +152,7 @@ private:
             }
             if (bobbing_side)
             {
-                weapon_Xcof+=0.3f;
+                weapon_Xcof += 0.3f;
                 if (weapon_Xcof >= 3.5f)
                 {
                     bobbing_side = false;
@@ -160,7 +160,7 @@ private:
             }
             else
             {
-                weapon_Xcof-=0.3f;
+                weapon_Xcof -= 0.3f;
                 if (weapon_Xcof <= -3.5f)
                 {
                     bobbing_side = true;
@@ -222,10 +222,10 @@ private:
         if (GetKey(Key::K2).bPressed) weapon_current = 2;
 
         //fire:
-        
+
         if (GetKey(Key::SPACE).bPressed)
         {
-        {    
+
             if (weapon_current == 1) // rocket launchet
             {
                 sObject fireBall(playerX, playerY, this->spriteFireBall);
@@ -245,14 +245,13 @@ private:
                 //play fire sound:
                 fireBallPool->PlayOneShot(0.5f);
             }
-            if(weapon_current==2) // rifle
-            else if(weapon_current==2) // rifle
+            else if (weapon_current == 2) // rifle
             {
                 sObject bullet(playerX, playerY, this->spriteBullet);
 
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                bullet.vx = cosf(playerAngle + fNoise)*20.f;
-                bullet.vy = sinf(playerAngle + fNoise)*20.f;
+                bullet.vx = cosf(playerAngle + fNoise) * 20.f;
+                bullet.vy = sinf(playerAngle + fNoise) * 20.f;
 
                 listObjects.push_back(bullet);
 
