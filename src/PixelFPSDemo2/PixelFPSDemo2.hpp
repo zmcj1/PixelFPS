@@ -55,11 +55,12 @@ private:
     Audio* bgm2 = nullptr;
     bool startedPlayBGM = false;
 
-    //sounds:
+    //sounds:    
     Audio* explosionSound = nullptr;
     Audio* fireBallSound = nullptr;
     AudioPool* explosionPool = nullptr;
     AudioPool* fireBallPool = nullptr;
+    AudioPool* aekBulletPool = nullptr;
 
     //obstacles:
     std::vector<Vector2> obstacles;
@@ -122,6 +123,7 @@ private:
         explosionPool->Clean();
         fireBallPool->Clean();
 
+        aekBulletPool->Clean();
     }
 
     void receive_user_input(float deltaTime)
@@ -223,7 +225,7 @@ private:
         
         if (GetKey(Key::SPACE).bPressed)
         {
-            
+        {    
             if (weapon_current == 1) // rocket launchet
             {
                 sObject fireBall(playerX, playerY, this->spriteFireBall);
@@ -244,16 +246,17 @@ private:
                 fireBallPool->PlayOneShot(0.5f);
             }
             if(weapon_current==2) // rifle
+            else if(weapon_current==2) // rifle
             {
                 sObject bullet(playerX, playerY, this->spriteBullet);
 
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                bullet.vx = cosf(playerAngle + fNoise);
-                bullet.vy = sinf(playerAngle + fNoise);
+                bullet.vx = cosf(playerAngle + fNoise)*20.f;
+                bullet.vy = sinf(playerAngle + fNoise)*20.f;
 
                 listObjects.push_back(bullet);
-                            
-             
+
+                aekBulletPool->PlayOneShot(0.5f);
             }
         }
     }
@@ -1014,6 +1017,7 @@ public:
 
         this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
         this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
+        this->aekBulletPool = new AudioPool(L"../../res/audios/aek_shot.mp3");
 
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
         this->bgm2->Play(false, false);
