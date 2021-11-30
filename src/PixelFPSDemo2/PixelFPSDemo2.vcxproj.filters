@@ -12,6 +12,18 @@
     <ClCompile Include="main.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="GameObject.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="Component.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="Transform.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="olcPixelGameEngine.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -27,6 +39,15 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="PixelEditor.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="GameObject.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Component.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Transform.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>

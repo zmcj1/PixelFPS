@@ -1,6 +1,9 @@
 ﻿#pragma once
 
 #include "Navigation.hpp"
+#include "GameObject.hpp"
+#include "Component.hpp"
+#include "Transform.hpp"
 
 class PixelFPSDemo2 : public PixelGameEngine
 {
