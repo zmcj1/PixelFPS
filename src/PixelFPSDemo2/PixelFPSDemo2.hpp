@@ -32,6 +32,7 @@ private:
     const float weapon_fire_interval = 0.5f;
 
     //hud
+    bool enableHud = true;
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
     bool bobbing_side = false;
@@ -657,32 +658,35 @@ private:
                 }
             }
         }
+
         //draw player dot on the map
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
 
-
-
         //draw weapon
-
-        weapon_Ypos = weapon_Xcof * weapon_Xcof;
-
-        switch (weapon_current)
+        if (enableHud)
         {
-        case 1://rocket launcher (pls make sprite)
-            DisplaySprite(spriteFlower, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 1);
-            break;
-        case 2://rifle aeksu 971
-            DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 3);
-            break;
-        }
-        //draw health bar
-        for (int y = 160, effect = 0; y <= 170; y++, effect++)
-        {
-            for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+            weapon_Ypos = weapon_Xcof * weapon_Xcof;
+
+            switch (weapon_current)
             {
-                Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+            case 1://rocket launcher (pls make sprite)
+                DisplaySprite(spriteFlower, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 1);
+                break;
+            case 2://rifle aeksu 971
+                DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 3);
+                break;
+            }
+
+            //draw health bar
+            for (int y = 160, effect = 0; y <= 170; y++, effect++)
+            {
+                for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+                {
+                    Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+                }
             }
         }
+
     }
 
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
