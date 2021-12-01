@@ -1,5 +1,4 @@
 ﻿//include library:
-#define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 #include "MinConsoleNative.hpp"
 #include <iostream>
