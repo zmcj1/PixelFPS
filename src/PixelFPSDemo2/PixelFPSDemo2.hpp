@@ -26,6 +26,11 @@ private:
     int playerHealth = 100;
     int weapon_current = 1;
 
+    //weapon timer:
+    bool weapon_fired = false;
+    float weapon_timer = 0.0f;
+    const float weapon_fire_interval = 0.5f;
+
     //hud
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
@@ -226,30 +231,44 @@ private:
 
         //fire:
 
-        if (GetKey(Key::SPACE).bPressed)
+        // rocket launcher:
+        if (weapon_current == 1 && GetKey(Key::SPACE).bPressed)
         {
+            sObject fireBall(playerX, playerY, this->spriteFireBall);
 
-            if (weapon_current == 1) // rocket launchet
+            //set velocity:
+            //fireBall.vx = cosf(playerAngle) * 8.0f;
+            //fireBall.vy = sinf(playerAngle) * 8.0f;
+
+            //make noise:
+            float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+            fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
+            fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
+
+            //add to list
+            listObjects.push_back(fireBall);
+
+            //play fire sound:
+            fireBallPool->PlayOneShot(0.5f);
+        }
+
+        if (weapon_fired)
+        {
+            weapon_timer += deltaTime;
+            if (weapon_timer >= weapon_fire_interval)
             {
-                sObject fireBall(playerX, playerY, this->spriteFireBall);
-
-                //set velocity:
-                //fireBall.vx = cosf(playerAngle) * 8.0f;
-                //fireBall.vy = sinf(playerAngle) * 8.0f;
-
-                //make noise:
-                float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
-                fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
-
-                //add to list
-                listObjects.push_back(fireBall);
-
-                //play fire sound:
-                fireBallPool->PlayOneShot(0.5f);
+                weapon_timer = 0.0f;
+                weapon_fired = false;
             }
-            else if (weapon_current == 2) // rifle
+        }
+
+        // rifle:
+        if (weapon_current == 2 && GetKey(Key::SPACE).bHeld)
+        {
+            if (!weapon_fired)
             {
+                weapon_fired = true;
+
                 sObject bullet(playerX, playerY, this->spriteBullet);
 
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
@@ -641,6 +660,8 @@ private:
         //draw player dot on the map
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
 
+
+
         //draw weapon
 
         weapon_Ypos = weapon_Xcof * weapon_Xcof;
@@ -661,7 +682,7 @@ private:
             {
                 Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
             }
-        }       
+        }
     }
 
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
@@ -1095,6 +1116,7 @@ public:
         delete this->spriteFireBall;
         delete this->spriteExplosion;
         delete this->spriteFlower;
+        delete this->sptireWeapon_aek;
 
         delete this->bgm;
         delete this->bgm2;
@@ -1102,7 +1124,7 @@ public:
         delete this->fireBallSound;
         delete this->explosionPool;
         delete this->fireBallPool;
-        delete this->sptireWeapon_aek;
+        delete this->aekBulletPool;
 
         delete[] this->fDepthBuffer;
 
