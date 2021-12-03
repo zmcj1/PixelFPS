@@ -42,13 +42,13 @@ private:
     const float depth = 32.0f;      // Maximum rendering distance
 
     //sprites:
-    olcSprite* spriteWall;
-    olcSprite* spriteLamp;
-    olcSprite* spriteFireBall;
-    olcSprite* spriteExplosion;
-    olcSprite* spriteFlower;
-    olcSprite* sptireWeapon_aek;
-    olcSprite* spriteBullet;
+    OLCSprite* spriteWall;
+    OLCSprite* spriteLamp;
+    OLCSprite* spriteFireBall;
+    OLCSprite* spriteExplosion;
+    OLCSprite* spriteFlower;
+    OLCSprite* sptireWeapon_aek;
+    OLCSprite* spriteBullet;
 
     //objects:
     list<sObject> listObjects;
@@ -84,17 +84,16 @@ private:
     //tool functions:
     void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
-        //load olcSprite:
-        olcSprite sprite(path);
+        OLCSprite sprite(path);
         DisplaySprite(&sprite, x, y, zoomPixelScaler);
     }
 
-    void DisplaySprite(olcSprite* sprite, int x, int y, int zoomPixelScaler)
+    void DisplaySprite(OLCSprite* sprite, int x, int y, int zoomPixelScaler)
     {
         //draw with scaler:
-        for (size_t i = 0; i < sprite->nHeight * zoomPixelScaler; i++)
+        for (size_t i = 0; i < sprite->Height * zoomPixelScaler; i++)
         {
-            for (size_t j = 0; j < sprite->nWidth * zoomPixelScaler; j++)
+            for (size_t j = 0; j < sprite->Width * zoomPixelScaler; j++)
             {
                 short c = sprite->GetGlyph(j / zoomPixelScaler, i / zoomPixelScaler);
 
@@ -599,7 +598,7 @@ private:
                 float objectFloor = ScreenHeight() - objectCeiling;
                 float objectHeight = objectFloor - objectCeiling;
 
-                float objectAspectRatio = (float)object.sprite->nHeight / (float)object.sprite->nWidth;
+                float objectAspectRatio = (float)object.sprite->Height / (float)object.sprite->Width;
                 float objectWidth = objectHeight / objectAspectRatio;
                 float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
 
@@ -996,13 +995,13 @@ public:
         map += L"################################";
 
         //load res:
-        this->spriteWall = new olcSprite(L"../../res/fps_wall1.spr");
-        this->spriteLamp = new olcSprite(L"../../res/fps_lamp1.spr");
-        this->spriteFireBall = new olcSprite(L"../../res/fps_fireball1.spr");
-        this->spriteExplosion = new olcSprite(L"../../res/fps_explosion.spr");
-        this->spriteFlower = new olcSprite(L"../../res/flower.spr");
-        this->sptireWeapon_aek = new olcSprite(L"../../res/aeksu_weapon.spr");
-        this->spriteBullet = new olcSprite(L"../../res/fps_bullet.spr");
+        this->spriteWall = new OLCSprite(L"../../res/fps_wall1.spr");
+        this->spriteLamp = new OLCSprite(L"../../res/fps_lamp1.spr");
+        this->spriteFireBall = new OLCSprite(L"../../res/fps_fireball1.spr");
+        this->spriteExplosion = new OLCSprite(L"../../res/fps_explosion.spr");
+        this->spriteFlower = new OLCSprite(L"../../res/flower.spr");
+        this->sptireWeapon_aek = new OLCSprite(L"../../res/aeksu_weapon.spr");
+        this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
 
         listObjects =
         {

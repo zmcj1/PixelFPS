@@ -32,9 +32,6 @@
     <ClInclude Include="sObject.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
-    <ClInclude Include="olcSprite.hpp">
-      <Filter>HPP</Filter>
-    </ClInclude>
     <ClInclude Include="tool.hpp">
       <Filter>HPP</Filter>
     </ClInclude>

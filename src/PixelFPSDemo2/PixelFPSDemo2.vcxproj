@@ -153,7 +153,6 @@
     <ClInclude Include="Component.hpp" />
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
-    <ClInclude Include="olcSprite.hpp" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
     <ClInclude Include="sObject.hpp" />
