@@ -3,6 +3,7 @@
 //Inspired by:https://stackoverflow.com/questions/44105058/implementing-component-system-from-unity-in-c
 
 #include "Component.hpp"
+#include "GameManager.hpp"
 
 #include <string>
 #include <functional>
@@ -14,6 +15,34 @@ using namespace std;
 
 class GameObject
 {
+public:
+    int id;
+
+    string name;
+
+    bool active;
+
+    GameObject* parent;
+
+    vector<GameObject*> childs;
+
+public:
+    GameObject()
+    {
+        GameManager::Global.GetInstance().AddGameObject(this);
+        this->name = "GameObject";
+        active = true;
+        parent = nullptr;
+    }
+
+    GameObject(const string& name)
+    {
+        GameManager::Global.GetInstance().AddGameObject(this);
+        this->name = name;
+        active = true;
+        parent = nullptr;
+    }
+
 private:
     std::vector<std::unique_ptr<Component>> components;
 

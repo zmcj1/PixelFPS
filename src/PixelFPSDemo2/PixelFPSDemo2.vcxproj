@@ -143,6 +143,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Component.cpp" />
+    <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="olcPixelGameEngine.cpp" />
@@ -150,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Component.hpp" />
+    <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
     <ClInclude Include="olcSprite.hpp" />
     <ClInclude Include="PixelEditor.hpp" />

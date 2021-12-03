@@ -24,6 +24,9 @@
     <ClCompile Include="olcPixelGameEngine.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="GameManager.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -48,6 +51,9 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="Transform.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="GameManager.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>
