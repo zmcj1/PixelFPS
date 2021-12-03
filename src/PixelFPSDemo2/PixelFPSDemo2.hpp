@@ -1063,6 +1063,11 @@ public:
             }
             simple_ai = new sObject(2, 2, this->spriteFlower);
         }
+
+        //create gameObjects:
+        GameObject* go = new GameObject();
+        go->AddComponent<Transform>(vf2d(1, 1));
+
         return true;
     }
 
@@ -1070,6 +1075,8 @@ public:
     bool OnUserUpdate(float fElapsedTime) override
     {
         float deltaTime = fElapsedTime;
+
+        GameManager::Global.GetInstance().Update(deltaTime);
 
         //ai nav:
         if (enableNav)

@@ -27,21 +27,9 @@ public:
     vector<GameObject*> childs;
 
 public:
-    GameObject()
-    {
-        GameManager::Global.GetInstance().AddGameObject(this);
-        this->name = "GameObject";
-        active = true;
-        parent = nullptr;
-    }
+    GameObject();
 
-    GameObject(const string& name)
-    {
-        GameManager::Global.GetInstance().AddGameObject(this);
-        this->name = name;
-        active = true;
-        parent = nullptr;
-    }
+    GameObject(const string& name);
 
 private:
     std::vector<std::unique_ptr<Component>> components;
