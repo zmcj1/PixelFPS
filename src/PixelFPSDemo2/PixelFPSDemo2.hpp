@@ -4,6 +4,7 @@
 #include "GameObject.hpp"
 #include "Component.hpp"
 #include "Transform.hpp"
+#include "GameManager.hpp"
 
 class PixelFPSDemo2 : public PixelGameEngine
 {
@@ -1063,6 +1064,14 @@ public:
             }
             simple_ai = new sObject(2, 2, this->spriteFlower);
         }
+
+        //create gameObjects:
+        GameObject* go = new GameObject();
+        auto t = go->AddComponent<Transform>();
+        t->position = vf2d(1, 2);
+        t = go->GetComponent<Transform>();
+        t->position = vf2d(3, 3);
+
         return true;
     }
 
@@ -1070,6 +1079,8 @@ public:
     bool OnUserUpdate(float fElapsedTime) override
     {
         float deltaTime = fElapsedTime;
+
+        GameManager::Global.GetInstance().Update(deltaTime);
 
         //ai nav:
         if (enableNav)

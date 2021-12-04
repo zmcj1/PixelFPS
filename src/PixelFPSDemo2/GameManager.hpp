@@ -19,4 +19,8 @@ private:
 
 public:
     void AddGameObject(GameObject* go);
+
+    void RemoveGameObject(GameObject* go);
+
+    void Update(float deltaTime);
 };

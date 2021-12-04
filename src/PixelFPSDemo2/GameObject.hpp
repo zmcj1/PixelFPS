@@ -3,7 +3,6 @@
 //Inspired by:https://stackoverflow.com/questions/44105058/implementing-component-system-from-unity-in-c
 
 #include "Component.hpp"
-#include "GameManager.hpp"
 
 #include <string>
 #include <functional>
@@ -27,29 +26,17 @@ public:
     vector<GameObject*> childs;
 
 public:
-    GameObject()
-    {
-        GameManager::Global.GetInstance().AddGameObject(this);
-        this->name = "GameObject";
-        active = true;
-        parent = nullptr;
-    }
+    GameObject();
 
-    GameObject(const string& name)
-    {
-        GameManager::Global.GetInstance().AddGameObject(this);
-        this->name = name;
-        active = true;
-        parent = nullptr;
-    }
+    GameObject(const string& name);
 
 private:
     std::vector<std::unique_ptr<Component>> components;
 
 public:
-    template<class ComponentType, typename... Args> ComponentType& AddComponent(Args&&... params);
+    template<class ComponentType, typename... Args> ComponentType* AddComponent(Args&&... params);
 
-    template<class ComponentType> ComponentType& GetComponent();
+    template<class ComponentType> ComponentType* GetComponent();
 
     template<class ComponentType> bool RemoveComponent();
 
@@ -65,10 +52,10 @@ public:
     // EG: deduced initializer lists, decl-only static const int members, 0|NULL instead of nullptr, overloaded fn names, and bitfields
     //***************
 template< class ComponentType, typename... Args >
-ComponentType& GameObject::AddComponent(Args&&... params)
+ComponentType* GameObject::AddComponent(Args&&... params)
 {
     components.emplace_back(std::make_unique<ComponentType>(std::forward<Args>(params)...));
-    return *static_cast<ComponentType*>(components[components.size() - 1].get());
+    return static_cast<ComponentType*>(components[components.size() - 1].get());
 }
 
 //***************
@@ -79,15 +66,15 @@ ComponentType& GameObject::AddComponent(Args&&... params)
 // then components[0] will be returned because it derives from Component
 //***************
 template< class ComponentType >
-ComponentType& GameObject::GetComponent()
+ComponentType* GameObject::GetComponent()
 {
     for (auto&& component : components)
     {
         if (component->IsClassType(ComponentType::Type))
-            return *static_cast<ComponentType*>(component.get());
+            return static_cast<ComponentType*>(component.get());
     }
 
-    return *std::unique_ptr< ComponentType >(nullptr);
+    return std::unique_ptr< ComponentType >(nullptr).get();
 }
 
 //***************
