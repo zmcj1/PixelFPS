@@ -11,6 +11,7 @@ class Transform : public Component
 
 public:
     vf2d position;
+    vf2d velocity;
 
 public:
     Transform() : Component()

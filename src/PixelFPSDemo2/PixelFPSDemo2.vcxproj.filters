@@ -30,6 +30,12 @@
     <ClCompile Include="tool.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="Collider.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="SpriteRenderer.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -54,6 +60,12 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="GameManager.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Collider.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="SpriteRenderer.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>
