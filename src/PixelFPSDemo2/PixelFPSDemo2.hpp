@@ -4,6 +4,7 @@
 #include "GameObject.hpp"
 #include "Component.hpp"
 #include "Transform.hpp"
+#include "GameManager.hpp"
 
 class PixelFPSDemo2 : public PixelGameEngine
 {
@@ -1066,7 +1067,10 @@ public:
 
         //create gameObjects:
         GameObject* go = new GameObject();
-        go->AddComponent<Transform>(vf2d(1, 1));
+        auto t = go->AddComponent<Transform>();
+        t->position = vf2d(1, 2);
+        t = go->GetComponent<Transform>();
+        t->position = vf2d(3, 3);
 
         return true;
     }

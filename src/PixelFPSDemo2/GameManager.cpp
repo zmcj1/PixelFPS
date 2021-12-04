@@ -19,7 +19,7 @@ void GameManager::Update(float deltaTime)
     for (const auto& item : gameObjects)
     {
         GameObject* go = item.second;
-        Transform t = go->GetComponent<Transform>();
-        debug_output_line(to_wstring(t.position.x) + L" " + to_wstring(t.position.y));
+        Transform* t = go->GetComponent<Transform>();
+        debug_output_line(to_wstring(t->position.x) + L" " + to_wstring(t->position.y));
     }
 }

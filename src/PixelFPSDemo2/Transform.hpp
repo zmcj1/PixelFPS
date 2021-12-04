@@ -21,4 +21,9 @@ public:
     {
         this->position = position;
     }
+
+    Transform(float x, float y) : Component()
+    {
+        this->position = vf2d(x, y);
+    }
 };
