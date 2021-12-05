@@ -165,6 +165,7 @@
     <ClInclude Include="SpriteRenderer.hpp" />
     <ClInclude Include="tool.hpp" />
     <ClInclude Include="Transform.hpp" />
+    <ClInclude Include="Weapon.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

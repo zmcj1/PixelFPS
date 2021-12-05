@@ -37,6 +37,7 @@ private:
 
     //hud
     bool enableHud = true;
+    bool enableBloodBar = false;
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
     bool bobbing_side = false;
@@ -53,6 +54,9 @@ private:
     OLCSprite* spriteFlower;
     OLCSprite* sptireWeapon_aek;
     OLCSprite* spriteBullet;
+
+    //new weapons:
+    OLCSprite* spriteDesertEagle;
 
     //GameManager:
     GameManager& GM;
@@ -697,7 +701,7 @@ private:
             switch (weapon_current)
             {
             case 1://rocket launcher (pls make sprite)
-                DisplaySprite(spriteFlower, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 1);
+                DisplaySprite(spriteDesertEagle, 140 + int(weapon_Xcof * 4), int(60 - weapon_Ypos / 2), 1);
                 break;
             case 2://rifle aeksu 971
                 DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 3);
@@ -705,11 +709,14 @@ private:
             }
 
             //draw health bar
-            for (int y = 160, effect = 0; y <= 170; y++, effect++)
+            if (enableBloodBar)
             {
-                for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+                for (int y = 160, effect = 0; y <= 170; y++, effect++)
                 {
-                    Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+                    for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+                    {
+                        Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+                    }
                 }
             }
         }
@@ -1030,6 +1037,7 @@ public:
         this->spriteFlower = new OLCSprite(L"../../res/flower.spr");
         this->sptireWeapon_aek = new OLCSprite(L"../../res/aeksu_weapon.spr");
         this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
+        this->spriteDesertEagle = new OLCSprite(L"../../res/deagle.spr");
 
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);

@@ -74,5 +74,8 @@
     <ClInclude Include="LifeController.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="Weapon.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
