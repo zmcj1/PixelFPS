@@ -3,6 +3,7 @@
 //Inspired by:https://stackoverflow.com/questions/44105058/implementing-component-system-from-unity-in-c
 
 #include "Component.hpp"
+#include "Transform.hpp"
 
 #include <string>
 #include <functional>
@@ -25,10 +26,15 @@ public:
 
     vector<GameObject*> childs;
 
+    //refs to Transform:
+    Transform* transform;
+
 public:
     GameObject();
 
     GameObject(const string& name);
+
+    ~GameObject();
 
 private:
     std::vector<std::unique_ptr<Component>> components;

@@ -13,7 +13,7 @@ class GameManager
 public:
     static Singleton<GameManager> Global;
 
-private:
+public:
     int startId = 0;
     unordered_map<int, GameObject*> gameObjects;
 

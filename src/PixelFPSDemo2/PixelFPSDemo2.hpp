@@ -1066,11 +1066,11 @@ public:
         }
 
         //create gameObjects:
-        GameObject* go = new GameObject();
-        auto t = go->AddComponent<Transform>();
-        t->position = vf2d(1, 2);
-        t = go->GetComponent<Transform>();
-        t->position = vf2d(3, 3);
+        //GameObject* go = new GameObject();
+        //go->transform->position = vf2d(1, 1);
+
+        GameObject go;
+        go.transform->position = vf2d(3, 3);
 
         return true;
     }
@@ -1080,7 +1080,9 @@ public:
     {
         float deltaTime = fElapsedTime;
 
-        GameManager::Global.GetInstance().Update(deltaTime);
+        int _size = GameManager::Global.GetInstance().gameObjects.size();
+        Debug::OutputLine(to_wstring(_size));
+        //GameManager::Global.GetInstance().Update(deltaTime);
 
         //ai nav:
         if (enableNav)
