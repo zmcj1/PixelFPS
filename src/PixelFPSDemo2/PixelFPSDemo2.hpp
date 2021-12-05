@@ -9,6 +9,7 @@
 #include "LifeController.hpp"
 #include "GameManager.hpp"
 #include "Weapon.hpp"
+#include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
 {
@@ -25,16 +26,14 @@ private:
     float moveSpeed = 5.0f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
-    //gameplay
+    //gameplay:
     const int fullHealth = 100;
     int selfDamage = 1;
-    int playerHealth = 100;
-    WeaponEnum weapon_current = WeaponEnum::DESERT_EAGLE;
+    int playerHealth = fullHealth;
 
-    //weapon timer:
-    bool weapon_fired = false;
-    float weapon_timer = 0.0f;
-    const float weapon_fire_interval = 0.5f;
+    //weapons:
+    WeaponEnum weapon_current = WeaponEnum::DESERT_EAGLE;
+    unordered_map<int, Weapon*> weapons;
 
     //hud
     bool enableHud = true;
@@ -241,73 +240,52 @@ private:
         if (GetKey(Key::K2).bPressed)
             weapon_current = WeaponEnum::AK47;
 
-        if (GetKey(Key::K3).bPressed)
-            weapon_current = WeaponEnum::AEK_971;
+        //if (GetKey(Key::K3).bPressed)
+        //weapon_current = WeaponEnum::AEK_971;
 
         //fire:
-        //desert_eagle:
-        if (weapon_current == WeaponEnum::DESERT_EAGLE && GetKey(Key::SPACE).bPressed)
+        Weapon* weapon = weapons[(int)weapon_current];
+        //update timer:
+        weapon->UpdateWeaponTimer(deltaTime);
+        //user input:
+        if (GetKey(Key::SPACE).bHeld)
         {
-            GameObject* bullet = new GameObject();
-
-            //set position:
-            bullet->transform->position = vf2d(playerX, playerY);
-
-            //make noise:
-            float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-            float speed = 20;
-            float vx = cosf(playerAngle + fNoise) * speed;
-            float vy = sinf(playerAngle + fNoise) * speed;
-
-            //set velocity:
-            bullet->transform->velocity = vf2d(vx, vy);
-
-            //add sprite:
-            SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
-            renderer->sprite = this->spriteBullet;
-
-            //add collider:
-            bullet->AddComponent<Collider>();
-
-            //play fire sound:
-            //fireBallPool->PlayOneShot(0.5f);
-            aekBulletPool->PlayOneShot(0.5f);
-        }
-
-        if (weapon_fired)
-        {
-            weapon_timer += deltaTime;
-            if (weapon_timer >= weapon_fire_interval)
+            if (weapon->CanFire())
             {
-                weapon_timer = 0.0f;
-                weapon_fired = false;
-            }
-        }
-
-        //ak47:
-        if (weapon_current == WeaponEnum::AK47 && GetKey(Key::SPACE).bHeld)
-        {
-            if (!weapon_fired)
-            {
-                weapon_fired = true;
-
                 GameObject* bullet = new GameObject();
 
+                //set position:
                 bullet->transform->position = vf2d(playerX, playerY);
 
+                //make noise:
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
                 float speed = 20;
                 float vx = cosf(playerAngle + fNoise) * speed;
                 float vy = sinf(playerAngle + fNoise) * speed;
 
+                //set velocity:
                 bullet->transform->velocity = vf2d(vx, vy);
 
+                //add sprite:
                 SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
-                renderer->sprite = this->spriteBullet;
 
+                //add collider:
                 bullet->AddComponent<Collider>();
 
-                aekBulletPool->PlayOneShot(0.5f);
+                if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
+                {
+                    renderer->sprite = this->spriteBullet;
+
+                    //play fire sound:
+                    aekBulletPool->PlayOneShot(0.5f);
+                }
+                if (weapon->weapon_enum == WeaponEnum::AK47)
+                {
+                    renderer->sprite = this->spriteBullet;
+
+                    //play fire sound:
+                    aekBulletPool->PlayOneShot(0.5f);
+                }
             }
         }
     }
@@ -1063,6 +1041,16 @@ public:
         GameObject* lamp3 = new GameObject();
         lamp3->transform->position = vf2d(10.5f, 3.5f);
         lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+        //add weapons:
+        Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+        weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
+
+        Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+        weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
+
+        desertEagle->fire_interval = 0.45f;
+        ak47->fire_interval = 0.1f;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };

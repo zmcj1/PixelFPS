@@ -29,6 +29,13 @@ enum class WeaponType
 
 class Weapon
 {
+private:
+    bool fired = false;
+    float fire_timer = 0.0f;
+
+public:
+    float fire_interval = 0.5f; //just a default value
+
 public:
     WeaponEnum weapon_enum;
     WeaponType weapon_type;
@@ -41,5 +48,33 @@ public:
         this->olcSprite = nullptr;
     }
 
+    Weapon(WeaponEnum weapon_enum, WeaponType weapon_type, OLCSprite* olcSprite)
+    {
+        this->weapon_enum = weapon_enum;
+        this->weapon_type = weapon_type;
+        this->olcSprite = olcSprite;
+    }
 
+    void UpdateWeaponTimer(float deltaTime)
+    {
+        if (fired)
+        {
+            fire_timer += deltaTime;
+            if (fire_timer >= fire_interval)
+            {
+                fire_timer = 0.0f;
+                fired = false;
+            }
+        }
+    }
+
+    bool CanFire()
+    {
+        if (!fired)
+        {
+            fired = true;
+            return true;
+        }
+        return false;
+    }
 };
