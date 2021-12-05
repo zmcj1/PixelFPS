@@ -11,6 +11,7 @@ class Transform : public Component
 
 public:
     vf2d position;
+    vf2d velocity;
 
 public:
     Transform() : Component()
@@ -20,5 +21,10 @@ public:
     Transform(vf2d position) : Component()
     {
         this->position = position;
+    }
+
+    Transform(float x, float y) : Component()
+    {
+        this->position = vf2d(x, y);
     }
 };

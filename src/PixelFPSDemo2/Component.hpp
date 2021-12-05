@@ -50,6 +50,9 @@ public:
     }
 
 public:
+    bool enable = true;
+
+public:
     Component()
     {
     }

@@ -17,7 +17,7 @@ private:
     //palette:
     std::map<ConsoleColor, Color24> palette;
     //sprite pointer:
-    olcSprite* spritePtr;
+    OLCSprite* spritePtr;
 
     int defaultSpritePosX = 20;
     int defaultSpritePosY = 20;
@@ -46,16 +46,16 @@ private:
     void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
         //load olcSprite:
-        olcSprite sprite(path);
+        OLCSprite sprite(path);
         DisplaySprite(&sprite, x, y, zoomPixelScaler);
     }
 
-    void DisplaySprite(olcSprite* sprite, int x, int y, int zoomPixelScaler)
+    void DisplaySprite(OLCSprite* sprite, int x, int y, int zoomPixelScaler)
     {
         //draw with scaler:
-        for (size_t i = 0; i < sprite->nHeight * zoomPixelScaler; i++)
+        for (size_t i = 0; i < sprite->Height * zoomPixelScaler; i++)
         {
-            for (size_t j = 0; j < sprite->nWidth * zoomPixelScaler; j++)
+            for (size_t j = 0; j < sprite->Width * zoomPixelScaler; j++)
             {
                 short c = sprite->GetGlyph(j / zoomPixelScaler, i / zoomPixelScaler);
 
@@ -106,18 +106,18 @@ public:
         return result;
     }
 
-    static vector<wstring> ConvertSprToPxs(olcSprite* sprite, std::map<ConsoleColor, Color24>& palette)
+    static vector<wstring> ConvertSprToPxs(OLCSprite* sprite, std::map<ConsoleColor, Color24>& palette)
     {
         vector<wstring> lines;
 
         //first line:
-        lines.push_back(to_wstring(sprite->nWidth) + L"," + to_wstring(sprite->nHeight));
+        lines.push_back(to_wstring(sprite->Width) + L"," + to_wstring(sprite->Height));
 
         //color32 lines:
-        for (int y = 0; y < sprite->nHeight; y++)
+        for (int y = 0; y < sprite->Height; y++)
         {
             wstring line;
-            for (int x = 0; x < sprite->nWidth; x++)
+            for (int x = 0; x < sprite->Width; x++)
             {
                 short att = sprite->GetColour(x, y);
                 short c = sprite->GetGlyph(x, y);
@@ -180,13 +180,13 @@ public:
 
         if (!File::Exists(spritePath))
         {
-            spritePtr = new olcSprite(initialSpriteSizeX, initialSpriteSizeY);
+            spritePtr = new OLCSprite(initialSpriteSizeX, initialSpriteSizeY);
             //save
             spritePtr->Save(spritePath);
         }
         else
         {
-            spritePtr = new olcSprite(spritePath);
+            spritePtr = new OLCSprite(spritePath);
         }
 
         theme_of_laura = new Audio(L"../../res/audios/Theme of Laura.mp3");
@@ -281,8 +281,8 @@ public:
 
         //mouse pos in sprite:
         if (mouseX >= spritePosX && mouseY >= spritePosY &&
-            mouseX < spritePosX + spritePtr->nWidth * defaultZoomPixelScaler &&
-            mouseY < spritePosY + spritePtr->nHeight * defaultZoomPixelScaler)
+            mouseX < spritePosX + spritePtr->Width * defaultZoomPixelScaler &&
+            mouseY < spritePosY + spritePtr->Height * defaultZoomPixelScaler)
         {
             int mouseInSpritePosX = mouseX - spritePosX;
             int mouseInSpritePosY = mouseY - spritePosY;
@@ -387,7 +387,7 @@ public:
             DrawString({ 50 + textSize.x, 0 }, "*");
         }
         //draw sprite size:
-        DrawString({ 50, textSize.y * 2 }, text3 + to_string(spritePtr->nWidth) + "X" + to_string(spritePtr->nHeight));
+        DrawString({ 50, textSize.y * 2 }, text3 + to_string(spritePtr->Width) + "X" + to_string(spritePtr->Height));
         //draw sprite name
         DrawString({ 50, textSize.y * 3 }, text4 + this->spriteName);
         //draw current cursor pos in sprite:
@@ -415,9 +415,9 @@ public:
         }
 
         //draw sprite bg(ex info for painting):
-        for (int i = 0; i < spritePtr->nHeight * defaultZoomPixelScaler; i++)
+        for (int i = 0; i < spritePtr->Height * defaultZoomPixelScaler; i++)
         {
-            for (int j = 0; j < spritePtr->nWidth * defaultZoomPixelScaler; j++)
+            for (int j = 0; j < spritePtr->Width * defaultZoomPixelScaler; j++)
             {
                 Draw(j + spritePosX, i + spritePosY, Pixel(88, 88, 88));
             }

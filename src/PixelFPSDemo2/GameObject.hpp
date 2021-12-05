@@ -3,6 +3,7 @@
 //Inspired by:https://stackoverflow.com/questions/44105058/implementing-component-system-from-unity-in-c
 
 #include "Component.hpp"
+#include "Transform.hpp"
 
 #include <string>
 #include <functional>
@@ -14,13 +15,37 @@ using namespace std;
 
 class GameObject
 {
+public:
+    int id;
+
+    string name;
+
+    bool active;
+
+    GameObject* parent;
+
+    vector<GameObject*> childs;
+
+    //refs to Transform:
+    Transform* transform;
+
+    //remove (if true, system will remove gameObject from list after update)
+    bool remove = false;
+
+public:
+    GameObject();
+
+    GameObject(const string& name);
+
+    ~GameObject();
+
 private:
     std::vector<std::unique_ptr<Component>> components;
 
 public:
-    template<class ComponentType, typename... Args> ComponentType& AddComponent(Args&&... params);
+    template<class ComponentType, typename... Args> ComponentType* AddComponent(Args&&... params);
 
-    template<class ComponentType> ComponentType& GetComponent();
+    template<class ComponentType> ComponentType* GetComponent();
 
     template<class ComponentType> bool RemoveComponent();
 
@@ -36,10 +61,10 @@ public:
     // EG: deduced initializer lists, decl-only static const int members, 0|NULL instead of nullptr, overloaded fn names, and bitfields
     //***************
 template< class ComponentType, typename... Args >
-ComponentType& GameObject::AddComponent(Args&&... params)
+ComponentType* GameObject::AddComponent(Args&&... params)
 {
     components.emplace_back(std::make_unique<ComponentType>(std::forward<Args>(params)...));
-    return *static_cast<ComponentType*>(components[components.size() - 1].get());
+    return static_cast<ComponentType*>(components[components.size() - 1].get());
 }
 
 //***************
@@ -50,15 +75,15 @@ ComponentType& GameObject::AddComponent(Args&&... params)
 // then components[0] will be returned because it derives from Component
 //***************
 template< class ComponentType >
-ComponentType& GameObject::GetComponent()
+ComponentType* GameObject::GetComponent()
 {
     for (auto&& component : components)
     {
         if (component->IsClassType(ComponentType::Type))
-            return *static_cast<ComponentType*>(component.get());
+            return static_cast<ComponentType*>(component.get());
     }
 
-    return *std::unique_ptr< ComponentType >(nullptr);
+    return std::unique_ptr< ComponentType >(nullptr).get();
 }
 
 //***************

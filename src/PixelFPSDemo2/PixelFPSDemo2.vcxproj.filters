@@ -24,12 +24,24 @@
     <ClCompile Include="olcPixelGameEngine.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="GameManager.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="tool.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="Collider.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="SpriteRenderer.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
+    <ClCompile Include="LifeController.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
-      <Filter>HPP</Filter>
-    </ClInclude>
-    <ClInclude Include="olcSprite.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="tool.hpp">
@@ -48,6 +60,21 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="Transform.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="GameManager.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Collider.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="SpriteRenderer.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="LifeController.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Weapon.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>
