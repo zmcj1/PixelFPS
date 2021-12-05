@@ -235,13 +235,17 @@ private:
 
         //switch weapon:
         if (GetKey(Key::K1).bPressed)
+        {
             weapon_current = WeaponEnum::DESERT_EAGLE;
-
+        }
         if (GetKey(Key::K2).bPressed)
+        {
             weapon_current = WeaponEnum::AK47;
-
-        //if (GetKey(Key::K3).bPressed)
-        //weapon_current = WeaponEnum::AEK_971;
+        }
+        if (GetKey(Key::K3).bPressed)
+        {
+            weapon_current = WeaponEnum::AEK_971;
+        }
 
         //fire:
         Weapon* weapon = weapons[(int)weapon_current];
@@ -268,21 +272,23 @@ private:
 
                 //add sprite:
                 SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
+                renderer->sprite = this->spriteBullet;
 
                 //add collider:
                 bullet->AddComponent<Collider>();
 
                 if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
                 {
-                    renderer->sprite = this->spriteBullet;
-
                     //play fire sound:
                     aekBulletPool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AK47)
                 {
-                    renderer->sprite = this->spriteBullet;
-
+                    //play fire sound:
+                    aekBulletPool->PlayOneShot(0.5f);
+                }
+                if (weapon->weapon_enum == WeaponEnum::AEK_971)
+                {
                     //play fire sound:
                     aekBulletPool->PlayOneShot(0.5f);
                 }
@@ -404,8 +410,8 @@ private:
                 {
                     Draw(x, y, Pixel(0, 128, 0));
                 }
-            }
-        }
+}
+    }
 #else
 //raycast
         for (int x = 0; x < ScreenWidth(); x++)
@@ -657,7 +663,7 @@ private:
                 }
             }
         }
-    }
+}
 
     void render_hud(float deltaTime)
     {
@@ -685,9 +691,6 @@ private:
         {
             weapon_Ypos = weapon_Xcof * weapon_Xcof;
 
-            //rocket launcher (pls make sprite)
-            //rifle aeksu 971
-
             switch (weapon_current)
             {
             case WeaponEnum::DESERT_EAGLE:
@@ -696,6 +699,10 @@ private:
             case WeaponEnum::AK47:
                 DisplaySprite(spriteAK47, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
                 break;
+            case WeaponEnum::AEK_971: //rifle aeksu 971
+                DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(0 - weapon_Ypos / 2), 3);
+                break;
+                //rocket launcher (pls make sprite)
             }
 
             //draw health bar
@@ -1049,8 +1056,12 @@ public:
         Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
         weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
 
+        Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
+        weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
+
         desertEagle->fire_interval = 0.45f;
         ak47->fire_interval = 0.1f;
+        aek_971->fire_interval = 0.125f;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };

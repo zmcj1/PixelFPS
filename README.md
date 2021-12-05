@@ -1,8 +1,8 @@
 # PixelFPS
 
-authors : zmcj1 and Vladimir_Maks
+authors : zmcj1, Vladimir_Maks, ChiefBYW
 
-date:2021/12/3
+date:2021/12/5
 
 game repo:https://github.com/zmcj1/PixelFPS
 
