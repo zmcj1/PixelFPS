@@ -9,6 +9,7 @@
 #include "LifeController.hpp"
 #include "GameManager.hpp"
 #include "Weapon.hpp"
+#include "Input.hpp" //mouse support
 #include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
@@ -25,6 +26,10 @@ private:
     float playerAngle = 0.0f;       // Player Start Rotation(in rad)
     float moveSpeed = 5.0f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
+
+    // enable mouse rotate:
+    bool enableMouse = true;
+    float mouseSpeed = 0.05f;
 
     //gameplay:
     const int fullHealth = 100;
@@ -153,87 +158,203 @@ private:
         m4a1Pool->Clean();
     }
 
+    void clamp_mouse_in_client()
+    {
+        POINT mousePosInClient = window.GetMappedMousePos();
+        POINT clientSize = window.GetClientSize();
+        POINT windowCenterPos = window.GetCenterPosOfWindow();
+
+        RECT rect;
+        ::GetWindowRect(window.windowHandle, &rect);
+        rect.left += 10;
+        rect.right -= 10;
+        rect.top = windowCenterPos.y;
+        rect.bottom = windowCenterPos.y;
+        ::ClipCursor(&rect);
+
+        if (mousePosInClient.x < 10)
+        {
+            mousePosInClient.x = clientSize.x - 10;
+            ::SetCursorPos(mousePosInClient.x, windowCenterPos.y);
+            Input::ResetMouseAxis();
+        }
+        else if (mousePosInClient.x > clientSize.x - 10)
+        {
+            mousePosInClient.x = 10;
+            ::SetCursorPos(mousePosInClient.x, windowCenterPos.y);
+            Input::ResetMouseAxis();
+        }
+    }
+
     void receive_user_input(float deltaTime)
     {
-        //rotation
-        if (GetKey(Key::A).bHeld)
+        if (!enableMouse)
         {
-            playerAngle -= rotateSpeed * deltaTime;
-        }
-        if (GetKey(Key::D).bHeld)
-        {
-            playerAngle += rotateSpeed * deltaTime;
-        }
+            //rotation
+            if (GetKey(Key::A).bHeld)
+            {
+                playerAngle -= rotateSpeed * deltaTime;
+            }
+            if (GetKey(Key::D).bHeld)
+            {
+                playerAngle += rotateSpeed * deltaTime;
+            }
 
-        //movement forward
-        if (GetKey(Key::W).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX += x;
-            playerY += y;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+            //movement forward
+            if (GetKey(Key::W).bHeld)
             {
-                playerX -= x;
-                playerY -= y;
-            }
-            if (bobbing_side)
-            {
-                weapon_Xcof += 0.3f;
-                if (weapon_Xcof >= 3.5f)
-                {
-                    bobbing_side = false;
-                }
-            }
-            else
-            {
-                weapon_Xcof -= 0.3f;
-                if (weapon_Xcof <= -3.5f)
-                {
-                    bobbing_side = true;
-                }
-            }
-        }
-
-        //movement backward
-        if (GetKey(Key::S).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX -= x;
-            playerY -= y;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
                 playerX += x;
                 playerY += y;
-            }
-        }
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= x;
+                    playerY -= y;
+                }
 
-        //strafe left
-        if (GetKey(Key::Q).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX += y;
-            playerY -= x;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-            {
-                playerX -= y;
-                playerY += x;
+                if (bobbing_side)
+                {
+                    weapon_Xcof += 0.3f;
+                    if (weapon_Xcof >= 3.5f)
+                    {
+                        bobbing_side = false;
+                    }
+                }
+                else
+                {
+                    weapon_Xcof -= 0.3f;
+                    if (weapon_Xcof <= -3.5f)
+                    {
+                        bobbing_side = true;
+                    }
+                }
             }
-        }
 
-        //strafe right
-        if (GetKey(Key::E).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX -= y;
-            playerY += x;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+            //movement backward
+            if (GetKey(Key::S).bHeld)
             {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= x;
+                playerY -= y;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += x;
+                    playerY += y;
+                }
+            }
+
+            //strafe left
+            if (GetKey(Key::Q).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
                 playerX += y;
                 playerY -= x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= y;
+                    playerY += x;
+                }
+            }
+
+            //strafe right
+            if (GetKey(Key::E).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= y;
+                playerY += x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += y;
+                    playerY -= x;
+                }
+            }
+        }
+        else
+        {
+            Input::CheckMouseAxis();
+            int diffX = Input::GetMouseAxis(MouseAxis::MOUSE_X);
+
+            //clamp:
+            clamp_mouse_in_client();
+
+            //rotate:
+            playerAngle += diffX * rotateSpeed * deltaTime * mouseSpeed;
+
+            //movement forward
+            if (GetKey(Key::W).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX += x;
+                playerY += y;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= x;
+                    playerY -= y;
+                }
+
+                if (bobbing_side)
+                {
+                    weapon_Xcof += 0.3f;
+                    if (weapon_Xcof >= 3.5f)
+                    {
+                        bobbing_side = false;
+                    }
+                }
+                else
+                {
+                    weapon_Xcof -= 0.3f;
+                    if (weapon_Xcof <= -3.5f)
+                    {
+                        bobbing_side = true;
+                    }
+                }
+            }
+
+            //movement backward
+            if (GetKey(Key::S).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= x;
+                playerY -= y;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += x;
+                    playerY += y;
+                }
+            }
+
+            //strafe left
+            if (GetKey(Key::A).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX += y;
+                playerY -= x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= y;
+                    playerY += x;
+                }
+            }
+
+            //strafe right
+            if (GetKey(Key::D).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= y;
+                playerY += x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += y;
+                    playerY -= x;
+                }
             }
         }
 
@@ -429,8 +550,8 @@ private:
                 {
                     Draw(x, y, Pixel(0, 128, 0));
                 }
-}
-    }
+            }
+        }
 #else
 //raycast
         for (int x = 0; x < ScreenWidth(); x++)
@@ -682,7 +803,7 @@ private:
                 }
             }
         }
-}
+    }
 
     void render_hud(float deltaTime)
     {
