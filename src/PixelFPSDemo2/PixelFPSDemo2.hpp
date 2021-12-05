@@ -58,6 +58,7 @@ private:
     //new weapons:
     OLCSprite* spriteDesertEagle;
     OLCSprite* spriteAK47;
+    OLCSprite* spriteM4A1;
 
     //GameManager:
     GameManager& GM;
@@ -79,6 +80,11 @@ private:
     AudioPool* explosionPool = nullptr;
     AudioPool* fireBallPool = nullptr;
     AudioPool* aekBulletPool = nullptr;
+
+    //new sounds:
+    AudioPool* dePool = nullptr;
+    AudioPool* ak47Pool = nullptr;
+    AudioPool* m4a1Pool = nullptr;
 
     //obstacles:
     std::vector<Vector2> obstacles;
@@ -140,7 +146,11 @@ private:
         explosionPool->Clean();
         fireBallPool->Clean();
 
+        //clean all weapon audio pool:
         aekBulletPool->Clean();
+        dePool->Clean();
+        ak47Pool->Clean();
+        m4a1Pool->Clean();
     }
 
     void receive_user_input(float deltaTime)
@@ -246,6 +256,10 @@ private:
         {
             weapon_current = WeaponEnum::AEK_971;
         }
+        if (GetKey(Key::K4).bPressed)
+        {
+            weapon_current = WeaponEnum::M4A1;
+        }
 
         //fire:
         Weapon* weapon = weapons[(int)weapon_current];
@@ -280,17 +294,22 @@ private:
                 if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
                 {
                     //play fire sound:
-                    aekBulletPool->PlayOneShot(0.5f);
+                    dePool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AK47)
                 {
                     //play fire sound:
-                    aekBulletPool->PlayOneShot(0.5f);
+                    ak47Pool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AEK_971)
                 {
                     //play fire sound:
                     aekBulletPool->PlayOneShot(0.5f);
+                }
+                if (weapon->weapon_enum == WeaponEnum::M4A1)
+                {
+                    //play fire sound:
+                    m4a1Pool->PlayOneShot(0.5f);
                 }
             }
         }
@@ -702,6 +721,9 @@ private:
             case WeaponEnum::AEK_971: //rifle aeksu 971
                 DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(0 - weapon_Ypos / 2), 3);
                 break;
+            case WeaponEnum::M4A1:
+                DisplaySprite(spriteM4A1, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
+                break;
                 //rocket launcher (pls make sprite)
             }
 
@@ -1036,6 +1058,7 @@ public:
         this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
         this->spriteDesertEagle = new OLCSprite(L"../../res/deagle.spr");
         this->spriteAK47 = new OLCSprite(L"../../res/ak47.spr");
+        this->spriteM4A1 = new OLCSprite(L"../../res/M4A1.spr");
 
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
@@ -1059,9 +1082,13 @@ public:
         Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
         weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
 
+        Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
+        weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
+
         desertEagle->fire_interval = 0.45f;
         ak47->fire_interval = 0.1f;
         aek_971->fire_interval = 0.125f;
+        m4a1->fire_interval = 0.08f;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
@@ -1096,6 +1123,10 @@ public:
         this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
         this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
         this->aekBulletPool = new AudioPool(L"../../res/audios/aek_shot.mp3");
+
+        this->dePool = new AudioPool(L"../../res/audios/weapons/deagle-1.wav");
+        this->ak47Pool = new AudioPool(L"../../res/audios/weapons/ak47-1.wav");
+        this->m4a1Pool = new AudioPool(L"../../res/audios/weapons/m4a1_unsil-1.wav");
 
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
         this->bgm2->Play(false, false);
@@ -1191,6 +1222,9 @@ public:
         delete this->explosionPool;
         delete this->fireBallPool;
         delete this->aekBulletPool;
+        delete this->dePool;
+        delete this->ak47Pool;
+        delete this->m4a1Pool;
 
         delete[] this->fDepthBuffer;
 
