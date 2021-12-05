@@ -8,6 +8,7 @@
 #include "SpriteRenderer.hpp"
 #include "LifeController.hpp"
 #include "GameManager.hpp"
+#include "Weapon.hpp"
 
 class PixelFPSDemo2 : public PixelGameEngine
 {
@@ -57,6 +58,7 @@ private:
 
     //new weapons:
     OLCSprite* spriteDesertEagle;
+    OLCSprite* spriteAK47;
 
     //GameManager:
     GameManager& GM;
@@ -1153,9 +1155,10 @@ public:
                 readyToDeleteIds.push_back(item.second->id);
             }
         }
-        for (auto& id : readyToDeleteIds)
+        for (int& id : readyToDeleteIds)
         {
-            GM.gameObjects.erase(id);
+            GameObject* go_ref = GM.gameObjects[id];
+            delete go_ref;
         }
 
         return true;
