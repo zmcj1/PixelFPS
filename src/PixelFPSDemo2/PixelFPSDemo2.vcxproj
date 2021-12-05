@@ -146,6 +146,7 @@
     <ClCompile Include="Component.cpp" />
     <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="GameObject.cpp" />
+    <ClCompile Include="LifeController.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="olcPixelGameEngine.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
@@ -157,6 +158,7 @@
     <ClInclude Include="Component.hpp" />
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
+    <ClInclude Include="LifeController.hpp" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
     <ClInclude Include="sObject.hpp" />

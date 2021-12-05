@@ -29,6 +29,9 @@ public:
     //refs to Transform:
     Transform* transform;
 
+    //remove (if true, system will remove gameObject from list after update)
+    bool remove = false;
+
 public:
     GameObject();
 

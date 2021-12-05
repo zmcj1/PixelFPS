@@ -4,6 +4,9 @@
 #include "GameObject.hpp"
 #include "Component.hpp"
 #include "Transform.hpp"
+#include "Collider.hpp"
+#include "SpriteRenderer.hpp"
+#include "LifeController.hpp"
 #include "GameManager.hpp"
 
 class PixelFPSDemo2 : public PixelGameEngine
@@ -51,8 +54,8 @@ private:
     OLCSprite* sptireWeapon_aek;
     OLCSprite* spriteBullet;
 
-    //objects:
-    list<sObject> listObjects;
+    //GameManager:
+    GameManager& GM;
 
     //palette:
     std::map<ConsoleColor, Color24> palette;
@@ -235,19 +238,25 @@ private:
         // rocket launcher:
         if (weapon_current == 1 && GetKey(Key::SPACE).bPressed)
         {
-            sObject fireBall(playerX, playerY, this->spriteFireBall);
+            GameObject* fireBall = new GameObject();
 
-            //set velocity:
-            //fireBall.vx = cosf(playerAngle) * 8.0f;
-            //fireBall.vy = sinf(playerAngle) * 8.0f;
+            //set position:
+            fireBall->transform->position = vf2d(playerX, playerY);
 
             //make noise:
             float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-            fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
-            fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
+            float vx = cosf(playerAngle + fNoise) * 8.0f;
+            float vy = sinf(playerAngle + fNoise) * 8.0f;
 
-            //add to list
-            listObjects.push_back(fireBall);
+            //set velocity:
+            fireBall->transform->velocity = vf2d(vx, vy);
+
+            //add sprite:
+            SpriteRenderer* renderer = fireBall->AddComponent<SpriteRenderer>();
+            renderer->sprite = this->spriteFireBall;
+
+            //add collider:
+            fireBall->AddComponent<Collider>();
 
             //play fire sound:
             fireBallPool->PlayOneShot(0.5f);
@@ -270,13 +279,20 @@ private:
             {
                 weapon_fired = true;
 
-                sObject bullet(playerX, playerY, this->spriteBullet);
+                GameObject* bullet = new GameObject();
+
+                bullet->transform->position = vf2d(playerX, playerY);
 
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                bullet.vx = cosf(playerAngle + fNoise) * 20.f;
-                bullet.vy = sinf(playerAngle + fNoise) * 20.f;
+                float vx = cosf(playerAngle + fNoise) * 20.f;
+                float vy = sinf(playerAngle + fNoise) * 20.f;
 
-                listObjects.push_back(bullet);
+                bullet->transform->velocity = vf2d(vx, vy);
+
+                SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
+                renderer->sprite = this->spriteBullet;
+
+                bullet->AddComponent<Collider>();
 
                 aekBulletPool->PlayOneShot(0.5f);
             }
@@ -518,50 +534,56 @@ private:
         }
 #endif
 
-        //update objects(render object & update physics):
-        for (auto& object : listObjects)
+        //update game objects(render & collision):
+        for (auto& item : GM.gameObjects)
         {
-            //update physics:
-            object.x += object.vx * deltaTime;
-            object.y += object.vy * deltaTime;
+            GameObject* go = item.second;
+
+            if (!go->active) continue;
+            if (go->remove) continue;
 
             //lifetime detect:
-            if (object.enableLifeTime)
+            LifeController* life = go->GetComponent<LifeController>();
+            if (life != nullptr && life->enable)
             {
-                object.lifeTime -= deltaTime;
-                if (object.lifeTime <= 0)
+                life->lifeTime -= deltaTime;
+                if (life->lifeTime <= 0)
                 {
-                    object.remove = true;
+                    go->remove = true;
+                    continue;
                 }
             }
 
+            //update physics:
+            go->transform->position += go->transform->velocity * deltaTime;
+
             //collision detect:
-            if (object.enableCollision)
+            Collider* collider = go->GetComponent<Collider>();
+            if (collider != nullptr && collider->enable)
             {
                 // Check if object is inside wall - set flag for removing
-                if (object.x >= 0 && object.x < mapWidth && object.y >= 0 && object.y < mapHeight)
+                if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
+                    go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
                 {
                     //collsion with walls:
-                    if (map[(int)object.y * mapWidth + (int)object.x] == L'#')
+                    if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
                     {
-                        object.remove = true;
+                        go->remove = true;
 
                         //play explosion sound:
                         explosionPool->PlayOneShot();
 
                         //instantiate explosion:
-                        sObject explosion(
-                            object.x - object.vx * deltaTime,
-                            object.y - object.vy * deltaTime,
-                            this->spriteExplosion);
-                        //enable lifetime destuction:
-                        explosion.enableLifeTime = true;
-                        explosion.lifeTime = 0.15f;
-                        //dont detect collision with this object
-                        explosion.enableCollision = false;
+                        //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
+                        GameObject* explosion = new GameObject();
+                        explosion->transform->position =
+                            go->transform->position - go->transform->velocity * deltaTime;
 
-                        //add to list
-                        listObjects.push_back(explosion);
+                        SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
+                        renderer->sprite = this->spriteExplosion;
+
+                        LifeController* life = explosion->AddComponent<LifeController>();
+                        life->lifeTime = 0.15f;
                     }
 
                     //collsion with other objects:
@@ -569,70 +591,75 @@ private:
                 }
                 else
                 {
-                    object.remove = true;
+                    go->remove = true;
                 }
             }
 
-            // Can object be seen?
-            float vecX = object.x - playerX;
-            float vecY = object.y - playerY;
-            float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
-
-            float eyeX = cosf(playerAngle);
-            float eyeY = sinf(playerAngle);
-            float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
-
-            //限制取值范围在+PI与-PI之间
-            //set limit : [-PI, PI]
-            if (objectAngle < -3.14159f)
-                objectAngle += 2.0f * 3.14159f;
-            if (objectAngle > 3.14159f)
-                objectAngle -= 2.0f * 3.14159f;
-
-            bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
-
-            //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
-            //draw object witch is in FOV
-            if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
+            //render:
+            SpriteRenderer* renderer = go->GetComponent<SpriteRenderer>();
+            if (renderer != nullptr && renderer->enable)
             {
-                float objectCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)distanceFromPlayer);
-                float objectFloor = ScreenHeight() - objectCeiling;
-                float objectHeight = objectFloor - objectCeiling;
+                // Can object be seen?
+                float vecX = go->transform->position.x - playerX;
+                float vecY = go->transform->position.y - playerY;
+                float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float objectAspectRatio = (float)object.sprite->Height / (float)object.sprite->Width;
-                float objectWidth = objectHeight / objectAspectRatio;
-                float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
+                float eyeX = cosf(playerAngle);
+                float eyeY = sinf(playerAngle);
+                float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
-                // Draw Lamp:
-                for (float lx = 0; lx < objectWidth; lx++)
+                //限制取值范围在+PI与-PI之间
+                //set limit : [-PI, PI]
+                if (objectAngle < -3.14159f)
+                    objectAngle += 2.0f * 3.14159f;
+                if (objectAngle > 3.14159f)
+                    objectAngle -= 2.0f * 3.14159f;
+
+                bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
+
+                //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+                //draw object witch is in FOV
+                if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
                 {
-                    for (float ly = 0; ly < objectHeight; ly++)
+                    float objectCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)distanceFromPlayer);
+                    float objectFloor = ScreenHeight() - objectCeiling;
+                    float objectHeight = objectFloor - objectCeiling;
+
+                    float objectAspectRatio = (float)renderer->sprite->Height / (float)renderer->sprite->Width;
+                    float objectWidth = objectHeight / objectAspectRatio;
+                    float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
+
+                    // Draw Lamp:
+                    for (float lx = 0; lx < objectWidth; lx++)
                     {
-                        float sampleX = lx / objectWidth;
-                        float sampleY = ly / objectHeight;
-                        wchar_t c = object.sprite->SampleGlyph(sampleX, sampleY);
-
-                        int nObjectColumn = (int)(middleOfObject + lx - (objectWidth / 2.0f));
-
-                        if (nObjectColumn >= 0 && nObjectColumn < ScreenWidth())
+                        for (float ly = 0; ly < objectHeight; ly++)
                         {
-                            //enable transparency :)
-                            //we only draw stuffs front of walls:
-                            if (c != L' ' && fDepthBuffer[nObjectColumn] >= distanceFromPlayer)
+                            float sampleX = lx / objectWidth;
+                            float sampleY = ly / objectHeight;
+                            wchar_t c = renderer->sprite->SampleGlyph(sampleX, sampleY);
+
+                            int nObjectColumn = (int)(middleOfObject + lx - (objectWidth / 2.0f));
+
+                            if (nObjectColumn >= 0 && nObjectColumn < ScreenWidth())
                             {
-                                short att = object.sprite->SampleColour(sampleX, sampleY);
+                                //enable transparency :)
+                                //we only draw stuffs front of walls:
+                                if (c != L' ' && fDepthBuffer[nObjectColumn] >= distanceFromPlayer)
+                                {
+                                    short att = renderer->sprite->SampleColour(sampleX, sampleY);
 
-                                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
-                                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+                                    ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                                    ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
 
-                                Color24 pixelColor = palette[foreColor];
-                                UNUSED(backColor);
+                                    Color24 pixelColor = palette[foreColor];
+                                    UNUSED(backColor);
 
-                                Draw(nObjectColumn, (int)(objectCeiling + ly),
-                                    Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+                                    Draw(nObjectColumn, (int)(objectCeiling + ly),
+                                        Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
 
-                                //update depth buffer(simple fix)
-                                this->fDepthBuffer[nObjectColumn] = distanceFromPlayer;
+                                    //update depth buffer(simple fix)
+                                    this->fDepthBuffer[nObjectColumn] = distanceFromPlayer;
+                                }
                             }
                         }
                     }
@@ -953,7 +980,7 @@ private:
     }
 
 public:
-    PixelFPSDemo2()
+    PixelFPSDemo2() : GM(GameManager::Global.GetInstance())
     {
         this->sAppName = "PixelFPS Demo2";
     }
@@ -1004,13 +1031,17 @@ public:
         this->sptireWeapon_aek = new OLCSprite(L"../../res/aeksu_weapon.spr");
         this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
 
-        listObjects =
-        {
-            sObject(8.5f, 8.5f, this->spriteLamp),
-            sObject(7.5f, 7.5f, this->spriteLamp),
-            sObject(10.5f, 3.5f, this->spriteLamp),
-            //sObject(11.5f, 6.5f, this->spriteFlower),
-        };
+        GameObject* lamp1 = new GameObject();
+        lamp1->transform->position = vf2d(8.5f, 8.5f);
+        lamp1->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+        GameObject* lamp2 = new GameObject();
+        lamp2->transform->position = vf2d(7.5f, 7.5f);
+        lamp2->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+        GameObject* lamp3 = new GameObject();
+        lamp3->transform->position = vf2d(10.5f, 3.5f);
+        lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
@@ -1065,13 +1096,6 @@ public:
             simple_ai = new sObject(2, 2, this->spriteFlower);
         }
 
-        //create gameObjects:
-        //GameObject* go = new GameObject();
-        //go->transform->position = vf2d(1, 1);
-
-        GameObject go;
-        go.transform->position = vf2d(3, 3);
-
         return true;
     }
 
@@ -1080,9 +1104,7 @@ public:
     {
         float deltaTime = fElapsedTime;
 
-        int _size = GameManager::Global.GetInstance().gameObjects.size();
-        Debug::OutputLine(to_wstring(_size));
-        //GameManager::Global.GetInstance().Update(deltaTime);
+        Debug::OutputLine(to_wstring(GM.gameObjects.size()));
 
         //ai nav:
         if (enableNav)
@@ -1115,11 +1137,18 @@ public:
 
         render_hud(deltaTime);
 
-        //GC for fireball:
-        listObjects.remove_if([](sObject& o)
+        vector<int> readyToDeleteIds;
+        for (auto& item : GM.gameObjects)
+        {
+            if (item.second->remove)
             {
-                return o.remove;
-            });
+                readyToDeleteIds.push_back(item.second->id);
+            }
+        }
+        for (auto& id : readyToDeleteIds)
+        {
+            GM.gameObjects.erase(id);
+        }
 
         return true;
     }
