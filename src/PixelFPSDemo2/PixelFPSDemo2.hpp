@@ -29,7 +29,7 @@ private:
     const int fullHealth = 100;
     int selfDamage = 1;
     int playerHealth = 100;
-    int weapon_current = 1;
+    WeaponEnum weapon_current = WeaponEnum::DESERT_EAGLE;
 
     //weapon timer:
     bool weapon_fired = false;
@@ -234,38 +234,44 @@ private:
             playerHealth -= selfDamage;
         }
 
-        //switch weapon 
-        if (GetKey(Key::K1).bPressed) weapon_current = 1;
+        //switch weapon:
+        if (GetKey(Key::K1).bPressed)
+            weapon_current = WeaponEnum::DESERT_EAGLE;
 
-        if (GetKey(Key::K2).bPressed) weapon_current = 2;
+        if (GetKey(Key::K2).bPressed)
+            weapon_current = WeaponEnum::AK47;
+
+        if (GetKey(Key::K3).bPressed)
+            weapon_current = WeaponEnum::AEK_971;
 
         //fire:
-
-        // rocket launcher:
-        if (weapon_current == 1 && GetKey(Key::SPACE).bPressed)
+        //desert_eagle:
+        if (weapon_current == WeaponEnum::DESERT_EAGLE && GetKey(Key::SPACE).bPressed)
         {
-            GameObject* fireBall = new GameObject();
+            GameObject* bullet = new GameObject();
 
             //set position:
-            fireBall->transform->position = vf2d(playerX, playerY);
+            bullet->transform->position = vf2d(playerX, playerY);
 
             //make noise:
             float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-            float vx = cosf(playerAngle + fNoise) * 8.0f;
-            float vy = sinf(playerAngle + fNoise) * 8.0f;
+            float speed = 20;
+            float vx = cosf(playerAngle + fNoise) * speed;
+            float vy = sinf(playerAngle + fNoise) * speed;
 
             //set velocity:
-            fireBall->transform->velocity = vf2d(vx, vy);
+            bullet->transform->velocity = vf2d(vx, vy);
 
             //add sprite:
-            SpriteRenderer* renderer = fireBall->AddComponent<SpriteRenderer>();
-            renderer->sprite = this->spriteFireBall;
+            SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
+            renderer->sprite = this->spriteBullet;
 
             //add collider:
-            fireBall->AddComponent<Collider>();
+            bullet->AddComponent<Collider>();
 
             //play fire sound:
-            fireBallPool->PlayOneShot(0.5f);
+            //fireBallPool->PlayOneShot(0.5f);
+            aekBulletPool->PlayOneShot(0.5f);
         }
 
         if (weapon_fired)
@@ -278,8 +284,8 @@ private:
             }
         }
 
-        // rifle:
-        if (weapon_current == 2 && GetKey(Key::SPACE).bHeld)
+        //ak47:
+        if (weapon_current == WeaponEnum::AK47 && GetKey(Key::SPACE).bHeld)
         {
             if (!weapon_fired)
             {
@@ -290,8 +296,9 @@ private:
                 bullet->transform->position = vf2d(playerX, playerY);
 
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                float vx = cosf(playerAngle + fNoise) * 20.f;
-                float vy = sinf(playerAngle + fNoise) * 20.f;
+                float speed = 20;
+                float vx = cosf(playerAngle + fNoise) * speed;
+                float vy = sinf(playerAngle + fNoise) * speed;
 
                 bullet->transform->velocity = vf2d(vx, vy);
 
@@ -700,13 +707,16 @@ private:
         {
             weapon_Ypos = weapon_Xcof * weapon_Xcof;
 
+            //rocket launcher (pls make sprite)
+            //rifle aeksu 971
+
             switch (weapon_current)
             {
-            case 1://rocket launcher (pls make sprite)
+            case WeaponEnum::DESERT_EAGLE:
                 DisplaySprite(spriteDesertEagle, 140 + int(weapon_Xcof * 4), int(60 - weapon_Ypos / 2), 1);
                 break;
-            case 2://rifle aeksu 971
-                DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 3);
+            case WeaponEnum::AK47:
+                DisplaySprite(spriteAK47, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
                 break;
             }
 
@@ -1040,6 +1050,7 @@ public:
         this->sptireWeapon_aek = new OLCSprite(L"../../res/aeksu_weapon.spr");
         this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
         this->spriteDesertEagle = new OLCSprite(L"../../res/deagle.spr");
+        this->spriteAK47 = new OLCSprite(L"../../res/ak47.spr");
 
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
