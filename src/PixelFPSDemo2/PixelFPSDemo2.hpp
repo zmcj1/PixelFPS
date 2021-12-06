@@ -71,8 +71,8 @@ private:
     //palette:
     std::map<ConsoleColor, Color24> palette;
 
-    //depth buffer:
-    float* fDepthBuffer = nullptr;
+    //A depth buffer used to sort pixels in Z-Axis:
+    float* depthBuffer = nullptr;
 
     //audios:
     Audio* bgm = nullptr;
@@ -440,6 +440,15 @@ private:
         }
     }
 
+    void DepthDraw(int x, int y, float z, olc::Pixel pixel)
+    {
+        if (z <= depthBuffer[y * ScreenWidth() + x])
+        {
+            Draw({ x, y }, pixel);
+            depthBuffer[y * ScreenWidth() + x] = z;
+        }
+    }
+
     void render_world(float deltaTime)
     {
         //#define OLD_RAYCAST
@@ -557,7 +566,12 @@ private:
             }
         }
 #else
-//raycast
+        //raycast:
+        for (size_t i = 0; i < ScreenWidth() * ScreenHeight(); i++)
+        {
+            this->depthBuffer[i] = INFINITY;
+        }
+
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
@@ -601,9 +615,6 @@ private:
                 throw "?";
             }
 
-            //update depth buffer:
-            fDepthBuffer[x] = distanceToWall;
-
             //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
             //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / (distanceToWall * cosf(diffAngle)));
@@ -646,7 +657,7 @@ private:
 
                         //Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
                         Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall);
-                        Draw(x, y, pixel);
+                        DepthDraw(x, y, distanceToWall * cosf(diffAngle), pixel);
                     }
                     else
                     {
@@ -756,13 +767,14 @@ private:
                 if (objectAngle > 3.14159f)
                     objectAngle -= 2.0f * 3.14159f;
 
+#define OLD_RAYCAST_OBJ
+#ifdef OLD_RAYCAST_OBJ
                 bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
-
                 //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
                 //draw object witch is in FOV
                 if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
                 {
-                    float objectCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)distanceFromPlayer);
+                    float objectCeiling = (float)(ScreenHeight() / 2.0f) - ScreenHeight() / ((float)distanceFromPlayer);
                     float objectFloor = ScreenHeight() - objectCeiling;
                     float objectHeight = objectFloor - objectCeiling;
 
@@ -770,7 +782,7 @@ private:
                     float objectWidth = objectHeight / objectAspectRatio;
                     float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
 
-                    // Draw Lamp:
+                    // Draw Object:
                     for (float lx = 0; lx < objectWidth; lx++)
                     {
                         for (float ly = 0; ly < objectHeight; ly++)
@@ -781,11 +793,13 @@ private:
 
                             int nObjectColumn = (int)(middleOfObject + lx - (objectWidth / 2.0f));
 
-                            if (nObjectColumn >= 0 && nObjectColumn < ScreenWidth())
+                            int x = nObjectColumn;
+                            int y = (int)(objectCeiling + ly);
+
+                            if (x >= 0 && x < ScreenWidth() && y >= 0 && y < ScreenHeight())
                             {
                                 //enable transparency :)
-                                //we only draw stuffs front of walls:
-                                if (c != L' ' && fDepthBuffer[nObjectColumn] >= distanceFromPlayer)
+                                if (c != L' ')
                                 {
                                     short att = renderer->sprite->SampleColour(sampleX, sampleY);
 
@@ -795,19 +809,93 @@ private:
                                     Color24 pixelColor = palette[foreColor];
                                     UNUSED(backColor);
 
-                                    Draw(nObjectColumn, (int)(objectCeiling + ly),
-                                        Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
-
-                                    //update depth buffer(simple fix)
-                                    this->fDepthBuffer[nObjectColumn] = distanceFromPlayer;
+                                    //shade objects:
+                                    Pixel pixel = shade_object(pixelColor, distanceFromPlayer);
+                                    DepthDraw(x, y, distanceFromPlayer, pixel);
                                 }
                             }
                         }
                     }
                 }
+#else
+                bool inPlayerFOV = fabs(objectAngle) < (FOV + 1.0f / distanceFromPlayer) / 2.0f;
+                //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+                //draw object witch is in FOV
+                if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
+                {
+                    // Work out its position on the floor...
+                    olc::vf2d vFloorPoint;
+
+                    // Horizontal screen location is determined based on object angle relative to camera heading
+                    vFloorPoint.x = (0.5f * ((objectAngle / (FOV * 0.5f))) + 0.5f) * ScreenWidth();
+
+                    // Vertical screen location is projected distance
+
+                    vFloorPoint.y = (ScreenHeight() / 2.0f) + (ScreenHeight() / distanceFromPlayer) / std::cos(objectAngle / 2.0f);
+
+                    // First we need the objects size...
+                    olc::vf2d vObjectSize = { 1, 1 };
+
+                    // ...which we can scale into world space (maintaining aspect ratio)...
+                    vObjectSize *= 2.0f * ScreenHeight();
+
+                    // ...then project into screen space
+                    vObjectSize /= distanceFromPlayer;
+
+                    // Second we need the objects top left position in screen space...
+                    olc::vf2d vObjectTopLeft;
+
+                    // ...which is relative to the objects size and assumes the middle of the object is
+                    // the location in world space
+                    vObjectTopLeft = { vFloorPoint.x - vObjectSize.x / 2.0f, vFloorPoint.y - vObjectSize.y };
+
+                    // Now iterate through the objects screen pixels
+                    for (float y = 0; y < vObjectSize.y; y++)
+                    {
+                        for (float x = 0; x < vObjectSize.x; x++)
+                        {
+                            // Create a normalised sample coordinate
+                            float fSampleX = x / vObjectSize.x;
+                            float fSampleY = y / vObjectSize.y;
+
+                            // Get pixel from a suitable texture
+                            float object_fHeading = 0.0f; //todo
+
+                            float fNiceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                            if (fNiceAngle < 0) fNiceAngle += 2.0f * 3.14159f;
+                            if (fNiceAngle > 2.0f * 3.14159f) fNiceAngle -= 2.0f * 3.14159f;
+
+                            // Calculate screen pixel location
+                            olc::vi2d a = { int(vObjectTopLeft.x + x), int(vObjectTopLeft.y + y) };
+
+                            // Check if location is actually on screen (to not go OOB on depth buffer)
+                            // and if the pixel is indeed visible (has no transparency component)
+
+                            wchar_t c = renderer->sprite->SampleGlyph(fSampleX, fSampleY);
+
+                            if (a.x >= 0 && a.x < ScreenWidth() && a.y >= 0 && a.y < ScreenHeight() && c != L' ')
+                            {
+                                short att = renderer->sprite->SampleColour(fSampleX, fSampleY);
+
+                                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                                Color24 pixelColor = palette[foreColor];
+                                UNUSED(backColor);
+
+                                //olc::Pixel p = SelectObjectPixel(object->nGenericID, fSampleX, fSampleY, distanceFromPlayer, fNiceAngle);
+                                Pixel pixel = shade_object(pixelColor, distanceFromPlayer);
+
+                                // Draw the pixel taking into account the depth buffer
+                                DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
+                                }
+                            }
+                        }
+                    }
+#endif
+                }
             }
         }
-    }
 
     void render_hud(float deltaTime)
     {
@@ -1116,6 +1204,30 @@ private:
         return pixel;
     }
 
+    //you can add shader code here:
+    Pixel shade_object(Color24 pixelColor, float distance)
+    {
+        Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+
+        //fog:
+        Color24 fogColor(192, 192, 192);
+        float fDistance = 1.0f;
+        fDistance = 1.0f - std::min(distance / 15, 1.0f);
+        float fog = 1.0 - fDistance;
+        pixel.r = fDistance * pixel.r + fog * fogColor.r;
+        pixel.g = fDistance * pixel.g + fog * fogColor.g;
+        pixel.b = fDistance * pixel.b + fog * fogColor.b;
+
+        //distance:
+        float _d = 1.0f;
+        _d = 1.0f - std::min(distance / depth, 0.4f);
+        pixel.r = pixel.r * _d;
+        pixel.g = pixel.g * _d;
+        pixel.b = pixel.b * _d;
+
+        return pixel;
+    }
+
     //legacy function, use shade instead.
     Pixel shadeFloorAndCeiling(Color24 pixelColor)
     {
@@ -1135,7 +1247,10 @@ private:
     int month;
     int day;
     int dayInWeek;
+
+    //todo:
     bool todayIsChristmas = false;
+    bool boxheadInConsole = false;
 
 public:
     //this function is for Easter eggs:
@@ -1159,6 +1274,7 @@ public:
         this->__enableMouse = this->enableMouse;
 
         this->todayIsChristmas = database.GetBool(L"todayIsChristmas", false);
+        this->boxheadInConsole = database.GetBool(L"boxheadInConsole", false);
     }
 
     PixelFPSDemo2() : GM(GameManager::Global.GetInstance())
@@ -1264,11 +1380,7 @@ public:
         this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
         this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
 
-        this->fDepthBuffer = new float[ScreenWidth()];
-        for (size_t i = 0; i < ScreenWidth(); i++)
-        {
-            this->fDepthBuffer[i] = INFINITY;
-        }
+        this->depthBuffer = new float[ScreenWidth() * ScreenHeight()];
 
         //this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
         //this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
@@ -1383,8 +1495,8 @@ public:
         delete this->ak47Pool;
         delete this->m4a1Pool;
 
-        delete[] this->fDepthBuffer;
+        delete[] this->depthBuffer;
 
         return true;
     }
-};
+    };
