@@ -279,7 +279,11 @@ private:
             int diffX = Input::GetMouseAxis(MouseAxis::MOUSE_X);
 
             //clamp:
-            clamp_mouse_in_client();
+            HWND foreWindow = GetForegroundWindow();
+            if (foreWindow == this->__gameWindow)
+            {
+                clamp_mouse_in_client();
+            }
 
             //rotate:
             playerAngle += diffX * rotateSpeed * deltaTime * mouseSpeed;
@@ -1152,6 +1156,8 @@ public:
         Database database(L"game_setting.txt", L"../../");
 
         this->enableMouse = database.GetBool(L"useMouse", false);
+        this->__enableMouse = this->enableMouse;
+
         this->todayIsChristmas = database.GetBool(L"todayIsChristmas", false);
     }
 
@@ -1163,6 +1169,8 @@ public:
     // Called once on application startup, use to load your resources
     bool OnUserCreate() override
     {
+        window = Window(this->__gameWindow);
+
         //create map:
         map += L"################################";
         map += L"#...............#..............#";
