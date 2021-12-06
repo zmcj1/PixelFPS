@@ -1126,13 +1126,33 @@ private:
         return pixel;
     }
 
+private:
+    int year;
+    int month;
+    int day;
+    int dayInWeek;
+    bool todayIsChristmas = false;
+
 public:
+    //this function is for Easter eggs:
+    void SetDate(int year, int month, int day, int dayInWeek)
+    {
+        this->year = year;
+        this->month = month;
+        this->day = day;
+        //set right value :)
+        if (dayInWeek == 0) dayInWeek = 7;
+        //[1, 7] => [Monday, Sunday]
+        this->dayInWeek = dayInWeek;
+    }
+
     void ReadGameSetting()
     {
         //read config file:
         Database database(L"game_setting.txt", L"../../");
 
         this->enableMouse = database.GetBool(L"useMouse", false);
+        this->todayIsChristmas = database.GetBool(L"todayIsChristmas", false);
     }
 
     PixelFPSDemo2() : GM(GameManager::Global.GetInstance())

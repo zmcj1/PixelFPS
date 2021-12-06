@@ -1,7 +1,10 @@
-﻿//include library:
+﻿#define _CRT_SECURE_NO_WARNINGS
+
+//include library:
 #include "olcPixelGameEngine.h"
 #include "MinConsoleNative.hpp"
 #include <iostream>
+#include <ctime>
 
 using namespace olc;
 using namespace MinConsoleNative;
@@ -18,9 +21,15 @@ int main()
 {
     console.SetTitle(L"PixelFPSDemo2 Console");
 
-    char input_char = '\0';
+    time_t now = time(0);
+    tm* local_time = localtime(&now);
+
+    console.WriteLine(L"today is: year:" + to_wstring(1900 + local_time->tm_year) + L" month:" + to_wstring(local_time->tm_mon + 1) + L" day:" + to_wstring(local_time->tm_mday), { 198, 125, 173 });
+
     console.WriteLine(L"welcome to PixelFPSDemo2!", { 255, 75, 43 });
     console.WriteLine(L"Press 'E' open Editor, Press any other key open Game.", { 107, 198, 237 });
+
+    char input_char = '\0';
     cin >> input_char;
 
     if (tolower(input_char) == 'e')
@@ -30,8 +39,8 @@ int main()
         //choose sprite file:
         vector<wstring> fileNames = get_all_files_names_within_folder(folderPath, L"spr");
         //display all .spr files:
-        cout << "pls choose file:\n";
-        cout << "0.create new file\n";
+        console.WriteLine(L"pls choose file:");
+        console.WriteLine(L"0.create new file", { 200, 50, 125 });
         for (size_t i = 0; i < fileNames.size(); i++)
         {
             string fileName = String::WstringToString(fileNames[i]);
@@ -118,6 +127,8 @@ int main()
 
         //read config file:
         game.ReadGameSetting();
+
+        game.SetDate(1900 + local_time->tm_year, local_time->tm_mon + 1, local_time->tm_mday, local_time->tm_wday);
 
         if (game.Construct(320, 180, 4, 4))
             game.Start();

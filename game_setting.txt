@@ -1,1 +1,4 @@
 useMouse = true
+
+//try set it true :)
+todayIsChristmas = false
