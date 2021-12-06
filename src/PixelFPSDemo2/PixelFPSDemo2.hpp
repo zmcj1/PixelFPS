@@ -28,7 +28,7 @@ private:
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
     // enable mouse rotate:
-    bool enableMouse = true;
+    bool enableMouse = false;
     float mouseSpeed = 0.05f;
 
     //gameplay:
@@ -387,7 +387,7 @@ private:
         //update timer:
         weapon->UpdateWeaponTimer(deltaTime);
         //user input:
-        if (GetKey(Key::SPACE).bHeld)
+        if (!enableMouse && GetKey(Key::SPACE).bHeld || enableMouse && GetMouse(Mouse::LEFT).bHeld)
         {
             if (weapon->CanFire())
             {
@@ -1127,6 +1127,14 @@ private:
     }
 
 public:
+    void ReadGameSetting()
+    {
+        //read config file:
+        Database database(L"game_setting.txt", L"../../");
+
+        this->enableMouse = database.GetBool(L"useMouse", false);
+    }
+
     PixelFPSDemo2() : GM(GameManager::Global.GetInstance())
     {
         this->sAppName = "PixelFPS Demo2";

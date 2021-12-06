@@ -116,6 +116,9 @@ int main()
     {
         PixelFPSDemo2 game;
 
+        //read config file:
+        game.ReadGameSetting();
+
         if (game.Construct(320, 180, 4, 4))
             game.Start();
     }
