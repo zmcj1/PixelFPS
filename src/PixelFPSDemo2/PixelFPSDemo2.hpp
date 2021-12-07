@@ -168,24 +168,24 @@ private:
         POINT clientSize = window.GetClientSize();
         POINT windowCenterPos = window.GetCenterPosOfWindow();
 
+        const int width = 50;
+
         RECT rect;
         ::GetWindowRect(window.windowHandle, &rect);
-        rect.left += 10;
-        rect.right -= 10;
+        rect.left += width;
+        rect.right -= width;
         rect.top = windowCenterPos.y;
         rect.bottom = windowCenterPos.y;
         ::ClipCursor(&rect);
 
-        if (mousePosInClient.x < 10)
+        if (mousePosInClient.x < width * 2)
         {
-            mousePosInClient.x = clientSize.x - 10;
-            ::SetCursorPos(mousePosInClient.x, windowCenterPos.y);
+            ::SetCursorPos(windowCenterPos.x, windowCenterPos.y);
             Input::ResetMouseAxis();
         }
-        else if (mousePosInClient.x > clientSize.x - 10)
+        else if (mousePosInClient.x > clientSize.x - width * 2)
         {
-            mousePosInClient.x = 10;
-            ::SetCursorPos(mousePosInClient.x, windowCenterPos.y);
+            ::SetCursorPos(windowCenterPos.x, windowCenterPos.y);
             Input::ResetMouseAxis();
         }
     }
@@ -581,8 +581,6 @@ private:
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
             float diffAngle = playerAngle - rayAngle;
 
-            const float stepSize = 0.01f;
-
             float distanceToWall = 0.0f;
             bool hitWall = false;
 
@@ -647,7 +645,7 @@ private:
                 //draw wall
                 else if (y > ceiling && y <= floor)
                 {
-                    if (distanceToWall < depth)
+                    if (distanceToWall * cosf(diffAngle) < depth)
                     {
                         float sampleY = ((float)y - (float)ceiling) / ((float)floor - (float)ceiling);
 
@@ -778,7 +776,7 @@ private:
                     //draw object witch is in FOV
                     if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
                     {
-                        float objectCeiling = (float)(ScreenHeight() / 2.0f) - ScreenHeight() / ((float)distanceFromPlayer);
+                        float objectCeiling = ScreenHeight() / 2.0f - ScreenHeight() / distanceFromPlayer;
                         float objectFloor = ScreenHeight() - objectCeiling;
                         float objectHeight = objectFloor - objectCeiling;
 
@@ -795,9 +793,7 @@ private:
                                 float sampleY = ly / objectHeight;
                                 wchar_t c = renderer->sprite->SampleGlyph(sampleX, sampleY);
 
-                                int nObjectColumn = (int)(middleOfObject + lx - (objectWidth / 2.0f));
-
-                                int x = nObjectColumn;
+                                int x = (int)(middleOfObject + lx - (objectWidth / 2.0f));
                                 int y = (int)(objectCeiling + ly);
 
                                 if (x >= 0 && x < ScreenWidth() && y >= 0 && y < ScreenHeight())
@@ -814,7 +810,7 @@ private:
                                         UNUSED(backColor);
 
                                         //shade objects:
-                                        Pixel pixel = shade_object(pixelColor, distanceFromPlayer);
+                                        Pixel pixel = shade_object(sampleX, sampleY, pixelColor, distanceFromPlayer);
                                         DepthDraw(x, y, distanceFromPlayer, pixel);
                                     }
                                 }
@@ -830,58 +826,48 @@ private:
                     if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
                     {
                         // Work out its position on the floor...
-                        olc::vf2d vFloorPoint;
+                        olc::vf2d floorPoint;
 
                         // Horizontal screen location is determined based on object angle relative to camera heading
-                        vFloorPoint.x = (0.5f * ((objectAngle / (FOV * 0.5f))) + 0.5f) * ScreenWidth();
+                        floorPoint.x = (objectAngle / FOV + 0.5f) * ScreenWidth();
 
                         // Vertical screen location is projected distance
-
-                        vFloorPoint.y = (ScreenHeight() / 2.0f) + (ScreenHeight() / distanceFromPlayer) / std::cos(objectAngle / 2.0f);
+                        //floorPoint.y = (ScreenHeight() / 2.0f) + (ScreenHeight() / distanceFromPlayer) / std::cos(objectAngle / 2.0f);
+                        floorPoint.y = ScreenHeight() / 2.0f + ScreenHeight() / distanceFromPlayer;
 
                         // First we need the objects size...
-                        olc::vf2d vObjectSize = { 1, 1 };
+                        olc::vf2d objectSize = { 1, 1 };
+                        //olc::vf2d objectSize = { 0.1f, 1.0f };
 
                         // ...which we can scale into world space (maintaining aspect ratio)...
-                        vObjectSize *= 2.0f * ScreenHeight();
+                        objectSize *= 2.0f * ScreenHeight();
 
                         // ...then project into screen space
-                        vObjectSize /= distanceFromPlayer;
+                        objectSize /= distanceFromPlayer;
 
                         // Second we need the objects top left position in screen space...
-                        olc::vf2d vObjectTopLeft;
-
                         // ...which is relative to the objects size and assumes the middle of the object is
                         // the location in world space
-                        vObjectTopLeft = { vFloorPoint.x - vObjectSize.x / 2.0f, vFloorPoint.y - vObjectSize.y };
+                        olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
 
                         // Now iterate through the objects screen pixels
-                        for (float y = 0; y < vObjectSize.y; y++)
+                        for (float y = 0; y < objectSize.y; y++)
                         {
-                            for (float x = 0; x < vObjectSize.x; x++)
+                            for (float x = 0; x < objectSize.x; x++)
                             {
                                 // Create a normalised sample coordinate
-                                float fSampleX = x / vObjectSize.x;
-                                float fSampleY = y / vObjectSize.y;
-
-                                // Get pixel from a suitable texture
-                                float object_fHeading = 0.0f; //todo
-
-                                float fNiceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
-                                if (fNiceAngle < 0) fNiceAngle += 2.0f * 3.14159f;
-                                if (fNiceAngle > 2.0f * 3.14159f) fNiceAngle -= 2.0f * 3.14159f;
+                                float sampleX = x / objectSize.x;
+                                float sampleY = y / objectSize.y;
 
                                 // Calculate screen pixel location
-                                olc::vi2d a = { int(vObjectTopLeft.x + x), int(vObjectTopLeft.y + y) };
+                                olc::vi2d a = { int(objectTopLeft.x + x), int(objectTopLeft.y + y) };
+
+                                wchar_t c = renderer->sprite->SampleGlyph(sampleX, sampleY);
 
                                 // Check if location is actually on screen (to not go OOB on depth buffer)
-                                // and if the pixel is indeed visible (has no transparency component)
-
-                                wchar_t c = renderer->sprite->SampleGlyph(fSampleX, fSampleY);
-
                                 if (a.x >= 0 && a.x < ScreenWidth() && a.y >= 0 && a.y < ScreenHeight() && c != L' ')
                                 {
-                                    short att = renderer->sprite->SampleColour(fSampleX, fSampleY);
+                                    short att = renderer->sprite->SampleColour(sampleX, sampleY);
 
                                     ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
                                     ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
@@ -889,9 +875,13 @@ private:
                                     Color24 pixelColor = palette[foreColor];
                                     UNUSED(backColor);
 
-                                    //olc::Pixel p = SelectObjectPixel(object->nGenericID, fSampleX, fSampleY, distanceFromPlayer, fNiceAngle);
-                                    Pixel pixel = shade_object(pixelColor, distanceFromPlayer);
+                                    // Get pixel from a suitable texture
+                                    float object_fHeading = 0.0f; //todo
+                                    float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                    if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
+                                    if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
+                                    Pixel pixel = shade_object(sampleX, sampleY, pixelColor, distanceFromPlayer);
                                     // Draw the pixel taking into account the depth buffer
                                     DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
                                 }
@@ -1211,7 +1201,7 @@ private:
     }
 
     //you can add shader code here:
-    Pixel shade_object(Color24 pixelColor, float distance)
+    Pixel shade_object(float sampleX, float sampleY, Color24 pixelColor, float distance)
     {
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
@@ -1457,7 +1447,11 @@ public:
 
         update_audio();
 
-        receive_user_input(deltaTime);
+        HWND foreWindow = GetForegroundWindow();
+        if (foreWindow == this->__gameWindow)
+        {
+            receive_user_input(deltaTime);
+        }
 
         render_world(deltaTime);
 
