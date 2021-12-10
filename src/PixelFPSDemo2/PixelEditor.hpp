@@ -190,8 +190,8 @@ public:
             spritePtr = new OLCSprite(spritePath);
         }
 
-        theme_of_laura = Resources::Load<Audio>(L"../../", L"res/audios/", L"Theme of Laura.mp3");
-        theme_of_laura->Play(true, false);
+        //theme_of_laura = Resources::Load<Audio>(L"../../", L"res/audios/", L"Theme of Laura.mp3");
+        //theme_of_laura->Play(true, false);
 
         return true;
     }
