@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "Resources.hpp"
+
 //editor for olcSprite and Color32!
 class PixelEditor : public PixelGameEngine
 {
@@ -188,7 +190,7 @@ public:
             spritePtr = new OLCSprite(spritePath);
         }
 
-        theme_of_laura = new Audio(L"../../res/audios/Theme of Laura.mp3");
+        theme_of_laura = Resources::Load<Audio>(L"../../", L"res/audios/", L"Theme of Laura.mp3");
         theme_of_laura->Play(true, false);
 
         return true;
