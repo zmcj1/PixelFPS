@@ -36,6 +36,9 @@
     <ClCompile Include="SpriteRenderer.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="LifeController.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -66,6 +69,15 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="SpriteRenderer.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="LifeController.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Weapon.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Resources.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>

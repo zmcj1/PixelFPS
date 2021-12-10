@@ -4,10 +4,20 @@
 #include "GameObject.hpp"
 #include "Component.hpp"
 #include "Transform.hpp"
+#include "Collider.hpp"
+#include "SpriteRenderer.hpp"
+#include "LifeController.hpp"
 #include "GameManager.hpp"
+#include "Weapon.hpp"
+#include "Input.hpp" //mouse support
+#include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
 {
+private:
+    //graphics setting:
+    bool useOldRaycastObject = true;
+
 private:
     //map:
     wstring map;
@@ -21,19 +31,22 @@ private:
     float moveSpeed = 5.0f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
-    //gameplay
+    // enable mouse rotate:
+    bool enableMouse = false;
+    float mouseSpeed = 0.05f;
+
+    //gameplay:
     const int fullHealth = 100;
     int selfDamage = 1;
-    int playerHealth = 100;
-    int weapon_current = 1;
+    int playerHealth = fullHealth;
 
-    //weapon timer:
-    bool weapon_fired = false;
-    float weapon_timer = 0.0f;
-    const float weapon_fire_interval = 0.5f;
+    //weapons:
+    WeaponEnum weapon_current = WeaponEnum::DESERT_EAGLE;
+    unordered_map<int, Weapon*> weapons;
 
     //hud
     bool enableHud = true;
+    bool enableBloodBar = false;
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
     bool bobbing_side = false;
@@ -51,14 +64,19 @@ private:
     OLCSprite* sptireWeapon_aek;
     OLCSprite* spriteBullet;
 
-    //objects:
-    list<sObject> listObjects;
+    //new weapons:
+    OLCSprite* spriteDesertEagle;
+    OLCSprite* spriteAK47;
+    OLCSprite* spriteM4A1;
+
+    //GameManager:
+    GameManager& GM;
 
     //palette:
     std::map<ConsoleColor, Color24> palette;
 
-    //depth buffer:
-    float* fDepthBuffer = nullptr;
+    //A depth buffer used to sort pixels in Z-Axis:
+    float* depthBuffer = nullptr;
 
     //audios:
     Audio* bgm = nullptr;
@@ -71,6 +89,11 @@ private:
     AudioPool* explosionPool = nullptr;
     AudioPool* fireBallPool = nullptr;
     AudioPool* aekBulletPool = nullptr;
+
+    //new sounds:
+    AudioPool* dePool = nullptr;
+    AudioPool* ak47Pool = nullptr;
+    AudioPool* m4a1Pool = nullptr;
 
     //obstacles:
     std::vector<Vector2> obstacles;
@@ -132,90 +155,214 @@ private:
         explosionPool->Clean();
         fireBallPool->Clean();
 
+        //clean all weapon audio pool:
         aekBulletPool->Clean();
+        dePool->Clean();
+        ak47Pool->Clean();
+        m4a1Pool->Clean();
+    }
+
+    void clamp_mouse_in_client()
+    {
+        POINT mousePosInClient = window.GetMappedMousePos();
+        POINT clientSize = window.GetClientSize();
+        POINT windowCenterPos = window.GetCenterPosOfWindow();
+
+        const int width = 50;
+
+        RECT rect;
+        ::GetWindowRect(window.windowHandle, &rect);
+        rect.left += width;
+        rect.right -= width;
+        rect.top = windowCenterPos.y;
+        rect.bottom = windowCenterPos.y;
+        ::ClipCursor(&rect);
+
+        if (mousePosInClient.x < width * 2)
+        {
+            ::SetCursorPos(windowCenterPos.x, windowCenterPos.y);
+            Input::ResetMouseAxis();
+        }
+        else if (mousePosInClient.x > clientSize.x - width * 2)
+        {
+            ::SetCursorPos(windowCenterPos.x, windowCenterPos.y);
+            Input::ResetMouseAxis();
+        }
     }
 
     void receive_user_input(float deltaTime)
     {
-        //rotation
-        if (GetKey(Key::A).bHeld)
+        if (!enableMouse)
         {
-            playerAngle -= rotateSpeed * deltaTime;
-        }
-        if (GetKey(Key::D).bHeld)
-        {
-            playerAngle += rotateSpeed * deltaTime;
-        }
+            //rotation
+            if (GetKey(Key::A).bHeld)
+            {
+                playerAngle -= rotateSpeed * deltaTime;
+            }
+            if (GetKey(Key::D).bHeld)
+            {
+                playerAngle += rotateSpeed * deltaTime;
+            }
 
-        //movement forward
-        if (GetKey(Key::W).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX += x;
-            playerY += y;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+            //movement forward
+            if (GetKey(Key::W).bHeld)
             {
-                playerX -= x;
-                playerY -= y;
-            }
-            if (bobbing_side)
-            {
-                weapon_Xcof += 0.3f;
-                if (weapon_Xcof >= 3.5f)
-                {
-                    bobbing_side = false;
-                }
-            }
-            else
-            {
-                weapon_Xcof -= 0.3f;
-                if (weapon_Xcof <= -3.5f)
-                {
-                    bobbing_side = true;
-                }
-            }
-        }
-
-        //movement backward
-        if (GetKey(Key::S).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX -= x;
-            playerY -= y;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
                 playerX += x;
                 playerY += y;
-            }
-        }
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= x;
+                    playerY -= y;
+                }
 
-        //strafe left
-        if (GetKey(Key::Q).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX += y;
-            playerY -= x;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-            {
-                playerX -= y;
-                playerY += x;
+                if (bobbing_side)
+                {
+                    weapon_Xcof += 0.3f;
+                    if (weapon_Xcof >= 3.5f)
+                    {
+                        bobbing_side = false;
+                    }
+                }
+                else
+                {
+                    weapon_Xcof -= 0.3f;
+                    if (weapon_Xcof <= -3.5f)
+                    {
+                        bobbing_side = true;
+                    }
+                }
             }
-        }
 
-        //strafe right
-        if (GetKey(Key::E).bHeld)
-        {
-            float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-            float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-            playerX -= y;
-            playerY += x;
-            if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+            //movement backward
+            if (GetKey(Key::S).bHeld)
             {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= x;
+                playerY -= y;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += x;
+                    playerY += y;
+                }
+            }
+
+            //strafe left
+            if (GetKey(Key::Q).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
                 playerX += y;
                 playerY -= x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= y;
+                    playerY += x;
+                }
+            }
+
+            //strafe right
+            if (GetKey(Key::E).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= y;
+                playerY += x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += y;
+                    playerY -= x;
+                }
+            }
+        }
+        else
+        {
+            Input::CheckMouseAxis();
+            int diffX = Input::GetMouseAxis(MouseAxis::MOUSE_X);
+
+            //clamp:
+            HWND foreWindow = GetForegroundWindow();
+            if (foreWindow == this->__gameWindow)
+            {
+                clamp_mouse_in_client();
+            }
+
+            //rotate:
+            playerAngle += diffX * rotateSpeed * deltaTime * mouseSpeed;
+
+            //movement forward
+            if (GetKey(Key::W).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX += x;
+                playerY += y;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= x;
+                    playerY -= y;
+                }
+
+                if (bobbing_side)
+                {
+                    weapon_Xcof += 0.3f;
+                    if (weapon_Xcof >= 3.5f)
+                    {
+                        bobbing_side = false;
+                    }
+                }
+                else
+                {
+                    weapon_Xcof -= 0.3f;
+                    if (weapon_Xcof <= -3.5f)
+                    {
+                        bobbing_side = true;
+                    }
+                }
+            }
+
+            //movement backward
+            if (GetKey(Key::S).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= x;
+                playerY -= y;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += x;
+                    playerY += y;
+                }
+            }
+
+            //strafe left
+            if (GetKey(Key::A).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX += y;
+                playerY -= x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX -= y;
+                    playerY += x;
+                }
+            }
+
+            //strafe right
+            if (GetKey(Key::D).bHeld)
+            {
+                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
+                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
+                playerX -= y;
+                playerY += x;
+                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
+                {
+                    playerX += y;
+                    playerY -= x;
+                }
             }
         }
 
@@ -225,61 +372,84 @@ private:
             playerHealth -= selfDamage;
         }
 
-        //switch weapon 
-        if (GetKey(Key::K1).bPressed) weapon_current = 1;
-
-        if (GetKey(Key::K2).bPressed) weapon_current = 2;
+        //switch weapon:
+        if (GetKey(Key::K1).bPressed)
+        {
+            weapon_current = WeaponEnum::DESERT_EAGLE;
+        }
+        if (GetKey(Key::K2).bPressed)
+        {
+            weapon_current = WeaponEnum::AK47;
+        }
+        if (GetKey(Key::K3).bPressed)
+        {
+            weapon_current = WeaponEnum::AEK_971;
+        }
+        if (GetKey(Key::K4).bPressed)
+        {
+            weapon_current = WeaponEnum::M4A1;
+        }
 
         //fire:
-
-        // rocket launcher:
-        if (weapon_current == 1 && GetKey(Key::SPACE).bPressed)
+        Weapon* weapon = weapons[(int)weapon_current];
+        //update timer:
+        weapon->UpdateWeaponTimer(deltaTime);
+        //user input:
+        if (!enableMouse && GetKey(Key::SPACE).bHeld || enableMouse && GetMouse(Mouse::LEFT).bHeld)
         {
-            sObject fireBall(playerX, playerY, this->spriteFireBall);
-
-            //set velocity:
-            //fireBall.vx = cosf(playerAngle) * 8.0f;
-            //fireBall.vy = sinf(playerAngle) * 8.0f;
-
-            //make noise:
-            float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-            fireBall.vx = cosf(playerAngle + fNoise) * 8.0f;
-            fireBall.vy = sinf(playerAngle + fNoise) * 8.0f;
-
-            //add to list
-            listObjects.push_back(fireBall);
-
-            //play fire sound:
-            fireBallPool->PlayOneShot(0.5f);
-        }
-
-        if (weapon_fired)
-        {
-            weapon_timer += deltaTime;
-            if (weapon_timer >= weapon_fire_interval)
+            if (weapon->CanFire())
             {
-                weapon_timer = 0.0f;
-                weapon_fired = false;
-            }
-        }
+                GameObject* bullet = new GameObject();
 
-        // rifle:
-        if (weapon_current == 2 && GetKey(Key::SPACE).bHeld)
-        {
-            if (!weapon_fired)
-            {
-                weapon_fired = true;
+                //set position:
+                bullet->transform->position = vf2d(playerX, playerY);
 
-                sObject bullet(playerX, playerY, this->spriteBullet);
-
+                //make noise:
                 float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                bullet.vx = cosf(playerAngle + fNoise) * 20.f;
-                bullet.vy = sinf(playerAngle + fNoise) * 20.f;
+                float speed = 20;
+                float vx = cosf(playerAngle + fNoise) * speed;
+                float vy = sinf(playerAngle + fNoise) * speed;
 
-                listObjects.push_back(bullet);
+                //set velocity:
+                bullet->transform->velocity = vf2d(vx, vy);
 
-                aekBulletPool->PlayOneShot(0.5f);
+                //add sprite:
+                SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
+                renderer->sprite = this->spriteBullet;
+
+                //add collider:
+                bullet->AddComponent<Collider>();
+
+                if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
+                {
+                    //play fire sound:
+                    dePool->PlayOneShot(0.5f);
+                }
+                if (weapon->weapon_enum == WeaponEnum::AK47)
+                {
+                    //play fire sound:
+                    ak47Pool->PlayOneShot(0.5f);
+                }
+                if (weapon->weapon_enum == WeaponEnum::AEK_971)
+                {
+                    //play fire sound:
+                    aekBulletPool->PlayOneShot(0.5f);
+                }
+                if (weapon->weapon_enum == WeaponEnum::M4A1)
+                {
+                    //play fire sound:
+                    m4a1Pool->PlayOneShot(0.5f);
+                }
             }
+        }
+    }
+
+    void DepthDraw(int x, int y, float z, olc::Pixel pixel)
+    {
+        if (z <= depthBuffer[y * ScreenWidth() + x])
+        {
+            Draw({ x, y }, pixel);
+            depthBuffer[y * ScreenWidth() + x] = z;
         }
     }
 
@@ -400,13 +570,16 @@ private:
             }
         }
 #else
-//raycast
+        //raycast:
+        for (size_t i = 0; i < ScreenWidth() * ScreenHeight(); i++)
+        {
+            this->depthBuffer[i] = INFINITY;
+        }
+
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
             float diffAngle = playerAngle - rayAngle;
-
-            const float stepSize = 0.01f;
 
             float distanceToWall = 0.0f;
             bool hitWall = false;
@@ -444,9 +617,6 @@ private:
                 throw "?";
             }
 
-            //update depth buffer:
-            fDepthBuffer[x] = distanceToWall;
-
             //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
             //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / (distanceToWall * cosf(diffAngle)));
@@ -475,7 +645,7 @@ private:
                 //draw wall
                 else if (y > ceiling && y <= floor)
                 {
-                    if (distanceToWall < depth)
+                    if (distanceToWall * cosf(diffAngle) < depth)
                     {
                         float sampleY = ((float)y - (float)ceiling) / ((float)floor - (float)ceiling);
 
@@ -489,7 +659,7 @@ private:
 
                         //Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
                         Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall);
-                        Draw(x, y, pixel);
+                        DepthDraw(x, y, distanceToWall * cosf(diffAngle), pixel);
                     }
                     else
                     {
@@ -518,50 +688,56 @@ private:
         }
 #endif
 
-        //update objects(render object & update physics):
-        for (auto& object : listObjects)
+        //update game objects(render & collision):
+        for (auto& item : GM.gameObjects)
         {
-            //update physics:
-            object.x += object.vx * deltaTime;
-            object.y += object.vy * deltaTime;
+            GameObject* go = item.second;
+
+            if (!go->active) continue;
+            if (go->remove) continue;
 
             //lifetime detect:
-            if (object.enableLifeTime)
+            LifeController* life = go->GetComponent<LifeController>();
+            if (life != nullptr && life->enable)
             {
-                object.lifeTime -= deltaTime;
-                if (object.lifeTime <= 0)
+                life->lifeTime -= deltaTime;
+                if (life->lifeTime <= 0)
                 {
-                    object.remove = true;
+                    go->remove = true;
+                    continue;
                 }
             }
 
+            //update physics:
+            go->transform->position += go->transform->velocity * deltaTime;
+
             //collision detect:
-            if (object.enableCollision)
+            Collider* collider = go->GetComponent<Collider>();
+            if (collider != nullptr && collider->enable)
             {
                 // Check if object is inside wall - set flag for removing
-                if (object.x >= 0 && object.x < mapWidth && object.y >= 0 && object.y < mapHeight)
+                if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
+                    go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
                 {
                     //collsion with walls:
-                    if (map[(int)object.y * mapWidth + (int)object.x] == L'#')
+                    if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
                     {
-                        object.remove = true;
+                        go->remove = true;
 
                         //play explosion sound:
                         explosionPool->PlayOneShot();
 
                         //instantiate explosion:
-                        sObject explosion(
-                            object.x - object.vx * deltaTime,
-                            object.y - object.vy * deltaTime,
-                            this->spriteExplosion);
-                        //enable lifetime destuction:
-                        explosion.enableLifeTime = true;
-                        explosion.lifeTime = 0.15f;
-                        //dont detect collision with this object
-                        explosion.enableCollision = false;
+                        //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
+                        GameObject* explosion = new GameObject();
+                        explosion->transform->position =
+                            go->transform->position - go->transform->velocity * deltaTime;
 
-                        //add to list
-                        listObjects.push_back(explosion);
+                        SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
+                        renderer->sprite = this->spriteExplosion;
+
+                        LifeController* life = explosion->AddComponent<LifeController>();
+                        life->lifeTime = 0.15f;
                     }
 
                     //collsion with other objects:
@@ -569,70 +745,146 @@ private:
                 }
                 else
                 {
-                    object.remove = true;
+                    go->remove = true;
                 }
             }
 
-            // Can object be seen?
-            float vecX = object.x - playerX;
-            float vecY = object.y - playerY;
-            float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
-
-            float eyeX = cosf(playerAngle);
-            float eyeY = sinf(playerAngle);
-            float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
-
-            //限制取值范围在+PI与-PI之间
-            //set limit : [-PI, PI]
-            if (objectAngle < -3.14159f)
-                objectAngle += 2.0f * 3.14159f;
-            if (objectAngle > 3.14159f)
-                objectAngle -= 2.0f * 3.14159f;
-
-            bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
-
-            //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
-            //draw object witch is in FOV
-            if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
+            //render:
+            SpriteRenderer* renderer = go->GetComponent<SpriteRenderer>();
+            if (renderer != nullptr && renderer->enable)
             {
-                float objectCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)distanceFromPlayer);
-                float objectFloor = ScreenHeight() - objectCeiling;
-                float objectHeight = objectFloor - objectCeiling;
+                // Can object be seen?
+                float vecX = go->transform->position.x - playerX;
+                float vecY = go->transform->position.y - playerY;
+                float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float objectAspectRatio = (float)object.sprite->Height / (float)object.sprite->Width;
-                float objectWidth = objectHeight / objectAspectRatio;
-                float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
+                float eyeX = cosf(playerAngle);
+                float eyeY = sinf(playerAngle);
+                float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
-                // Draw Lamp:
-                for (float lx = 0; lx < objectWidth; lx++)
+                //限制取值范围在+PI与-PI之间
+                //set limit : [-PI, PI]
+                if (objectAngle < -3.14159f)
+                    objectAngle += 2.0f * 3.14159f;
+                if (objectAngle > 3.14159f)
+                    objectAngle -= 2.0f * 3.14159f;
+
+                if (useOldRaycastObject)
                 {
-                    for (float ly = 0; ly < objectHeight; ly++)
+                    bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
+                    //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+                    //draw object witch is in FOV
+                    if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
                     {
-                        float sampleX = lx / objectWidth;
-                        float sampleY = ly / objectHeight;
-                        wchar_t c = object.sprite->SampleGlyph(sampleX, sampleY);
+                        float objectCeiling = ScreenHeight() / 2.0f - ScreenHeight() / distanceFromPlayer;
+                        float objectFloor = ScreenHeight() - objectCeiling;
+                        float objectHeight = objectFloor - objectCeiling;
 
-                        int nObjectColumn = (int)(middleOfObject + lx - (objectWidth / 2.0f));
+                        float objectAspectRatio = (float)renderer->sprite->Height / (float)renderer->sprite->Width;
+                        float objectWidth = objectHeight / objectAspectRatio;
+                        float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
 
-                        if (nObjectColumn >= 0 && nObjectColumn < ScreenWidth())
+                        // Draw Object:
+                        for (float lx = 0; lx < objectWidth; lx++)
                         {
-                            //enable transparency :)
-                            //we only draw stuffs front of walls:
-                            if (c != L' ' && fDepthBuffer[nObjectColumn] >= distanceFromPlayer)
+                            for (float ly = 0; ly < objectHeight; ly++)
                             {
-                                short att = object.sprite->SampleColour(sampleX, sampleY);
+                                float sampleX = lx / objectWidth;
+                                float sampleY = ly / objectHeight;
+                                wchar_t c = renderer->sprite->SampleGlyph(sampleX, sampleY);
 
-                                ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
-                                ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+                                int x = (int)(middleOfObject + lx - (objectWidth / 2.0f));
+                                int y = (int)(objectCeiling + ly);
 
-                                Color24 pixelColor = palette[foreColor];
-                                UNUSED(backColor);
+                                if (x >= 0 && x < ScreenWidth() && y >= 0 && y < ScreenHeight())
+                                {
+                                    //enable transparency :)
+                                    if (c != L' ')
+                                    {
+                                        short att = renderer->sprite->SampleColour(sampleX, sampleY);
 
-                                Draw(nObjectColumn, (int)(objectCeiling + ly),
-                                    Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+                                        ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                                        ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
 
-                                //update depth buffer(simple fix)
-                                this->fDepthBuffer[nObjectColumn] = distanceFromPlayer;
+                                        Color24 pixelColor = palette[foreColor];
+                                        UNUSED(backColor);
+
+                                        //shade objects:
+                                        Pixel pixel = shade_object(sampleX, sampleY, pixelColor, distanceFromPlayer);
+                                        DepthDraw(x, y, distanceFromPlayer, pixel);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    bool inPlayerFOV = fabs(objectAngle) < (FOV + 1.0f / distanceFromPlayer) / 2.0f;
+                    //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+                    //draw object witch is in FOV
+                    if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
+                    {
+                        // Work out its position on the floor...
+                        olc::vf2d floorPoint;
+
+                        // Horizontal screen location is determined based on object angle relative to camera heading
+                        floorPoint.x = (objectAngle / FOV + 0.5f) * ScreenWidth();
+
+                        // Vertical screen location is projected distance
+                        //floorPoint.y = (ScreenHeight() / 2.0f) + (ScreenHeight() / distanceFromPlayer) / std::cos(objectAngle / 2.0f);
+                        floorPoint.y = ScreenHeight() / 2.0f + ScreenHeight() / distanceFromPlayer;
+
+                        // First we need the objects size...
+                        olc::vf2d objectSize = { 1, 1 };
+                        //olc::vf2d objectSize = { 0.1f, 1.0f };
+
+                        // ...which we can scale into world space (maintaining aspect ratio)...
+                        objectSize *= 2.0f * ScreenHeight();
+
+                        // ...then project into screen space
+                        objectSize /= distanceFromPlayer;
+
+                        // Second we need the objects top left position in screen space...
+                        // ...which is relative to the objects size and assumes the middle of the object is
+                        // the location in world space
+                        olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
+
+                        // Now iterate through the objects screen pixels
+                        for (float y = 0; y < objectSize.y; y++)
+                        {
+                            for (float x = 0; x < objectSize.x; x++)
+                            {
+                                // Create a normalised sample coordinate
+                                float sampleX = x / objectSize.x;
+                                float sampleY = y / objectSize.y;
+
+                                // Calculate screen pixel location
+                                olc::vi2d a = { int(objectTopLeft.x + x), int(objectTopLeft.y + y) };
+
+                                wchar_t c = renderer->sprite->SampleGlyph(sampleX, sampleY);
+
+                                // Check if location is actually on screen (to not go OOB on depth buffer)
+                                if (a.x >= 0 && a.x < ScreenWidth() && a.y >= 0 && a.y < ScreenHeight() && c != L' ')
+                                {
+                                    short att = renderer->sprite->SampleColour(sampleX, sampleY);
+
+                                    ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+                                    ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+                                    Color24 pixelColor = palette[foreColor];
+                                    UNUSED(backColor);
+
+                                    // Get pixel from a suitable texture
+                                    float object_fHeading = 0.0f; //todo
+                                    float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                    if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
+                                    if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
+
+                                    Pixel pixel = shade_object(sampleX, sampleY, pixelColor, distanceFromPlayer);
+                                    // Draw the pixel taking into account the depth buffer
+                                    DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
+                                }
                             }
                         }
                     }
@@ -669,20 +921,30 @@ private:
 
             switch (weapon_current)
             {
-            case 1://rocket launcher (pls make sprite)
-                DisplaySprite(spriteFlower, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 1);
+            case WeaponEnum::DESERT_EAGLE:
+                DisplaySprite(spriteDesertEagle, 140 + int(weapon_Xcof * 4), int(60 - weapon_Ypos / 2), 1);
                 break;
-            case 2://rifle aeksu 971
-                DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(8.0f - weapon_Ypos), 3);
+            case WeaponEnum::AK47:
+                DisplaySprite(spriteAK47, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
                 break;
+            case WeaponEnum::AEK_971: //rifle aeksu 971
+                DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(0 - weapon_Ypos / 2), 3);
+                break;
+            case WeaponEnum::M4A1:
+                DisplaySprite(spriteM4A1, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
+                break;
+                //rocket launcher (pls make sprite)
             }
 
             //draw health bar
-            for (int y = 160, effect = 0; y <= 170; y++, effect++)
+            if (enableBloodBar)
             {
-                for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+                for (int y = 160, effect = 0; y <= 170; y++, effect++)
                 {
-                    Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+                    for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+                    {
+                        Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+                    }
                 }
             }
         }
@@ -938,6 +1200,30 @@ private:
         return pixel;
     }
 
+    //you can add shader code here:
+    Pixel shade_object(float sampleX, float sampleY, Color24 pixelColor, float distance)
+    {
+        Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+
+        //fog:
+        Color24 fogColor(192, 192, 192);
+        float fDistance = 1.0f;
+        fDistance = 1.0f - std::min(distance / 15, 1.0f);
+        float fog = 1.0 - fDistance;
+        pixel.r = fDistance * pixel.r + fog * fogColor.r;
+        pixel.g = fDistance * pixel.g + fog * fogColor.g;
+        pixel.b = fDistance * pixel.b + fog * fogColor.b;
+
+        //distance:
+        float _d = 1.0f;
+        _d = 1.0f - std::min(distance / depth, 0.4f);
+        pixel.r = pixel.r * _d;
+        pixel.g = pixel.g * _d;
+        pixel.b = pixel.b * _d;
+
+        return pixel;
+    }
+
     //legacy function, use shade instead.
     Pixel shadeFloorAndCeiling(Color24 pixelColor)
     {
@@ -952,8 +1238,42 @@ private:
         return pixel;
     }
 
+private:
+    int year;
+    int month;
+    int day;
+    int dayInWeek;
+
+    //todo:
+    bool todayIsChristmas = false;
+    bool boxheadInConsole = false;
+
 public:
-    PixelFPSDemo2()
+    //this function is for Easter eggs:
+    void SetDate(int year, int month, int day, int dayInWeek)
+    {
+        this->year = year;
+        this->month = month;
+        this->day = day;
+        //set right value :)
+        if (dayInWeek == 0) dayInWeek = 7;
+        //[1, 7] => [Monday, Sunday]
+        this->dayInWeek = dayInWeek;
+    }
+
+    void ReadGameSetting()
+    {
+        //read config file:
+        Database database(L"game_setting.txt", L"../../");
+
+        this->enableMouse = database.GetBool(L"useMouse", false);
+        this->__enableMouse = this->enableMouse;
+
+        this->todayIsChristmas = database.GetBool(L"todayIsChristmas", false);
+        this->boxheadInConsole = database.GetBool(L"boxheadInConsole", false);
+    }
+
+    PixelFPSDemo2() : GM(GameManager::Global.GetInstance())
     {
         this->sAppName = "PixelFPS Demo2";
     }
@@ -961,6 +1281,8 @@ public:
     // Called once on application startup, use to load your resources
     bool OnUserCreate() override
     {
+        window = Window(this->__gameWindow);
+
         //create map:
         map += L"################################";
         map += L"#...............#..............#";
@@ -1003,14 +1325,39 @@ public:
         this->spriteFlower = new OLCSprite(L"../../res/flower.spr");
         this->sptireWeapon_aek = new OLCSprite(L"../../res/aeksu_weapon.spr");
         this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
+        this->spriteDesertEagle = new OLCSprite(L"../../res/deagle.spr");
+        this->spriteAK47 = new OLCSprite(L"../../res/ak47.spr");
+        this->spriteM4A1 = new OLCSprite(L"../../res/M4A1.spr");
 
-        listObjects =
-        {
-            sObject(8.5f, 8.5f, this->spriteLamp),
-            sObject(7.5f, 7.5f, this->spriteLamp),
-            sObject(10.5f, 3.5f, this->spriteLamp),
-            //sObject(11.5f, 6.5f, this->spriteFlower),
-        };
+        GameObject* lamp1 = new GameObject();
+        lamp1->transform->position = vf2d(8.5f, 8.5f);
+        lamp1->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+        GameObject* lamp2 = new GameObject();
+        lamp2->transform->position = vf2d(7.5f, 7.5f);
+        lamp2->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+        GameObject* lamp3 = new GameObject();
+        lamp3->transform->position = vf2d(10.5f, 3.5f);
+        lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+        //add weapons:
+        Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+        weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
+
+        Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+        weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
+
+        Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
+        weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
+
+        Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
+        weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
+
+        desertEagle->fire_interval = 0.45f;
+        ak47->fire_interval = 0.1f;
+        aek_971->fire_interval = 0.125f;
+        m4a1->fire_interval = 0.08f;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
@@ -1029,11 +1376,7 @@ public:
         this->palette[ConsoleColor::YELLOW] = { 255, 255, 0 };
         this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
 
-        this->fDepthBuffer = new float[ScreenWidth()];
-        for (size_t i = 0; i < ScreenWidth(); i++)
-        {
-            this->fDepthBuffer[i] = INFINITY;
-        }
+        this->depthBuffer = new float[ScreenWidth() * ScreenHeight()];
 
         //this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
         //this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
@@ -1045,6 +1388,10 @@ public:
         this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
         this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
         this->aekBulletPool = new AudioPool(L"../../res/audios/aek_shot.mp3");
+
+        this->dePool = new AudioPool(L"../../res/audios/weapons/deagle-1.wav");
+        this->ak47Pool = new AudioPool(L"../../res/audios/weapons/ak47-1.wav");
+        this->m4a1Pool = new AudioPool(L"../../res/audios/weapons/m4a1_unsil-1.wav");
 
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
         this->bgm2->Play(false, false);
@@ -1065,13 +1412,6 @@ public:
             simple_ai = new sObject(2, 2, this->spriteFlower);
         }
 
-        //create gameObjects:
-        GameObject* go = new GameObject();
-        auto t = go->AddComponent<Transform>();
-        t->position = vf2d(1, 2);
-        t = go->GetComponent<Transform>();
-        t->position = vf2d(3, 3);
-
         return true;
     }
 
@@ -1080,7 +1420,7 @@ public:
     {
         float deltaTime = fElapsedTime;
 
-        GameManager::Global.GetInstance().Update(deltaTime);
+        Debug::OutputLine(to_wstring(GM.gameObjects.size()));
 
         //ai nav:
         if (enableNav)
@@ -1107,17 +1447,29 @@ public:
 
         update_audio();
 
-        receive_user_input(deltaTime);
+        HWND foreWindow = GetForegroundWindow();
+        if (foreWindow == this->__gameWindow)
+        {
+            receive_user_input(deltaTime);
+        }
 
         render_world(deltaTime);
 
         render_hud(deltaTime);
 
-        //GC for fireball:
-        listObjects.remove_if([](sObject& o)
+        vector<int> readyToDeleteIds;
+        for (auto& item : GM.gameObjects)
+        {
+            if (item.second->remove)
             {
-                return o.remove;
-            });
+                readyToDeleteIds.push_back(item.second->id);
+            }
+        }
+        for (int& id : readyToDeleteIds)
+        {
+            GameObject* go_ref = GM.gameObjects[id];
+            delete go_ref;
+        }
 
         return true;
     }
@@ -1139,8 +1491,11 @@ public:
         delete this->explosionPool;
         delete this->fireBallPool;
         delete this->aekBulletPool;
+        delete this->dePool;
+        delete this->ak47Pool;
+        delete this->m4a1Pool;
 
-        delete[] this->fDepthBuffer;
+        delete[] this->depthBuffer;
 
         return true;
     }

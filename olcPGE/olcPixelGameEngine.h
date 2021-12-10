@@ -1020,6 +1020,11 @@ namespace olc
 	class PixelGameEngine
 	{
 	public:
+		//给PixelFPS专门开的后门
+		bool __enableMouse;
+		HWND __gameWindow;
+
+	public:
 		PixelGameEngine();
 		virtual ~PixelGameEngine();
 	public:
@@ -4799,6 +4804,13 @@ namespace olc
 
 			olc_hWnd = CreateWindowEx(dwExStyle, olcT("OLC_PIXEL_GAME_ENGINE"), olcT(""), dwStyle,
 				vTopLeft.x, vTopLeft.y, width, height, NULL, NULL, GetModuleHandle(nullptr), this);
+
+			if (ptrPGE->__enableMouse)
+			{
+				//DISABLE MOUSE:
+				while (::ShowCursor(false) >= 0);
+				ptrPGE->__gameWindow = olc_hWnd;
+			}
 
 			// Create Keyboard Mapping
 			mapKeys[0x00] = Key::NONE;

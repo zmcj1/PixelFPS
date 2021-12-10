@@ -146,6 +146,7 @@
     <ClCompile Include="Component.cpp" />
     <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="GameObject.cpp" />
+    <ClCompile Include="LifeController.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="olcPixelGameEngine.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
@@ -157,12 +158,15 @@
     <ClInclude Include="Component.hpp" />
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
+    <ClInclude Include="LifeController.hpp" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
+    <ClInclude Include="Resources.hpp" />
     <ClInclude Include="sObject.hpp" />
     <ClInclude Include="SpriteRenderer.hpp" />
     <ClInclude Include="tool.hpp" />
     <ClInclude Include="Transform.hpp" />
+    <ClInclude Include="Weapon.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

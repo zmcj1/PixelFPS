@@ -1,120 +1,138 @@
-﻿//include library:
+﻿#define _CRT_SECURE_NO_WARNINGS
+
+//include library:
 #include "olcPixelGameEngine.h"
 #include "MinConsoleNative.hpp"
 #include <iostream>
+#include <ctime>
 
 using namespace olc;
 using namespace MinConsoleNative;
 using namespace std;
 
 //include current:
+#include "Resources.hpp"
 #include "olcSprite.hpp"
 #include "sObject.hpp"
 #include "tool.hpp"
 #include "PixelFPSDemo2.hpp"
 #include "PixelEditor.hpp"
 
+void Error(const wstring& err_msg)
+{
+    console.WriteLine(err_msg, { 255, 0, 0 });
+    console.ReadLine();
+}
+
 int main()
 {
-    console.SetTitle(L"PixelFPSDemo2 Console");
+    time_t now = time(nullptr);
+    tm* local_time = localtime(&now);
 
-    char input_char = '\0';
-    console.WriteLine(L"welcome to PixelFPSDemo2!", { 255, 75, 43 });
-    console.WriteLine(L"Press 'E' open Editor, Press any other key open Game.", { 107, 198, 237 });
-    cin >> input_char;
+    console.SetTitle(L"PixelFPSDemo2 Launcher");
+    console.WriteLine(L"Today is: year:" + to_wstring(1900 + local_time->tm_year) + L" month:" + to_wstring(local_time->tm_mon + 1) + L" day:" + to_wstring(local_time->tm_mday), { 198, 125, 173 });
+    console.WriteLine();
+    console.WriteLine(L"Welcome to PixelFPSDemo2 Launcher!", { 255, 75, 43 });
+    console.WriteLine(L"Press 'E' open Editor, Press any other key('F') open Game.", { 107, 198, 237 });
 
-    if (tolower(input_char) == 'e')
+    ConsoleKeyInfo keyInfo = console.ReadKey(false);
+    console.WriteLine(L"~:" + String::WcharToWstring(toupper(keyInfo.KeyChar)), { 255, 255, 0 });
+
+    //open editor:
+    if (tolower(keyInfo.KeyChar) == L'e')
     {
-        wstring folderPath = L"../../res/";
+        wstring resFolderPath = L"../../res/";
+        if (!File::Exists(resFolderPath))
+        {
+            resFolderPath = File::GetDirectoryPath() + L"res\\";
+        }
 
-        //choose sprite file:
-        vector<wstring> fileNames = get_all_files_names_within_folder(folderPath, L"spr");
+        vector<wstring> fileNames = File::GetFileNamesWithExtension(resFolderPath, L".spr");
+
+        if (fileNames.size() == 0)
+        {
+            Error(L"Can't find any .spr file in specific folder.");
+            return -1;
+        }
+
         //display all .spr files:
-        cout << "pls choose file:\n";
-        cout << "0.create new file\n";
+        console.WriteLine(L"pls choose file(input number and press 'Enter'):");
+        console.WriteLine(L"0.create new .spr file", { 200, 50, 125 });
+
         for (size_t i = 0; i < fileNames.size(); i++)
         {
-            string fileName = String::WstringToString(fileNames[i]);
-            cout << i + 1 << "." << fileName << "\n";
+            console.WriteLine(to_wstring(i + 1) + L"." + fileNames[i]);
         }
+
         //choose:
-        int chooseIndex;
-        cin >> chooseIndex;
+        wstring inputStr = console.ReadLine();
+        int chooseIndex = String::ToInt(inputStr);
 
         if (chooseIndex >= 0 && chooseIndex < fileNames.size() + 1)
         {
             PixelEditor editor;
-            wstring finalFilePath;
+            editor.workDir = resFolderPath;
 
             //create new file:
             if (chooseIndex == 0)
             {
-                cout << "pls input your new file name(without extension):\n";
-                string newFileName;
-                cin >> newFileName;
+                console.WriteLine(L"pls input your new file name(without extension):");
+
+                wstring newFileName = console.ReadLine();
 
                 //extension check
-                if (newFileName.find(".spr") != -1)
+                if (newFileName.find(L".spr") != -1)
                 {
-                    cout << "dont include extension!\n";
-                    system("pause");
+                    Error(L"dont include extension!");
                     return -1;
                 }
 
-                cout << "pls input sprite width and height(split them by using space):\n";
+                console.WriteLine(L"pls input sprite width and height(split them by using space):");
+
                 cin >> editor.initialSpriteSizeX >> editor.initialSpriteSizeY;
 
-                //combine:
-                finalFilePath = folderPath + String::StringToWstring(newFileName) + L".spr";
+                editor.spritePath = resFolderPath + newFileName + L".spr";
 
-                editor.spriteName = newFileName;
+                editor.spriteName = String::WstringToString(newFileName);
             }
             //open exsist file:
             else
             {
-                finalFilePath = folderPath + fileNames[chooseIndex - 1];
+                editor.spritePath = resFolderPath + fileNames[chooseIndex - 1];
 
                 editor.spriteName = String::WstringToString(fileNames[chooseIndex - 1]);
 
                 //ask for resizing sprite:
-                cout << "do you want to resize sprite? (Y/N)";
-                char yes_or_no_char;
-                cin >> yes_or_no_char;
+                console.WriteLine(L"do you want to resize sprite? (Y/N)");
 
-                bool yes = false;
+                ConsoleKeyInfo consoleKeyInfo = console.ReadKey(false);
+                console.WriteLine(L"~:" + String::WcharToWstring(toupper(consoleKeyInfo.KeyChar)), { 255, 255, 0 });
 
-                if (tolower(yes_or_no_char) == 'y')
+                if (tolower(consoleKeyInfo.KeyChar) == L'y')
                 {
-                    yes = true;
-                }
-                else
-                {
-                    yes = false;
-                }
-
-                if (yes)
-                {
-                    cout << "pls input new size of your sprite:(split size by space)\n";
-                    cout << "you can press X to resize in editor window.\n";
+                    console.WriteLine(L"pls input new size of your sprite:(split size by space)");
+                    console.WriteLine(L"you can press X to resize in editor window.");
                     cin >> editor.resizeSpriteWidth >> editor.resizeSpriteHeight;
                 }
             }
-
-            editor.spritePath = finalFilePath;
 
             if (editor.Construct(320, 180, 4, 4))
                 editor.Start();
         }
         else
         {
-            cout << "incorrect input!\n";
-            system("pause");
+            Error(L"incorrect input!");
             return -1;
         }
     }
     else
     {
         PixelFPSDemo2 game;
+
+        //read config file:
+        game.ReadGameSetting();
+
+        game.SetDate(1900 + local_time->tm_year, local_time->tm_mon + 1, local_time->tm_mday, local_time->tm_wday);
 
         if (game.Construct(320, 180, 4, 4))
             game.Start();
