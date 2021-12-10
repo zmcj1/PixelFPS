@@ -960,15 +960,22 @@ private:
             }
             if (weapon_current == WeaponEnum::AK47)
             {
-                drawPosX = 100 + int(weapon_Xcof * 4);
-                drawPosY = int(-60 - weapon_Ypos);
+                //drawPosX = 100 + int(weapon_Xcof * 4);
+                //drawPosY = int(-60 - weapon_Ypos);
+                //if (enableFlame)
+                //{
+                //    DisplaySprite(spriteExplosion, drawPosX + 35, drawPosY + 150, 2);
+                //}
+
+                drawPosX = 50 + int(weapon_Xcof * 4);
+                drawPosY = int(-120 - weapon_Ypos);
 
                 if (enableFlame)
                 {
-                    DisplaySprite(spriteExplosion, drawPosX + 35, drawPosY + 150, 2);
+                    DisplaySprite(spriteExplosion, drawPosX + 95, drawPosY + 200, 2);
                 }
 
-                DisplaySprite(spriteAK47, drawPosX, drawPosY, 2);
+                DisplaySprite(spriteAK47, drawPosX, drawPosY, 1);
             }
             if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
             {
@@ -1395,7 +1402,7 @@ public:
         this->spriteBullet = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_bullet.spr");
         this->spriteDesertEagle = Resources::Load<OLCSprite>(L"../../", L"res/", L"deagle.spr");
         this->spriteAK47 = Resources::Load<OLCSprite>(L"../../", L"res/", L"ak47.spr");
-        this->spriteM4A1 = Resources::Load<OLCSprite>(L"../../", L"res/", L"M4A1.spr");
+        //this->spriteM4A1 = Resources::Load<OLCSprite>(L"../../", L"res/", L"M4A1.spr");
 
         //load audios:
         this->bgm = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - Laura Plays The Piano.mp3");
