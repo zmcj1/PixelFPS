@@ -52,6 +52,11 @@ private:
     float weapon_Xcof = 1.0f;
     bool bobbing_side = false;
 
+    //muzzle flame:
+    bool enableFlame = false;
+    const float flameInterval = 0.1f;
+    float flameTimer = 0.0f;
+
     //camera:
     const float FOV = 3.14159f / 4; // Field of view
     const float depth = 32.0f;      // Maximum rendering distance
@@ -395,6 +400,18 @@ private:
         Weapon* weapon = weapons[(int)weapon_current];
         //update timer:
         weapon->UpdateWeaponTimer(deltaTime);
+
+        //update muzzle flame:
+        if (enableFlame)
+        {
+            flameTimer += deltaTime;
+            if (flameTimer >= flameInterval)
+            {
+                flameTimer = 0.0f;
+                enableFlame = false;
+            }
+        }
+
         //user input:
         if (!enableMouse && GetKey(Key::SPACE).bHeld || enableMouse && GetMouse(Mouse::LEFT).bHeld)
         {
@@ -440,6 +457,12 @@ private:
                 {
                     //play fire sound:
                     m4a1Pool->PlayOneShot(0.5f);
+                }
+
+                //set muzzle flame timer:
+                if (!enableFlame)
+                {
+                    enableFlame = true;
                 }
             }
         }
@@ -915,27 +938,58 @@ private:
         //draw player dot on the map
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
 
-        //draw weapon
         if (enableHud)
         {
             weapon_Ypos = weapon_Xcof * weapon_Xcof;
 
-            switch (weapon_current)
+            int drawPosX = 0;
+            int drawPosY = 0;
+
+            //draw weapon & draw muzzle flame
+            if (weapon_current == WeaponEnum::DESERT_EAGLE)
             {
-            case WeaponEnum::DESERT_EAGLE:
-                DisplaySprite(spriteDesertEagle, 140 + int(weapon_Xcof * 4), int(60 - weapon_Ypos / 2), 1);
-                break;
-            case WeaponEnum::AK47:
-                DisplaySprite(spriteAK47, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
-                break;
-            case WeaponEnum::AEK_971: //rifle aeksu 971
-                DisplaySprite(sptireWeapon_aek, 200 + int(weapon_Xcof * 4), int(0 - weapon_Ypos / 2), 3);
-                break;
-            case WeaponEnum::M4A1:
-                DisplaySprite(spriteM4A1, 100 + int(weapon_Xcof * 4), int(-60 - weapon_Ypos), 2);
-                break;
-                //rocket launcher (pls make sprite)
+                drawPosX = 140 + int(weapon_Xcof * 4);
+                drawPosY = int(60 - weapon_Ypos / 2);
+
+                if (enableFlame)
+                {
+                    DisplaySprite(spriteExplosion, drawPosX + 13, drawPosY + 38, 2);
+                }
+
+                DisplaySprite(spriteDesertEagle, drawPosX, drawPosY, 1);
             }
+            if (weapon_current == WeaponEnum::AK47)
+            {
+                drawPosX = 100 + int(weapon_Xcof * 4);
+                drawPosY = int(-60 - weapon_Ypos);
+
+                if (enableFlame)
+                {
+                    DisplaySprite(spriteExplosion, drawPosX + 35, drawPosY + 150, 2);
+                }
+
+                DisplaySprite(spriteAK47, drawPosX, drawPosY, 2);
+            }
+            if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
+            {
+                drawPosX = 200 + int(weapon_Xcof * 4);
+                drawPosY = int(0 - weapon_Ypos / 2);
+
+                DisplaySprite(sptireWeapon_aek, drawPosX, drawPosY, 3);
+            }
+            if (weapon_current == WeaponEnum::M4A1)
+            {
+                drawPosX = 100 + int(weapon_Xcof * 4);
+                drawPosY = int(-60 - weapon_Ypos);
+
+                if (enableFlame)
+                {
+                    DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
+                }
+
+                DisplaySprite(spriteM4A1, drawPosX, drawPosY, 2);
+            }
+            //TODO:rocket launcher (pls make sprite)
 
             //draw health bar
             if (enableBloodBar)
