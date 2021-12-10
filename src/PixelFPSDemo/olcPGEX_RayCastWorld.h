@@ -176,7 +176,7 @@ namespace olc
 		public:
 			std::unordered_map<uint32_t, std::shared_ptr<olc::rcw::Object>> mapObjects;
 
-		private:
+		public:
 			// A convenient utility struct to store all the info required to understand how a ray
 			// has hit a specific tile
 			struct sTileHit
@@ -188,9 +188,11 @@ namespace olc
 				Engine::CellSide eSide = Engine::CellSide::North;
 			};
 
+		public:
 			// Cast ray into tile world, and return info about what it hits (if anything)
 			bool CastRayDDA(const olc::vf2d& vOrigin, const olc::vf2d& vDirection, sTileHit& hit);
 
+		private:
 			// Convenient constants in algorithms
 			const olc::vi2d vScreenSize;
 			const olc::vi2d vHalfScreenSize;
