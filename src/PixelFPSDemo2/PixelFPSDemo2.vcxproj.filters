@@ -77,5 +77,8 @@
     <ClInclude Include="Weapon.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="Resources.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

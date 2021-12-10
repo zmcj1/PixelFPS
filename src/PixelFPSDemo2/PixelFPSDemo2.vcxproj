@@ -161,6 +161,7 @@
     <ClInclude Include="LifeController.hpp" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
+    <ClInclude Include="Resources.hpp" />
     <ClInclude Include="sObject.hpp" />
     <ClInclude Include="SpriteRenderer.hpp" />
     <ClInclude Include="tool.hpp" />

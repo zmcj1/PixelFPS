@@ -5,6 +5,7 @@ class PixelEditor : public PixelGameEngine
 {
 public:
     string spriteName = "unknown"; //include extension .spr
+    wstring workDir;
     wstring spritePath;
 
     int initialSpriteSizeX = 32;
@@ -83,8 +84,6 @@ private:
     }
 
 public:
-    const wstring PxsFolder = L"../../res/pxs/";
-
     static wstring GetIndentValue(MinConsoleNative::byte value)
     {
         wstring result;
@@ -244,13 +243,13 @@ public:
             string spriteNameWithoutEx = this->spriteName.substr(0, this->spriteName.find('.'));
             wstring saveFileName = String::StringToWstring(spriteNameWithoutEx) + L".pxs";
 
-            wstring __path = PxsFolder + saveFileName;
+            wstring pxsFilePath = this->workDir + L"/pxs/" + saveFileName;
 
-            if (!File::Exists(__path))
+            if (!File::Exists(pxsFilePath))
             {
-                File::Creat(__path);
+                File::Creat(pxsFilePath);
             }
-            File::WriteAllLines(__path, pxs_lines);
+            File::WriteAllLines(pxsFilePath, pxs_lines);
 
             this->isDirty = false;
         }
