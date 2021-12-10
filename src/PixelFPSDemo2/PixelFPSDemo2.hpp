@@ -20,6 +20,12 @@ private:
     bool useOldRaycastObject = true;
 
 private:
+    //shader setting:
+    bool enableFog = true;
+    bool renderBasedOnDistance = true;
+    bool night = true;
+
+private:
     //map:
     wstring map;
     int mapWidth = 32;
@@ -1233,31 +1239,53 @@ private:
         //pixel.g = pixel.g * fDistance * shadow;
         //pixel.b = pixel.b * fDistance * shadow;
 
-        switch (side)
+        //night:
+        if (night)
         {
-        case CellSide::Bottom:
-        case CellSide::Top:
-            pixel.r = pixel.r * 0.25f;
-            pixel.g = pixel.g * 0.25f;
-            pixel.b = pixel.b * 0.25f;
-            break;
+            switch (side)
+            {
+            case CellSide::Bottom:
+            case CellSide::Top:
+                pixel.r = pixel.r * 0.25f;
+                pixel.g = pixel.g * 0.25f;
+                pixel.b = pixel.b * 0.25f;
+                break;
+            }
         }
 
         //fog:
-        Color24 fogColor(192, 192, 192);
-        float fDistance = 1.0f;
-        fDistance = 1.0f - std::min(distance / 15, 1.0f);
-        float fog = 1.0 - fDistance;
-        pixel.r = fDistance * pixel.r + fog * fogColor.r;
-        pixel.g = fDistance * pixel.g + fog * fogColor.g;
-        pixel.b = fDistance * pixel.b + fog * fogColor.b;
+        if (enableFog)
+        {
+            Color24 fogColor(192, 192, 192);
+            float fDistance = 1.0f;
+            fDistance = 1.0f - std::min(distance / 15, 1.0f);
+            float fog = 1.0 - fDistance;
+            pixel.r = fDistance * pixel.r + fog * fogColor.r;
+            pixel.g = fDistance * pixel.g + fog * fogColor.g;
+            pixel.b = fDistance * pixel.b + fog * fogColor.b;
+        }
 
         //distance:
-        float _d = 1.0f;
-        _d = 1.0f - std::min(distance / depth, 0.4f);
-        pixel.r = pixel.r * _d;
-        pixel.g = pixel.g * _d;
-        pixel.b = pixel.b * _d;
+        if (renderBasedOnDistance)
+        {
+            float _d = 1.0f;
+            _d = 1.0f - std::min(distance / depth, 0.4f);
+            pixel.r = pixel.r * _d;
+            pixel.g = pixel.g * _d;
+            pixel.b = pixel.b * _d;
+        }
+
+        //point lights:
+        vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+        vf2d playerPos(playerX, playerY);
+        float distanceToPlayer = (playerPos - pixelPos).mag();
+
+        if (distanceToPlayer)
+        {
+            //pixel.r = pixel.r * 2.0f;
+            //pixel.g = pixel.g * 2.0f;
+            //pixel.b = pixel.b * 2.0f;
+        }
 
         return pixel;
     }
@@ -1268,20 +1296,26 @@ private:
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
         //fog:
-        Color24 fogColor(192, 192, 192);
-        float fDistance = 1.0f;
-        fDistance = 1.0f - std::min(distance / 15, 1.0f);
-        float fog = 1.0 - fDistance;
-        pixel.r = fDistance * pixel.r + fog * fogColor.r;
-        pixel.g = fDistance * pixel.g + fog * fogColor.g;
-        pixel.b = fDistance * pixel.b + fog * fogColor.b;
+        if (enableFog)
+        {
+            Color24 fogColor(192, 192, 192);
+            float fDistance = 1.0f;
+            fDistance = 1.0f - std::min(distance / 15, 1.0f);
+            float fog = 1.0 - fDistance;
+            pixel.r = fDistance * pixel.r + fog * fogColor.r;
+            pixel.g = fDistance * pixel.g + fog * fogColor.g;
+            pixel.b = fDistance * pixel.b + fog * fogColor.b;
+        }
 
         //distance:
-        float _d = 1.0f;
-        _d = 1.0f - std::min(distance / depth, 0.4f);
-        pixel.r = pixel.r * _d;
-        pixel.g = pixel.g * _d;
-        pixel.b = pixel.b * _d;
+        if (renderBasedOnDistance)
+        {
+            float _d = 1.0f;
+            _d = 1.0f - std::min(distance / depth, 0.4f);
+            pixel.r = pixel.r * _d;
+            pixel.g = pixel.g * _d;
+            pixel.b = pixel.b * _d;
+        }
 
         return pixel;
     }
