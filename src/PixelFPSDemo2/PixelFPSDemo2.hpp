@@ -972,7 +972,7 @@ private:
 
                 if (enableFlame)
                 {
-                    DisplaySprite(spriteExplosion, drawPosX + 95, drawPosY + 200, 2);
+                    DisplaySprite(spriteExplosion, drawPosX + 95, drawPosY + 205, 2);
                 }
 
                 DisplaySprite(spriteAK47, drawPosX, drawPosY, 1);
