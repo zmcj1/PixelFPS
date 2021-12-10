@@ -4,4 +4,4 @@ useMouse = true
 todayIsChristmas = false
 
 //todo:
-boxheadInConsole = false
+boxheadInConsole = true

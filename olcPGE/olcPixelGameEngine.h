@@ -4805,11 +4805,12 @@ namespace olc
 			olc_hWnd = CreateWindowEx(dwExStyle, olcT("OLC_PIXEL_GAME_ENGINE"), olcT(""), dwStyle,
 				vTopLeft.x, vTopLeft.y, width, height, NULL, NULL, GetModuleHandle(nullptr), this);
 
+			ptrPGE->__gameWindow = olc_hWnd;
+
 			if (ptrPGE->__enableMouse)
 			{
 				//DISABLE MOUSE:
 				while (::ShowCursor(false) >= 0);
-				ptrPGE->__gameWindow = olc_hWnd;
 			}
 
 			// Create Keyboard Mapping

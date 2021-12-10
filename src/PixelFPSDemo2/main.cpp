@@ -38,15 +38,15 @@ int main()
     ConsoleKeyInfo keyInfo = console.ReadKey(false);
     console.WriteLine(L"~:" + String::WcharToWstring(toupper(keyInfo.KeyChar)), { 255, 255, 0 });
 
+    wstring resFolderPath = L"../../res/";
+    if (!File::Exists(resFolderPath))
+    {
+        resFolderPath = File::GetDirectoryPath() + L"res\\";
+    }
+
     //open editor:
     if (tolower(keyInfo.KeyChar) == L'e')
     {
-        wstring resFolderPath = L"../../res/";
-        if (!File::Exists(resFolderPath))
-        {
-            resFolderPath = File::GetDirectoryPath() + L"res\\";
-        }
-
         vector<wstring> fileNames = File::GetFileNamesWithExtension(resFolderPath, L".spr");
 
         if (fileNames.size() == 0)

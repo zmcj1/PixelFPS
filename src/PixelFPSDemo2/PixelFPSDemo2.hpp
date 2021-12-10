@@ -10,6 +10,7 @@
 #include "GameManager.hpp"
 #include "Weapon.hpp"
 #include "Input.hpp" //mouse support
+#include "Resources.hpp" //load
 #include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
@@ -1263,14 +1264,27 @@ public:
 
     void ReadGameSetting()
     {
-        //read config file:
-        Database database(L"game_setting.txt", L"../../");
+        Database* database = nullptr;
 
-        this->enableMouse = database.GetBool(L"useMouse", false);
+        wstring relativePath = L"../../game_setting.txt";
+        //find relative path first, then in exe folder.
+        //read config file, if its not exist, create one.
+        if (File::Exists(relativePath))
+        {
+            database = new Database(L"game_setting.txt", L"../../");
+        }
+        else
+        {
+            database = new Database(L"game_setting.txt");
+        }
+
+        this->enableMouse = database->GetBool(L"useMouse", false);
         this->__enableMouse = this->enableMouse;
 
-        this->todayIsChristmas = database.GetBool(L"todayIsChristmas", false);
-        this->boxheadInConsole = database.GetBool(L"boxheadInConsole", false);
+        this->todayIsChristmas = database->GetBool(L"todayIsChristmas", false);
+        this->boxheadInConsole = database->GetBool(L"boxheadInConsole", false);
+
+        delete database;
     }
 
     PixelFPSDemo2() : GM(GameManager::Global.GetInstance())
@@ -1317,17 +1331,34 @@ public:
         map += L"#..............##..............#";
         map += L"################################";
 
-        //load res:
-        this->spriteWall = new OLCSprite(L"../../res/fps_wall1.spr");
-        this->spriteLamp = new OLCSprite(L"../../res/fps_lamp1.spr");
-        this->spriteFireBall = new OLCSprite(L"../../res/fps_fireball1.spr");
-        this->spriteExplosion = new OLCSprite(L"../../res/fps_explosion.spr");
-        this->spriteFlower = new OLCSprite(L"../../res/flower.spr");
-        this->sptireWeapon_aek = new OLCSprite(L"../../res/aeksu_weapon.spr");
-        this->spriteBullet = new OLCSprite(L"../../res/fps_bullet.spr");
-        this->spriteDesertEagle = new OLCSprite(L"../../res/deagle.spr");
-        this->spriteAK47 = new OLCSprite(L"../../res/ak47.spr");
-        this->spriteM4A1 = new OLCSprite(L"../../res/M4A1.spr");
+        //load sprites:
+        this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
+        this->spriteLamp = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_lamp1.spr");
+        this->spriteFireBall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_fireball1.spr");
+        this->spriteExplosion = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_explosion.spr");
+        this->spriteFlower = Resources::Load<OLCSprite>(L"../../", L"res/", L"flower.spr");
+        this->sptireWeapon_aek = Resources::Load<OLCSprite>(L"../../", L"res/", L"aeksu_weapon.spr");
+        this->spriteBullet = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_bullet.spr");
+        this->spriteDesertEagle = Resources::Load<OLCSprite>(L"../../", L"res/", L"deagle.spr");
+        this->spriteAK47 = Resources::Load<OLCSprite>(L"../../", L"res/", L"ak47.spr");
+        this->spriteM4A1 = Resources::Load<OLCSprite>(L"../../", L"res/", L"M4A1.spr");
+
+        //load audios:
+        this->bgm = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - Laura Plays The Piano.mp3");
+        this->bgm2 = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - True.mp3");
+        this->explosionSound = Resources::Load<Audio>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
+        this->fireBallSound = Resources::Load<Audio>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
+
+        this->explosionPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
+        this->fireBallPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
+        this->aekBulletPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"aek_shot.mp3");
+        this->dePool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"deagle-1.wav");
+        this->ak47Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"ak47-1.wav");
+        this->m4a1Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"m4a1_unsil-1.wav");
+
+        //play bgm:
+        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
+        this->bgm2->Play(false, false);
 
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
@@ -1377,24 +1408,6 @@ public:
         this->palette[ConsoleColor::WHITE] = { 255, 255, 255 };
 
         this->depthBuffer = new float[ScreenWidth() * ScreenHeight()];
-
-        //this->bgm = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Normal Fight.mp3");
-        //this->bgm2 = new Audio(L"../../res/audios/[CSO] Zombie Scenario - Round Start.mp3");
-        this->bgm = new Audio(L"../../res/audios/Silent Hill 2 OST - Laura Plays The Piano.mp3");
-        this->bgm2 = new Audio(L"../../res/audios/Silent Hill 2 OST - True.mp3");
-        this->explosionSound = new Audio(L"../../res/audios/548_Effect.Explosion.wav.mp3");
-        this->fireBallSound = new Audio(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
-
-        this->explosionPool = new AudioPool(L"../../res/audios/548_Effect.Explosion.wav.mp3");
-        this->fireBallPool = new AudioPool(L"../../res/audios/560_Weapon.Rocket.Fire.wav.mp3");
-        this->aekBulletPool = new AudioPool(L"../../res/audios/aek_shot.mp3");
-
-        this->dePool = new AudioPool(L"../../res/audios/weapons/deagle-1.wav");
-        this->ak47Pool = new AudioPool(L"../../res/audios/weapons/ak47-1.wav");
-        this->m4a1Pool = new AudioPool(L"../../res/audios/weapons/m4a1_unsil-1.wav");
-
-        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
-        this->bgm2->Play(false, false);
 
         //set obstacles:
         if (this->enableNav)
