@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../../olcPGE/;../../mylib/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../asio-1.20.0_include/;../../olcPGE/;../../mylib/include/</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
@@ -167,6 +167,7 @@
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
     <ClInclude Include="LifeController.hpp" />
+    <ClInclude Include="olcPGEX_Network.h" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
     <ClInclude Include="PointLight.hpp" />

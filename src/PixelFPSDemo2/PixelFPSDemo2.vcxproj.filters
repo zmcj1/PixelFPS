@@ -104,5 +104,8 @@
     <ClInclude Include="EasyBMP_VariousBMPutilities.h">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="olcPGEX_Network.h">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
