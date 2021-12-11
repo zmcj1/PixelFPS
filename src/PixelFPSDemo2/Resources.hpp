@@ -26,4 +26,39 @@ public:
         T* instance = new T(path);
         return instance;
     }
+
+    template<typename T> static T* Load(const string& relativePath, const string& resFolderPath, const string& fileName)
+    {
+        string path;
+        string absResFolderPath = relativePath + resFolderPath;
+
+        if (File::Exists(String::StringToWstring(absResFolderPath)))
+        {
+            path = absResFolderPath + fileName;
+        }
+        else
+        {
+            path = String::WstringToString(File::GetDirectoryPath()) + resFolderPath + fileName;
+        }
+
+        T* instance = new T(path);
+        return instance;
+    }
+
+    static string GetPath(const string& relativePath, const string& resFolderPath, const string& fileName)
+    {
+        string path;
+        string absResFolderPath = relativePath + resFolderPath;
+        if (File::Exists(String::StringToWstring(absResFolderPath)))
+        {
+            path = absResFolderPath + fileName;
+        }
+        else
+        {
+            path = String::WstringToString(File::GetDirectoryPath()) + resFolderPath + fileName;
+        }
+        return path;
+    }
+
+    //TODO GetPathW
 };

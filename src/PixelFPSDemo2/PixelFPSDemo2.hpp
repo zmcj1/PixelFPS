@@ -30,6 +30,7 @@ private:
 private:
     //BMP:
     BMP* awp_bmp = nullptr;
+    BMP* m4a1_bmp = nullptr;
 
 private:
     //map:
@@ -58,8 +59,9 @@ private:
     unordered_map<int, Weapon*> weapons;
 
     //hud
-    bool enableHud = true;
+    bool enableWeaponHud = true;
     bool enableBloodBar = false;
+
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
     bool bobbing_side = false;
@@ -153,6 +155,25 @@ private:
                 UNUSED(backColor);
 
                 Draw(x + j, y + i, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
+            }
+        }
+    }
+
+    void DrawBMP(BMP* bmp, int posX, int posY)
+    {
+        for (size_t y = 0; y < bmp->TellHeight(); y++)
+        {
+            for (size_t x = 0; x < bmp->TellWidth(); x++)
+            {
+                RGBApixel color = bmp->GetPixel(x, y);
+
+                //treat pure white pixel as alpha transparency.
+                if (color.Red == 255 && color.Green == 255 && color.Blue == 255)
+                {
+                    continue;
+                }
+
+                Draw(posX + x, posY + y, Pixel(color.Red, color.Green, color.Blue));
             }
         }
     }
@@ -947,7 +968,20 @@ private:
         //draw player dot on the map
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
 
-        if (enableHud)
+        //draw health bar
+        if (enableBloodBar)
+        {
+            for (int y = 160, effect = 0; y <= 170; y++, effect++)
+            {
+                for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
+                {
+                    Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
+                }
+            }
+        }
+
+        //draw .spr weapon hud:(disabled)
+        if (enableWeaponHud && false)
         {
             weapon_Ypos = weapon_Xcof * weapon_Xcof;
 
@@ -1006,32 +1040,67 @@ private:
                 DisplaySprite(spriteM4A1, drawPosX, drawPosY, 2);
             }
             //TODO:rocket launcher (pls make sprite)
-
-            //draw health bar
-            if (enableBloodBar)
-            {
-                for (int y = 160, effect = 0; y <= 170; y++, effect++)
-                {
-                    for (int x = 200 - effect; x <= 200 - effect + playerHealth; x++)
-                    {
-                        Draw(x, y, Pixel(55 + (playerHealth * 2), 0, 0));
-                    }
-                }
-            }
         }
 
-        //draw bmp:
-        return;
-        for (size_t y = 0; y < awp_bmp->TellHeight(); y++)
+        //draw .bmp weapon hud:(enabled)
+        if (enableWeaponHud)
         {
-            for (size_t x = 0; x < awp_bmp->TellWidth(); x++)
+            weapon_Ypos = weapon_Xcof * weapon_Xcof;
+
+            int drawPosX = 0;
+            int drawPosY = 0;
+
+            //draw weapon & draw muzzle flame
+            if (weapon_current == WeaponEnum::DESERT_EAGLE)
             {
-                RGBApixel color = this->awp_bmp->GetPixel(x, y);
-                if (color.Red == 255 && color.Green == 255 && color.Blue == 255)
+                drawPosX = 140 + int(weapon_Xcof * 4);
+                drawPosY = int(60 - weapon_Ypos / 2);
+
+                if (enableFlame)
                 {
-                    continue;
+                    DisplaySprite(spriteExplosion, drawPosX + 13, drawPosY + 38, 2);
                 }
-                Draw(x, y, Pixel(color.Red, color.Green, color.Blue));
+
+                DisplaySprite(spriteDesertEagle, drawPosX, drawPosY, 1);
+            }
+            if (weapon_current == WeaponEnum::AK47)
+            {
+                //drawPosX = 100 + int(weapon_Xcof * 4);
+                //drawPosY = int(-60 - weapon_Ypos);
+                //if (enableFlame)
+                //{
+                //    DisplaySprite(spriteExplosion, drawPosX + 35, drawPosY + 150, 2);
+                //}
+
+                drawPosX = 50 + int(weapon_Xcof * 4);
+                drawPosY = int(-120 - weapon_Ypos);
+
+                if (enableFlame)
+                {
+                    DisplaySprite(spriteExplosion, drawPosX + 95, drawPosY + 205, 2);
+                }
+
+                DisplaySprite(spriteAK47, drawPosX, drawPosY, 1);
+            }
+            if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
+            {
+                drawPosX = 200 + int(weapon_Xcof * 4);
+                drawPosY = int(0 - weapon_Ypos / 2);
+
+                DisplaySprite(sptireWeapon_aek, drawPosX, drawPosY, 3);
+            }
+            if (weapon_current == WeaponEnum::M4A1)
+            {
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
+
+                if (enableFlame)
+                {
+                    //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
+                }
+
+                //DisplaySprite(spriteM4A1, drawPosX, drawPosY, 2);
+                DrawBMP(this->m4a1_bmp, drawPosX, drawPosY);
             }
         }
     }
@@ -1438,9 +1507,12 @@ public:
         map += L"#..............##..............#";
         map += L"################################";
 
-        //load BMP:
         this->awp_bmp = new BMP();
-        this->awp_bmp->ReadFromFile("../../res/bmp/awp.bmp");
+        this->m4a1_bmp = new BMP();
+
+        //load BMP:
+        this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
+        this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -1606,6 +1678,7 @@ public:
     bool OnUserDestroy() override
     {
         delete this->awp_bmp;
+        delete this->m4a1_bmp;
 
         delete this->spriteWall;
         delete this->spriteLamp;
