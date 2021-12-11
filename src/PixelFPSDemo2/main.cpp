@@ -3,7 +3,7 @@
 //include library:
 #include "olcPixelGameEngine.h"
 #include "MinConsoleNative.hpp"
-#include "BMP.h"
+#include "EasyBMP.h"
 #include <iostream>
 #include <ctime>
 

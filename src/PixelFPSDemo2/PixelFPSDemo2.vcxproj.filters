@@ -42,6 +42,9 @@
     <ClCompile Include="PointLight.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="EasyBMP.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -87,6 +90,18 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="BMP.h">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="EasyBMP.h">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="EasyBMP_BMP.h">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="EasyBMP_DataStructures.h">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="EasyBMP_VariousBMPutilities.h">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>

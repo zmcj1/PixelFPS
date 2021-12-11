@@ -145,6 +145,7 @@
   <ItemGroup>
     <ClCompile Include="Collider.cpp" />
     <ClCompile Include="Component.cpp" />
+    <ClCompile Include="EasyBMP.cpp" />
     <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="LifeController.cpp" />
@@ -159,6 +160,10 @@
     <ClInclude Include="BMP.h" />
     <ClInclude Include="Collider.hpp" />
     <ClInclude Include="Component.hpp" />
+    <ClInclude Include="EasyBMP.h" />
+    <ClInclude Include="EasyBMP_BMP.h" />
+    <ClInclude Include="EasyBMP_DataStructures.h" />
+    <ClInclude Include="EasyBMP_VariousBMPutilities.h" />
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
     <ClInclude Include="LifeController.hpp" />

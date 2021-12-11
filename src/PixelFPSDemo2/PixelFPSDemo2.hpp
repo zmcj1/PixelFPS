@@ -1021,12 +1021,17 @@ private:
         }
 
         //draw bmp:
-        for (size_t y = 0; y < this->awp_bmp->bmp_info_header.height; y++)
+        return;
+        for (size_t y = 0; y < awp_bmp->TellHeight(); y++)
         {
-            for (size_t x = 0; x < this->awp_bmp->bmp_info_header.width; x++)
+            for (size_t x = 0; x < awp_bmp->TellWidth(); x++)
             {
-                Color32 color = getColorFromBMP(*this->awp_bmp, x, y);
-                Draw(x, y, Pixel(color.r, color.g, color.b));
+                RGBApixel color = this->awp_bmp->GetPixel(x, y);
+                if (color.Red == 255 && color.Green == 255 && color.Blue == 255)
+                {
+                    continue;
+                }
+                Draw(x, y, Pixel(color.Red, color.Green, color.Blue));
             }
         }
     }
@@ -1434,7 +1439,8 @@ public:
         map += L"################################";
 
         //load BMP:
-        this->awp_bmp = new BMP("../../res/bmp/awp.bmp");
+        this->awp_bmp = new BMP();
+        this->awp_bmp->ReadFromFile("../../res/bmp/awp.bmp");
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
