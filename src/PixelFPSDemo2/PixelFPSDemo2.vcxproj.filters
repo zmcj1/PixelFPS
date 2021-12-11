@@ -86,5 +86,8 @@
     <ClInclude Include="PointLight.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="BMP.h">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

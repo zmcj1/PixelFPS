@@ -156,6 +156,7 @@
     <ClCompile Include="Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BMP.h" />
     <ClInclude Include="Collider.hpp" />
     <ClInclude Include="Component.hpp" />
     <ClInclude Include="GameManager.hpp" />
