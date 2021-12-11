@@ -114,6 +114,7 @@ private:
     AudioPool* dePool = nullptr;
     AudioPool* ak47Pool = nullptr;
     AudioPool* m4a1Pool = nullptr;
+    AudioPool* awpPool = nullptr;
 
     //obstacles:
     std::vector<Vector2> obstacles;
@@ -199,6 +200,7 @@ private:
         dePool->Clean();
         ak47Pool->Clean();
         m4a1Pool->Clean();
+        awpPool->Clean();
     }
 
     void clamp_mouse_in_client()
@@ -428,6 +430,10 @@ private:
         {
             weapon_current = WeaponEnum::M4A1;
         }
+        if (GetKey(Key::K5).bPressed)
+        {
+            weapon_current = WeaponEnum::AWP;
+        }
 
         //fire:
         Weapon* weapon = weapons[(int)weapon_current];
@@ -455,21 +461,17 @@ private:
                 //set position:
                 bullet->transform->position = vf2d(playerX, playerY);
 
-                //make noise:
-                float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                float speed = 20;
-                float vx = cosf(playerAngle + fNoise) * speed;
-                float vy = sinf(playerAngle + fNoise) * speed;
-
-                //set velocity:
-                bullet->transform->velocity = vf2d(vx, vy);
+                //add collider:
+                bullet->AddComponent<Collider>();
 
                 //add sprite:
                 SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
                 renderer->sprite = this->spriteBullet;
 
-                //add collider:
-                bullet->AddComponent<Collider>();
+                //make noise:
+                float noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+                //bullet speed:
+                float bulletSpeed = 20;
 
                 if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
                 {
@@ -491,6 +493,18 @@ private:
                     //play fire sound:
                     m4a1Pool->PlayOneShot(0.5f);
                 }
+                if (weapon->weapon_enum == WeaponEnum::AWP)
+                {
+                    bulletSpeed = 35.0f;
+                    noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.05f;
+                    awpPool->PlayOneShot(0.5f);
+                }
+
+                float vx = cosf(playerAngle + noise) * bulletSpeed;
+                float vy = sinf(playerAngle + noise) * bulletSpeed;
+
+                //set velocity:
+                bullet->transform->velocity = vf2d(vx, vy);
 
                 //set muzzle flame timer:
                 if (!enableFlame)
@@ -1102,6 +1116,18 @@ private:
                 //DisplaySprite(spriteM4A1, drawPosX, drawPosY, 2);
                 DrawBMP(this->m4a1_bmp, drawPosX, drawPosY);
             }
+            if (weapon_current == WeaponEnum::AWP)
+            {
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
+
+                if (enableFlame)
+                {
+                    //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
+                }
+
+                DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+            }
         }
     }
 
@@ -1538,6 +1564,7 @@ public:
         this->dePool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"deagle-1.wav");
         this->ak47Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"ak47-1.wav");
         this->m4a1Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"m4a1_unsil-1.wav");
+        this->awpPool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"awp1.wav");
 
         //play bgm:
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
@@ -1572,10 +1599,14 @@ public:
         Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
         weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
 
+        Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
+        weapons.insert_or_assign((int)awp->weapon_enum, awp);
+
         desertEagle->fire_interval = 0.45f;
         ak47->fire_interval = 0.1f;
         aek_971->fire_interval = 0.125f;
         m4a1->fire_interval = 0.08f;
+        awp->fire_interval = 1.5f;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
@@ -1697,6 +1728,7 @@ public:
         delete this->dePool;
         delete this->ak47Pool;
         delete this->m4a1Pool;
+        delete this->awpPool;
 
         delete[] this->depthBuffer;
 
