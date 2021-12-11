@@ -117,6 +117,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../../olcPGE/;../../mylib/include/</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,11 +150,13 @@
     <ClCompile Include="LifeController.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="olcPixelGameEngine.cpp" />
+    <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
     <ClCompile Include="tool.cpp" />
     <ClCompile Include="Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BMP.h" />
     <ClInclude Include="Collider.hpp" />
     <ClInclude Include="Component.hpp" />
     <ClInclude Include="GameManager.hpp" />
@@ -161,6 +164,7 @@
     <ClInclude Include="LifeController.hpp" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
+    <ClInclude Include="PointLight.hpp" />
     <ClInclude Include="Resources.hpp" />
     <ClInclude Include="sObject.hpp" />
     <ClInclude Include="SpriteRenderer.hpp" />
