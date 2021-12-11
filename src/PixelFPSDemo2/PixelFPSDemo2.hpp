@@ -28,6 +28,10 @@ private:
     bool night = true;
 
 private:
+    //BMP:
+    BMP* awp_bmp = nullptr;
+
+private:
     //map:
     wstring map;
     int mapWidth = 32;
@@ -1016,6 +1020,20 @@ private:
             }
         }
 
+        //draw bmp:
+        return;
+        for (size_t y = 0; y < awp_bmp->TellHeight(); y++)
+        {
+            for (size_t x = 0; x < awp_bmp->TellWidth(); x++)
+            {
+                RGBApixel color = this->awp_bmp->GetPixel(x, y);
+                if (color.Red == 255 && color.Green == 255 && color.Blue == 255)
+                {
+                    continue;
+                }
+                Draw(x, y, Pixel(color.Red, color.Green, color.Blue));
+            }
+        }
     }
 
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
@@ -1420,6 +1438,10 @@ public:
         map += L"#..............##..............#";
         map += L"################################";
 
+        //load BMP:
+        this->awp_bmp = new BMP();
+        this->awp_bmp->ReadFromFile("../../res/bmp/awp.bmp");
+
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
         this->spriteLamp = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_lamp1.spr");
@@ -1583,6 +1605,8 @@ public:
     // Called once on application termination, so you can be one clean coder
     bool OnUserDestroy() override
     {
+        delete this->awp_bmp;
+
         delete this->spriteWall;
         delete this->spriteLamp;
         delete this->spriteFireBall;

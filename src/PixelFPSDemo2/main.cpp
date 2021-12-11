@@ -3,7 +3,7 @@
 //include library:
 #include "olcPixelGameEngine.h"
 #include "MinConsoleNative.hpp"
-#include "BMP.h"
+#include "EasyBMP.h"
 #include <iostream>
 #include <ctime>
 
@@ -27,9 +27,6 @@ void Error(const wstring& err_msg)
 
 int main()
 {
-    BMP awp_bmp("../../res/bmp/awp.bmp");
-
-
     time_t now = time(nullptr);
     tm* local_time = localtime(&now);
 

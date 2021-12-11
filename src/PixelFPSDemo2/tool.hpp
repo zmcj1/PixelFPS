@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include "olcPixelGameEngine.h"
+#include "BMP.h"
+#include "MinConsoleNative.hpp"
 #include <Windows.h>
 #include <string>
 #include <vector>
@@ -25,3 +27,35 @@ constexpr const T& clamp(const T& v, const T& lo, const T& hi)
     assert(!(hi < lo));
     return v < lo ? lo : hi < v ? hi : v;
 }
+
+//inline Color32 getColorFromBMP(const BMP& bmp, int x, int y)
+//{
+//    if (x > (uint32_t)bmp.bmp_info_header.width || y > (uint32_t)bmp.bmp_info_header.height)
+//    {
+//        throw std::runtime_error("The region does not fit in the image!");
+//    }
+//
+//    uint32_t channels = bmp.bmp_info_header.bit_count / 8;
+//
+//    Color32 color;
+//
+//    color.b = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 0];
+//    color.g = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 1];
+//    color.r = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 2];
+//    //color.a = 255;
+//    if (channels == 4)
+//    {
+//        color.a = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 3];
+//    }
+//
+//    //color.b = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 0];
+//    //color.g = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 1];
+//    //color.r = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 2];
+//    //color.a = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 3];
+//    //if (channels == 4)
+//    //{
+//    //    color.a = bmp.data[channels * (y * bmp.bmp_info_header.width + x) + 3];
+//    //}
+//
+//    return color;
+//}
