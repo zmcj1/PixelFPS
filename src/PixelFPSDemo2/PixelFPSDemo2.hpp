@@ -11,6 +11,7 @@
 #include "Weapon.hpp"
 #include "Input.hpp" //mouse support
 #include "Resources.hpp" //load
+#include "tool.hpp"
 #include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
@@ -669,7 +670,6 @@ private:
                     float planeSampleY = planePoint.y - planeTileY;
 
                     Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ);
-                    //Pixel pixel = shadeFloorAndCeiling(Color24(0, 0, 255));
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -687,7 +687,6 @@ private:
                         Color24 pixelColor = palette[foreColor];
                         UNUSED(backColor);
 
-                        //Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
                         Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall);
                         DepthDraw(x, y, distanceToWall * cosf(diffAngle), pixel);
                     }
@@ -711,7 +710,6 @@ private:
                     float planeSampleY = planePoint.y - planeTileY;
 
                     Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ);
-                    //Pixel pixel = shadeFloorAndCeiling(Color24(0, 128, 0));
                     Draw(x, y, pixel);
                 }
             }
@@ -840,7 +838,7 @@ private:
                                         UNUSED(backColor);
 
                                         //shade objects:
-                                        Pixel pixel = shade_object(sampleX, sampleY, pixelColor, distanceFromPlayer);
+                                        Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer);
                                         DepthDraw(x, y, distanceFromPlayer, pixel);
                                     }
                                 }
@@ -911,7 +909,7 @@ private:
                                     if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                     if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
-                                    Pixel pixel = shade_object(sampleX, sampleY, pixelColor, distanceFromPlayer);
+                                    Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer);
                                     // Draw the pixel taking into account the depth buffer
                                     DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
                                 }
@@ -1199,46 +1197,6 @@ private:
 
         float shadow = 1.0f;
 
-        ////point light:
-        //switch (side)
-        //{
-        //case CellSide::Top:
-        //    pixel.r = pixel.r * 0.5f;
-        //    pixel.g = pixel.g * 0.5f;
-        //    pixel.b = pixel.b * 0.5f;
-        //    break;
-        //default:
-        //    vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-        //    vf2d playerPos(playerX, playerY);
-        //    float distanceToPlayer = (playerPos - pixelPos).mag();
-        //    if (distanceToPlayer > 5)
-        //    {
-        //        pixel.r = pixel.r * 0.5f;
-        //        pixel.g = pixel.g * 0.5f;
-        //        pixel.b = pixel.b * 0.5f;
-        //    }
-        //    break;
-        //}
-
-        //based on distance between player and pixel:
-        //vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-        //vf2d flowerPos(playerX, playerY);
-        //float distanceToFlower = (flowerPos - pixelPos).mag();
-        //float flowerLight = max(0.2f, 1.0f - min(distanceToFlower / 5, 1.0f));
-        //pixel.r = pixel.r * flowerLight;
-        //pixel.g = pixel.g * flowerLight;
-        //pixel.b = pixel.b * flowerLight;
-
-        //directional light and distance:
-        //float fDistance = 1.0f;
-        //if (distance > 5)
-        //{
-        //    //fDistance = 1.0f - std::min(distance / depth, 1.0f);
-        //}
-        //pixel.r = pixel.r * fDistance * shadow;
-        //pixel.g = pixel.g * fDistance * shadow;
-        //pixel.b = pixel.b * fDistance * shadow;
-
         //night:
         if (night)
         {
@@ -1279,19 +1237,19 @@ private:
         vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
         vf2d playerPos(playerX, playerY);
         float distanceToPlayer = (playerPos - pixelPos).mag();
-
-        if (distanceToPlayer)
+        if (side != CellSide::Top)
         {
-            //pixel.r = pixel.r * 2.0f;
-            //pixel.g = pixel.g * 2.0f;
-            //pixel.b = pixel.b * 2.0f;
+            float _m = max(0.0f, 1.0f - min(distanceToPlayer / 10, 1.0f));
+            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
         }
 
         return pixel;
     }
 
     //you can add shader code here:
-    Pixel shade_object(float sampleX, float sampleY, Color24 pixelColor, float distance)
+    Pixel shade_object(int mapPosX, int mapPosY, float sampleX, float sampleY, Color24 pixelColor, float distance)
     {
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
@@ -1316,6 +1274,15 @@ private:
             pixel.g = pixel.g * _d;
             pixel.b = pixel.b * _d;
         }
+
+        //point lights:
+        vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+        vf2d playerPos(playerX, playerY);
+        float distanceToPlayer = (playerPos - pixelPos).mag();
+        float _m = max(0.0f, 1.0f - min(distanceToPlayer / 10, 1.0f));
+        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
 
         return pixel;
     }
