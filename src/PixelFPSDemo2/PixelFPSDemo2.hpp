@@ -12,6 +12,7 @@
 #include "Input.hpp" //mouse support
 #include "Resources.hpp" //load
 #include "tool.hpp"
+#include "PointLight.hpp" //point light
 #include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
@@ -1234,15 +1235,28 @@ private:
         }
 
         //point lights:
-        vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-        vf2d playerPos(playerX, playerY);
-        float distanceToPlayer = (playerPos - pixelPos).mag();
+        return pixel;
         if (side != CellSide::Top)
         {
-            float _m = max(0.0f, 1.0f - min(distanceToPlayer / 10, 1.0f));
-            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+            vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+            //遍历所有点光源组件:
+            for (auto& item : GM.gameObjects)
+            {
+                GameObject* go = item.second;
+
+                if (!go->active) continue;
+                if (go->remove) continue;
+
+                PointLight* pointLight = go->GetComponent<PointLight>();
+                if (pointLight != nullptr && pointLight->enable)
+                {
+                    float distanceToPointLight = (go->transform->position - pixelPos).mag();
+                    float _m = max(0.0f, 1.0f - min(distanceToPointLight / 7, 1.0f));
+                    pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+                    pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+                    pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+                }
+            }
         }
 
         return pixel;
@@ -1276,13 +1290,26 @@ private:
         }
 
         //point lights:
+        return pixel;
         vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-        vf2d playerPos(playerX, playerY);
-        float distanceToPlayer = (playerPos - pixelPos).mag();
-        float _m = max(0.0f, 1.0f - min(distanceToPlayer / 10, 1.0f));
-        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+        //遍历所有点光源组件:
+        for (auto& item : GM.gameObjects)
+        {
+            GameObject* go = item.second;
+
+            if (!go->active) continue;
+            if (go->remove) continue;
+
+            PointLight* pointLight = go->GetComponent<PointLight>();
+            if (pointLight != nullptr && pointLight->enable)
+            {
+                float distanceToPointLight = (go->transform->position - pixelPos).mag();
+                float _m = max(0.0f, 1.0f - min(distanceToPointLight / 7, 1.0f));
+                pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+            }
+        }
 
         return pixel;
     }
@@ -1422,17 +1449,21 @@ public:
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
         this->bgm2->Play(false, false);
 
+        //add lamps:
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
         lamp1->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+        lamp1->AddComponent<PointLight>();
 
         GameObject* lamp2 = new GameObject();
         lamp2->transform->position = vf2d(7.5f, 7.5f);
         lamp2->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+        //lamp2->AddComponent<PointLight>();
 
         GameObject* lamp3 = new GameObject();
         lamp3->transform->position = vf2d(10.5f, 3.5f);
         lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+        //lamp3->AddComponent<PointLight>();
 
         //add weapons:
         Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
