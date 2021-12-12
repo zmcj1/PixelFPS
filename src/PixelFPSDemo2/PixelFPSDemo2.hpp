@@ -496,11 +496,13 @@ private:
                 if (weapon->weapon_enum == WeaponEnum::M4A1)
                 {
                     //play fire sound:
+                    bulletSpeed = 32.0f;
+                    noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.07f;
                     m4a1Pool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AWP)
                 {
-                    bulletSpeed = 35.0f;
+                    bulletSpeed = 50.0f;
                     noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.05f;
                     awpPool->PlayOneShot(0.5f);
                 }
@@ -1365,6 +1367,7 @@ private:
 
         if (side == CellSide::Top)
         {
+            return pixel;
             //sky box
             short att = spriteWall->SampleColour(sampleX, sampleY);
 

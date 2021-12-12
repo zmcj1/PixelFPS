@@ -39,6 +39,8 @@ bool childclass::IsClassType( const std::size_t classType ) const {             
         return parentclass::IsClassType( classType );                                       \
 }                                                                                           \
 
+class GameObject;
+
 class Component
 {
 public:
@@ -51,6 +53,7 @@ public:
 
 public:
     bool enable = true;
+    GameObject* gameObject;
 
 public:
     Component()
