@@ -7,12 +7,17 @@ using namespace std;
 enum class NetworkMessage : uint32_t
 {
     Unknown = 0,
+    Server_GetStatus,
+    Server_GetPing,
 
     Client_Accepted,
+    Client_AssignID,
+    Client_RegisterWithServer,
+    Client_UnregisterWithServer,
 
-    Room_AddNewPlayer,
-    Room_RemovePlayer,
-    Room_UpdatePlayerNetData,
+    Game_AddPlayer,
+    Game_RemovePlayer,
+    Game_UpdatePlayer,
 };
 
 struct PlayerNetData

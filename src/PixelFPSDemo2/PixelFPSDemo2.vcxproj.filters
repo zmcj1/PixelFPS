@@ -113,5 +113,8 @@
     <ClInclude Include="FPS_Server.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="FPS_Client.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

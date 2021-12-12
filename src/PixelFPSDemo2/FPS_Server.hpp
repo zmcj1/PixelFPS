@@ -10,7 +10,7 @@ using namespace std;
 using namespace olc;
 using namespace olc::net;
 
-class FPSServer :public server_interface<NetworkMessage>
+class FPSServer : public server_interface<NetworkMessage>
 {
 private:
     std::unordered_map<uint32_t, PlayerNetData> playerNetDataDict;
@@ -23,7 +23,7 @@ public:
 
     bool OnClientConnect(std::shared_ptr<olc::net::connection<NetworkMessage>> client) override
     {
-        // For now we will allow all 
+        // For now we will allow all
         return true;
     }
 
@@ -51,6 +51,65 @@ public:
                 playerNetDataDict.erase(client->GetID());
                 garbageIDs.push_back(client->GetID());
             }
+        }
+    }
+
+    void OnMessage(std::shared_ptr<olc::net::connection<NetworkMessage>> client, olc::net::message<NetworkMessage>& msg) override
+    {
+        if (!garbageIDs.empty())
+        {
+            for (auto pid : garbageIDs)
+            {
+                olc::net::message<NetworkMessage> m;
+                m.header.id = NetworkMessage::Game_RemovePlayer;
+                m << pid;
+                std::cout << "Removing " << pid << "\n";
+                MessageAllClients(m);
+            }
+            garbageIDs.clear();
+        }
+
+        switch (msg.header.id)
+        {
+        case NetworkMessage::Client_RegisterWithServer:
+        {
+            PlayerNetData desc;
+            msg >> desc;
+            desc.uniqueID = client->GetID();
+            playerNetDataDict.insert_or_assign(desc.uniqueID, desc);
+
+            olc::net::message<NetworkMessage> msgSendID;
+            msgSendID.header.id = NetworkMessage::Client_AssignID;
+            msgSendID << desc.uniqueID;
+            MessageClient(client, msgSendID);
+
+            olc::net::message<NetworkMessage> msgAddPlayer;
+            msgAddPlayer.header.id = NetworkMessage::Game_AddPlayer;
+            msgAddPlayer << desc;
+            MessageAllClients(msgAddPlayer);
+
+            for (const auto& player : playerNetDataDict)
+            {
+                olc::net::message<NetworkMessage> msgAddOtherPlayers;
+                msgAddOtherPlayers.header.id = NetworkMessage::Game_AddPlayer;
+                msgAddOtherPlayers << player.second;
+                MessageClient(client, msgAddOtherPlayers);
+            }
+
+            break;
+        }
+
+        case NetworkMessage::Client_UnregisterWithServer:
+        {
+            break;
+        }
+
+        case NetworkMessage::Game_UpdatePlayer:
+        {
+            // Simply bounce update to everyone except incoming client
+            MessageAllClients(msg, client);
+            break;
+        }
         }
     }
 };
