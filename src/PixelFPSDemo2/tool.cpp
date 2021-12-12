@@ -13,6 +13,12 @@ namespace fuck_std
         debug_output_line(to_wstring(vec2.x) + L" " + to_wstring(vec2.y));
     }
 
+    //writeline:
+    void debug_output_vector2f(const vf2d& vec2f)
+    {
+        debug_output_line(to_wstring(vec2f.x) + L" " + to_wstring(vec2f.y));
+    }
+
     //from:https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
     //extension without dot(.)
     vector<wstring> get_all_files_names_within_folder(const wstring& folder, const wstring& extension)

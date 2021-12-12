@@ -42,7 +42,9 @@ private:
     std::thread* serverThread = nullptr;
 
     //========client========
-
+    bool waitingForConnection = true;
+    uint32_t playerID = 0; //unknown at beginning.
+    std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
 
 
 private:
@@ -696,7 +698,7 @@ private:
                     Draw(x, y, Pixel(0, 128, 0));
                 }
             }
-        }
+    }
 #else
         //raycast:
         for (size_t i = 0; i < ScreenWidth() * ScreenHeight(); i++)
@@ -1066,7 +1068,7 @@ private:
                 }
             }
         }
-    }
+}
 
     void render_hud(float deltaTime)
     {
@@ -1906,6 +1908,7 @@ public:
             //update client:
             if (IsConnected())
             {
+                //receive from server:
                 while (!Incoming().empty())
                 {
                     auto msg = Incoming().pop_front().msg;
@@ -1915,39 +1918,38 @@ public:
                     case(NetworkMessage::Client_Accepted):
                     {
                         std::cout << "Server accepted client - you're in!\n";
-                        olc::net::message<GameMsg> msg;
-                        msg.header.id = GameMsg::Client_RegisterWithServer;
+                        olc::net::message<NetworkMessage> msg;
+                        msg.header.id = NetworkMessage::Client_RegisterWithServer;
 
-                        descPlayer.posX = 3.0f;
-                        descPlayer.posY = 3.0f;
+                        PlayerNetData defaultPlayerNetData;
 
-                        msg << descPlayer;
+                        defaultPlayerNetData.posX = 10;
+                        defaultPlayerNetData.posY = 12;
+
+                        msg << defaultPlayerNetData;
                         Send(msg);
                         break;
                     }
-
                     case(NetworkMessage::Client_AssignID):
                     {
                         // Server is assigning us OUR id
-                        msg >> nPlayerID;
-                        std::cout << "Assigned Client ID = " << nPlayerID << "\n";
+                        msg >> playerID;
+                        std::cout << "Assigned Client ID = " << playerID << "\n";
                         break;
                     }
-
                     case(NetworkMessage::Game_AddPlayer):
                     {
-                        sPlayerDescription desc;
+                        PlayerNetData desc;
                         msg >> desc;
-                        mapObjects.insert_or_assign(desc.nUniqueID, desc);
+                        mapObjects.insert_or_assign(desc.uniqueID, desc);
 
-                        if (desc.nUniqueID == nPlayerID)
+                        if (desc.uniqueID == playerID)
                         {
                             // Now we exist in game world
-                            bWaitingForConnection = false;
+                            waitingForConnection = false;
                         }
                         break;
                     }
-
                     case(NetworkMessage::Game_RemovePlayer):
                     {
                         uint32_t nRemovalID = 0;
@@ -1955,16 +1957,35 @@ public:
                         mapObjects.erase(nRemovalID);
                         break;
                     }
-
+                    //we wont receive msg, which sent from our client.
                     case(NetworkMessage::Game_UpdatePlayer):
                     {
-                        sPlayerDescription desc;
+                        PlayerNetData desc;
                         msg >> desc;
-                        mapObjects.insert_or_assign(desc.nUniqueID, desc);
+                        mapObjects.insert_or_assign(desc.uniqueID, desc);
                         break;
                     }
                     }
                 }
+
+                if (waitingForConnection)
+                {
+                    Clear(olc::DARK_BLUE);
+                    DrawString({ 10, 10 }, "Waiting To Connect...", olc::WHITE);
+                    return true;
+                }
+
+                //sync objects:
+                for (auto& object : mapObjects)
+                {
+
+                }
+
+                //send to server:
+                olc::net::message<NetworkMessage> msg;
+                msg.header.id = NetworkMessage::Game_UpdatePlayer;
+                msg << mapObjects[playerID];
+                Send(msg);
             }
         }
 

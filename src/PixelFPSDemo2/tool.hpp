@@ -17,6 +17,8 @@ namespace fuck_std
     //writeline:
     void debug_output_vector2(const vi2d& vec2);
 
+    void debug_output_vector2f(const vf2d& vec2f);
+
     //from:https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
     //extension without dot(.)
     vector<wstring> get_all_files_names_within_folder(const wstring& folder, const wstring& extension);

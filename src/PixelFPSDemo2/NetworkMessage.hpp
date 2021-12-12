@@ -24,6 +24,9 @@ struct PlayerNetData
 {
 public:
     uint32_t uniqueID = 0;
+
+    float posX;
+    float posY;
 };
 
 enum class NetworkType
