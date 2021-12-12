@@ -1429,9 +1429,9 @@ private:
                     _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
                 }
 
-                pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-                pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-                pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
             }
             else
             {
@@ -1448,9 +1448,9 @@ private:
                 fDistance = 1.0f - std::min(distance / 15, 1.0f);
                 fog = 1.0 - fDistance;
 
-                pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-                pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-                pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+                pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+                pixel.g = fuck_std::clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+                pixel.b = fuck_std::clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
             }
 
             //distance:
@@ -1458,16 +1458,16 @@ private:
             {
                 float _d = 1.0f;
                 _d = 1.0f - std::min(distance / depth, 0.4f);
-                pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-                pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-                pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
             }
         }
         else
         {
-            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+            pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+            pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+            pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
 
             //fog:
             if (enableFog)
@@ -1488,9 +1488,9 @@ private:
                     fog = 1.0 - fDistance;
                 }
 
-                pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-                pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-                pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+                pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+                pixel.g = fuck_std::clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+                pixel.b = fuck_std::clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
             }
 
             //distance:
@@ -1507,9 +1507,9 @@ private:
                     _d = 1.0f - std::min(distance / depth, 0.4f);
                 }
 
-                pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-                pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-                pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
             }
         }
 
@@ -1522,9 +1522,9 @@ private:
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
         //point lights:
-        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+        pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+        pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+        pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
 
         //fog:
         if (enableFog)
@@ -1545,9 +1545,9 @@ private:
                 fog = 1.0 - fDistance;
             }
 
-            pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-            pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-            pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+            pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+            pixel.g = fuck_std::clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+            pixel.b = fuck_std::clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
         }
 
         //distance:
@@ -1564,9 +1564,9 @@ private:
                 _d = 1.0f - std::min(distance / depth, 0.4f);
             }
 
-            pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-            pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-            pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+            pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
+            pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
+            pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
         }
 
         return pixel;
@@ -1608,9 +1608,9 @@ private:
             {
                 float distanceToPointLight = (go->transform->position - pixelPos).mag();
                 float _m = max(0.0f, 1.0f - min(distanceToPointLight / 7, 1.0f));
-                pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-                pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-                pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
             }
         }
 
@@ -1858,7 +1858,7 @@ public:
                     auto tar_vec = sr.path[1].position - sr.path[0].position;
                     simple_ai->x += tar_vec.x;
                     simple_ai->y += tar_vec.y;
-                    debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
+                    fuck_std::debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
                 }
             }
         }

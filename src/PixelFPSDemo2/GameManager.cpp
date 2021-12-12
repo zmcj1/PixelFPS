@@ -20,6 +20,6 @@ void GameManager::Update(float deltaTime)
     {
         GameObject* go = item.second;
         Transform* t = go->transform;
-        debug_output_line(to_wstring(t->position.x) + L" " + to_wstring(t->position.y));
+        fuck_std::debug_output_line(to_wstring(t->position.x) + L" " + to_wstring(t->position.y));
     }
 }

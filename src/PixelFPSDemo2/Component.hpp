@@ -8,8 +8,6 @@
 #include <memory>
 #include <algorithm>
 
-using namespace std;
-
 #define NAME_OF(x) #x
 
 //****************

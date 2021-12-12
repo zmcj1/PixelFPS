@@ -6,10 +6,6 @@
 #include <iostream>
 #include <ctime>
 
-using namespace olc;
-using namespace MinConsoleNative;
-using namespace std;
-
 //include current:
 #include "Resources.hpp"
 #include "olcSprite.hpp"
@@ -22,7 +18,7 @@ using namespace std;
 #include "NetworkMessage.hpp"
 #include "FPS_Server.hpp"
 
-void Error(const wstring& err_msg)
+void Error(const std::wstring& err_msg)
 {
     console.WriteLine(err_msg, { 255, 0, 0 });
     console.ReadLine();
@@ -30,6 +26,10 @@ void Error(const wstring& err_msg)
 
 int main()
 {
+    using namespace olc;
+    using namespace MinConsoleNative;
+    using namespace std;
+
     time_t now = time(nullptr);
     tm* local_time = localtime(&now);
 
