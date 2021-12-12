@@ -13,6 +13,7 @@
 #include "Resources.hpp" //load
 #include "tool.hpp"
 #include "PointLight.hpp" //point light
+#include "EasyBMP.h" //BMP support
 #include <unordered_map>
 
 class PixelFPSDemo2 : public PixelGameEngine
@@ -160,7 +161,7 @@ private:
         }
     }
 
-    void DrawBMP(BMP* bmp, int posX, int posY)
+    void DrawBMP(BMP* bmp, int posX, int posY, int zoomPixelScaler = 1)
     {
         for (size_t y = 0; y < bmp->TellHeight(); y++)
         {
@@ -464,6 +465,9 @@ private:
                 //add collider:
                 bullet->AddComponent<Collider>();
 
+                //add point light:
+                bullet->AddComponent<PointLight>(2.0f);
+
                 //add sprite:
                 SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
                 renderer->sprite = this->spriteBullet;
@@ -688,10 +692,24 @@ private:
                 throw "?";
             }
 
-            //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
-            //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
             int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / (distanceToWall * cosf(diffAngle)));
             int floor = ScreenHeight() - ceiling;
+
+            float _m = 0.0f;
+            for (auto& item : GM.gameObjects)
+            {
+                GameObject* go = item.second;
+
+                if (!go->active) continue;
+                if (go->remove) continue;
+
+                PointLight* pointLight = go->GetComponent<PointLight>();
+                if (pointLight != nullptr && pointLight->enable)
+                {
+                    float distanceToPointLight = (go->transform->position - hitInfo.hitMapPos).mag();
+                    _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+                }
+            }
 
             for (int y = 0; y < ScreenHeight(); y++)
             {
@@ -709,7 +727,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0);
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -727,7 +745,7 @@ private:
                         Color24 pixelColor = palette[foreColor];
                         UNUSED(backColor);
 
-                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall);
+                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall, _m);
                         DepthDraw(x, y, distanceToWall * cosf(diffAngle), pixel);
                     }
                     else
@@ -749,7 +767,9 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ);
+                    vf2d pixelPos = vf2d(planeTileX + planeSampleX, planeTileY + planeSampleY);
+
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0);
                     Draw(x, y, pixel);
                 }
             }
@@ -801,11 +821,14 @@ private:
                         explosion->transform->position =
                             go->transform->position - go->transform->velocity * deltaTime;
 
+                        PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
+                        pl->attenuation = 3.0f;
+
                         SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
                         renderer->sprite = this->spriteExplosion;
 
                         LifeController* life = explosion->AddComponent<LifeController>();
-                        life->lifeTime = 0.15f;
+                        life->lifeTime = 0.25f;
                     }
 
                     //collsion with other objects:
@@ -814,6 +837,16 @@ private:
                 else
                 {
                     go->remove = true;
+                }
+            }
+
+            PointLight* pointLightCom = go->GetComponent<PointLight>();
+            if (pointLightCom != nullptr && pointLightCom->enable)
+            {
+                pointLightCom->range -= pointLightCom->attenuation * deltaTime;
+                if (pointLightCom->range < 0.0f)
+                {
+                    pointLightCom->range = 0.0f;
                 }
             }
 
@@ -852,6 +885,24 @@ private:
                         float objectWidth = objectHeight / objectAspectRatio;
                         float middleOfObject = (objectAngle / FOV + 0.5f) * (float)ScreenWidth();
 
+                        //point light:
+                        float _m = 0.0f;
+                        for (auto& item : GM.gameObjects)
+                        {
+                            GameObject* other_go = item.second;
+
+                            if (!other_go->active) continue;
+                            if (other_go->remove) continue;
+
+                            PointLight* pointLight = other_go->GetComponent<PointLight>();
+                            if (pointLight != nullptr && pointLight->enable)
+                            {
+                                float distanceToPointLight = (other_go->transform->position - go->transform->position).mag();
+                                _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+                            }
+                        }
+                        _m = clamp<float>(_m, 0.0f, 0.3f);
+
                         // Draw Object:
                         for (float lx = 0; lx < objectWidth; lx++)
                         {
@@ -878,7 +929,7 @@ private:
                                         UNUSED(backColor);
 
                                         //shade objects:
-                                        Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer);
+                                        Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, _m);
                                         DepthDraw(x, y, distanceFromPlayer, pixel);
                                     }
                                 }
@@ -949,7 +1000,7 @@ private:
                                     if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                     if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
-                                    Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer);
+                                    Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, 0);
                                     // Draw the pixel taking into account the depth buffer
                                     DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
                                 }
@@ -1079,13 +1130,6 @@ private:
             }
             if (weapon_current == WeaponEnum::AK47)
             {
-                //drawPosX = 100 + int(weapon_Xcof * 4);
-                //drawPosY = int(-60 - weapon_Ypos);
-                //if (enableFlame)
-                //{
-                //    DisplaySprite(spriteExplosion, drawPosX + 35, drawPosY + 150, 2);
-                //}
-
                 drawPosX = 50 + int(weapon_Xcof * 4);
                 drawPosY = int(-120 - weapon_Ypos);
 
@@ -1113,7 +1157,6 @@ private:
                     //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
-                //DisplaySprite(spriteM4A1, drawPosX, drawPosY, 2);
                 DrawBMP(this->m4a1_bmp, drawPosX, drawPosY);
             }
             if (weapon_current == WeaponEnum::AWP)
@@ -1305,11 +1348,11 @@ private:
     }
 
     //you can add shader code here:
-    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance)
+    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance, float _m)
     {
-        Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+        //vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
 
-        float shadow = 1.0f;
+        Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
         //night:
         if (night)
@@ -1325,60 +1368,111 @@ private:
             }
         }
 
+        //point lights:
+        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+
         //fog:
         if (enableFog)
         {
             Color24 fogColor(192, 192, 192);
             float fDistance = 1.0f;
-            fDistance = 1.0f - std::min(distance / 15, 1.0f);
-            float fog = 1.0 - fDistance;
-            pixel.r = fDistance * pixel.r + fog * fogColor.r;
-            pixel.g = fDistance * pixel.g + fog * fogColor.g;
-            pixel.b = fDistance * pixel.b + fog * fogColor.b;
+            float fog = 0.0f;
+
+            if (_m > 0)
+            {
+                fogColor = Color24(255, 255, 255);
+                fDistance = 1.0f - std::min(distance / 60, 1.0f);
+                fog = 1.0 - fDistance;
+            }
+            else
+            {
+                fDistance = 1.0f - std::min(distance / 15, 1.0f);
+                fog = 1.0 - fDistance;
+            }
+
+            pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+            pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+            pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
         }
 
         //distance:
         if (renderBasedOnDistance)
         {
             float _d = 1.0f;
-            _d = 1.0f - std::min(distance / depth, 0.4f);
-            pixel.r = pixel.r * _d;
-            pixel.g = pixel.g * _d;
-            pixel.b = pixel.b * _d;
-        }
 
-        //point lights:
-        return pixel;
-        if (side != CellSide::Top)
-        {
-            vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-            //遍历所有点光源组件:
-            for (auto& item : GM.gameObjects)
+            if (_m > 0)
             {
-                GameObject* go = item.second;
-
-                if (!go->active) continue;
-                if (go->remove) continue;
-
-                PointLight* pointLight = go->GetComponent<PointLight>();
-                if (pointLight != nullptr && pointLight->enable)
-                {
-                    float distanceToPointLight = (go->transform->position - pixelPos).mag();
-                    float _m = max(0.0f, 1.0f - min(distanceToPointLight / 7, 1.0f));
-                    pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-                    pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-                    pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
-                }
+                _d = 1.0f - std::min(distance / (depth * 4), 0.4f);
             }
+            else
+            {
+                _d = 1.0f - std::min(distance / depth, 0.4f);
+            }
+
+            pixel.r = clamp<float>(pixel.r * _d, 0, 255);
+            pixel.g = clamp<float>(pixel.g * _d, 0, 255);
+            pixel.b = clamp<float>(pixel.b * _d, 0, 255);
         }
 
         return pixel;
     }
 
     //you can add shader code here:
-    Pixel shade_object(int mapPosX, int mapPosY, float sampleX, float sampleY, Color24 pixelColor, float distance)
+    Pixel shade_object(int mapPosX, int mapPosY, float sampleX, float sampleY, Color24 pixelColor, float distance, float _m)
     {
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+
+        //point lights:
+        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+        //fog:
+        if (enableFog)
+        {
+            Color24 fogColor(192, 192, 192);
+            float fDistance = 1.0f;
+            float fog = 0.0f;
+
+            if (_m > 0)
+            {
+                fogColor = Color24(255, 255, 255);
+                fDistance = 1.0f - std::min(distance / 60, 1.0f);
+                fog = 1.0 - fDistance;
+            }
+            else
+            {
+                fDistance = 1.0f - std::min(distance / 15, 1.0f);
+                fog = 1.0 - fDistance;
+            }
+
+            pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+            pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+            pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+        }
+
+        //distance:
+        if (renderBasedOnDistance)
+        {
+            float _d = 1.0f;
+
+            if (_m > 0)
+            {
+                _d = 1.0f - std::min(distance / (depth * 4), 0.4f);
+            }
+            else
+            {
+                _d = 1.0f - std::min(distance / depth, 0.4f);
+            }
+
+            pixel.r = clamp<float>(pixel.r * _d, 0, 255);
+            pixel.g = clamp<float>(pixel.g * _d, 0, 255);
+            pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+        }
+
+        return pixel;
 
         //fog:
         if (enableFog)
@@ -1403,7 +1497,6 @@ private:
         }
 
         //point lights:
-        return pixel;
         vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
         //遍历所有点光源组件:
         for (auto& item : GM.gameObjects)
@@ -1501,7 +1594,7 @@ public:
 
         //create map:
         map += L"################################";
-        map += L"#...............#..............#";
+        map += L"#..............................#";
         map += L"#.......#########.......########";
         map += L"#..............##..............#";
         map += L"#......##......##......##......#";
@@ -1515,21 +1608,21 @@ public:
         map += L"#..............##..............#";
         map += L"#...........#####...........####";
         map += L"#..............................#";
-        map += L"###..####....########....#######";
-        map += L"####.####.......######.........#";
-        map += L"#...............#..............#";
-        map += L"#.......#########.......##..####";
+        map += L"###..........########....#######";
+        map += L"####............######.........#";
+        map += L"#..............................#";
+        map += L"#...........#####.......##..####";
         map += L"#..............##..............#";
-        map += L"#......##......##.......#......#";
-        map += L"#......##......##......##......#";
+        map += L"#.......##.....##.......#......#";
+        map += L"#.......##.....##......##......#";
         map += L"#..............##..............#";
-        map += L"###............####............#";
+        map += L"###............###.............#";
         map += L"##.............###.............#";
-        map += L"#............####............###";
+        map += L"#..............###...........###";
         map += L"#..............................#";
         map += L"#..............................#";
         map += L"#..............##..............#";
-        map += L"#...........##..............####";
+        map += L"#...........................####";
         map += L"#..............##..............#";
         map += L"################################";
 
@@ -1574,17 +1667,17 @@ public:
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
         lamp1->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
-        lamp1->AddComponent<PointLight>();
+        lamp1->AddComponent<PointLight>(5.0f);
 
         GameObject* lamp2 = new GameObject();
         lamp2->transform->position = vf2d(7.5f, 7.5f);
         lamp2->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
-        //lamp2->AddComponent<PointLight>();
+        lamp2->AddComponent<PointLight>(5.0f);
 
         GameObject* lamp3 = new GameObject();
         lamp3->transform->position = vf2d(10.5f, 3.5f);
         lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
-        //lamp3->AddComponent<PointLight>();
+        lamp3->AddComponent<PointLight>(5.0f);
 
         //add weapons:
         Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
