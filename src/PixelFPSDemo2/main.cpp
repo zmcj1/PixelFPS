@@ -18,6 +18,10 @@ using namespace std;
 #include "PixelFPSDemo2.hpp"
 #include "PixelEditor.hpp"
 
+//net:
+#include "NetworkMessage.hpp"
+#include "FPS_Server.hpp"
+
 void Error(const wstring& err_msg)
 {
     console.WriteLine(err_msg, { 255, 0, 0 });

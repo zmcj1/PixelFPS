@@ -164,9 +164,11 @@
     <ClInclude Include="EasyBMP_BMP.h" />
     <ClInclude Include="EasyBMP_DataStructures.h" />
     <ClInclude Include="EasyBMP_VariousBMPutilities.h" />
+    <ClInclude Include="FPS_Server.hpp" />
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
     <ClInclude Include="LifeController.hpp" />
+    <ClInclude Include="NetworkMessage.hpp" />
     <ClInclude Include="olcPGEX_Network.h" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />

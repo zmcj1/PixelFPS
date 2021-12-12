@@ -107,5 +107,11 @@
     <ClInclude Include="olcPGEX_Network.h">
       <Filter>HPP</Filter>
     </ClInclude>
+    <ClInclude Include="NetworkMessage.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="FPS_Server.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

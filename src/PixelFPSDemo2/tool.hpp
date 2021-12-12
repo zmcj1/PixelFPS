@@ -3,7 +3,6 @@
 #include "olcPixelGameEngine.h"
 #include "BMP.h"
 #include "MinConsoleNative.hpp"
-#include <Windows.h>
 #include <string>
 #include <vector>
 #include <cassert>
