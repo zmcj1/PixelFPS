@@ -27,7 +27,7 @@ private:
     bool enableFog = true;
     bool renderBasedOnDistance = true;
     bool night = true;
-    bool lightGround = false;
+    bool lightGround = false; //turn off by defualt, who can optimize it?
 
 private:
     //BMP:
@@ -1363,8 +1363,19 @@ private:
             }
         }
 
-        //point lights:
-        if (side == CellSide::Bottom && lightGround)
+        if (side == CellSide::Top)
+        {
+            //sky box
+            short att = spriteWall->SampleColour(sampleX, sampleY);
+
+            ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
+            ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
+
+            Color24 pixelColor = palette[foreColor];
+            UNUSED(backColor);
+            pixel = Pixel(pixelColor.r, pixelColor.g, pixelColor.b);
+        }
+        else if (side == CellSide::Bottom && lightGround)
         {
             _m = 0.0f;
             vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
