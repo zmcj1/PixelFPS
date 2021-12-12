@@ -40,6 +40,7 @@ public:
     WeaponEnum weapon_enum;
     WeaponType weapon_type;
     OLCSprite* olcSprite;
+    bool openScope = false;
 
     Weapon()
     {

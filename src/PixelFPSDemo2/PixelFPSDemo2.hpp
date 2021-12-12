@@ -33,6 +33,7 @@ private:
     //BMP:
     BMP* awp_bmp = nullptr;
     BMP* m4a1_bmp = nullptr;
+    BMP* scope_bmp = nullptr;
 
 private:
     //map:
@@ -439,6 +440,21 @@ private:
 
         //fire:
         Weapon* weapon = weapons[(int)weapon_current];
+
+        //sniper scope:
+        if (weapon->weapon_type == WeaponType::Sniper)
+        {
+            weapon->openScope = GetMouse(Mouse::RIGHT).bHeld;
+            if (weapon->openScope)
+            {
+                moveSpeed = 1.5f;
+            }
+            else
+            {
+                moveSpeed = 5.0f;
+            }
+        }
+
         //update timer:
         weapon->UpdateWeaponTimer(deltaTime);
 
@@ -503,7 +519,14 @@ private:
                 if (weapon->weapon_enum == WeaponEnum::AWP)
                 {
                     bulletSpeed = 50.0f;
-                    noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.05f;
+                    if (weapon->openScope)
+                    {
+                        noise = 0.0f;
+                    }
+                    else
+                    {
+                        noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.2f;
+                    }
                     awpPool->PlayOneShot(0.5f);
                 }
 
@@ -1175,7 +1198,15 @@ private:
                     //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
-                DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+                //draw scope/draw sniper:
+                if (weapons[(int)weapon_current]->openScope)
+                {
+                    DrawBMP(this->scope_bmp, 0, 0);
+                }
+                else
+                {
+                    DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+                }
             }
         }
     }
@@ -1694,10 +1725,12 @@ public:
 
         this->awp_bmp = new BMP();
         this->m4a1_bmp = new BMP();
+        this->scope_bmp = new BMP();
 
         //load BMP:
         this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
         this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
+        this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -1869,6 +1902,7 @@ public:
     {
         delete this->awp_bmp;
         delete this->m4a1_bmp;
+        delete this->scope_bmp;
 
         delete this->spriteWall;
         delete this->spriteLamp;
