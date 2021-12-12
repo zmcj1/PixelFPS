@@ -5,3 +5,7 @@ todayIsChristmas = false
 
 //todo:
 boxheadInConsole = true
+
+//networkRole:
+networkRole = 1
+

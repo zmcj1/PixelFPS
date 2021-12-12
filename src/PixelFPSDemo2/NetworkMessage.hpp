@@ -25,3 +25,10 @@ struct PlayerNetData
 public:
     uint32_t uniqueID = 0;
 };
+
+enum class NetworkType
+{
+    None = 0,
+    Host = 1,   //server + client
+    Client = 2, //client
+};

@@ -15,9 +15,36 @@
 #include "PointLight.hpp" //point light
 #include "EasyBMP.h" //BMP support
 #include <unordered_map>
+#include <thread> //thread support
 
-class PixelFPSDemo2 : public PixelGameEngine
+//net:
+#include "NetworkMessage.hpp"
+#include "FPS_Server.hpp"
+
+inline void serverTask(FPSServer* server)
 {
+    while (true)
+    {
+        server->Update(-1, true);
+    }
+}
+
+class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
+{
+private:
+    //net setting:
+    NetworkType networkType = NetworkType::None;
+    string netIPAddress;
+    const uint16_t net_port = 17971;
+
+    //========server========
+    FPSServer* server = nullptr;
+    std::thread* serverThread = nullptr;
+
+    //========client========
+
+
+
 private:
     //graphics setting:
     bool useOldRaycastObject = true;
@@ -1676,6 +1703,19 @@ public:
         this->todayIsChristmas = database->GetBool(L"todayIsChristmas", false);
         this->boxheadInConsole = database->GetBool(L"boxheadInConsole", false);
 
+        int netWorkRole = database->GetInt(L"networkRole", 0);
+        switch (netWorkRole)
+        {
+        case 1:
+            this->networkType = NetworkType::Host;
+            this->netIPAddress = "127.0.0.1"; //如果无法连接本机IP则需要修改Windows权限
+            break;
+        case 2:
+            this->networkType = NetworkType::Client;
+            this->netIPAddress = String::WstringToString(database->GetString(L"ip", L""));
+            break;
+        }
+
         delete database;
     }
 
@@ -1687,6 +1727,25 @@ public:
     // Called once on application startup, use to load your resources
     bool OnUserCreate() override
     {
+        //multiplayer mode:
+        if (this->networkType == NetworkType::Host)
+        {
+            //open server:
+            this->server = new FPSServer(net_port);
+            this->server->Start();
+            //create new thread for msg handeling.
+            this->serverThread = new thread(serverTask, this->server);
+
+            //connect to server:
+            bool conn_suc = Connect(this->netIPAddress, this->net_port);
+        }
+        else if (this->networkType == NetworkType::Client)
+        {
+            //connect to server:
+            bool conn_suc = Connect(this->netIPAddress, this->net_port);
+        }
+
+        //Redirect:
         window = Window(this->__gameWindow);
 
         //create map:
@@ -1841,6 +1900,74 @@ public:
     // Called every frame, and provides you with a time per frame value
     bool OnUserUpdate(float fElapsedTime) override
     {
+        //multiplayer mode: client code:
+        if (this->networkType != NetworkType::None)
+        {
+            //update client:
+            if (IsConnected())
+            {
+                while (!Incoming().empty())
+                {
+                    auto msg = Incoming().pop_front().msg;
+
+                    switch (msg.header.id)
+                    {
+                    case(NetworkMessage::Client_Accepted):
+                    {
+                        std::cout << "Server accepted client - you're in!\n";
+                        olc::net::message<GameMsg> msg;
+                        msg.header.id = GameMsg::Client_RegisterWithServer;
+
+                        descPlayer.posX = 3.0f;
+                        descPlayer.posY = 3.0f;
+
+                        msg << descPlayer;
+                        Send(msg);
+                        break;
+                    }
+
+                    case(NetworkMessage::Client_AssignID):
+                    {
+                        // Server is assigning us OUR id
+                        msg >> nPlayerID;
+                        std::cout << "Assigned Client ID = " << nPlayerID << "\n";
+                        break;
+                    }
+
+                    case(NetworkMessage::Game_AddPlayer):
+                    {
+                        sPlayerDescription desc;
+                        msg >> desc;
+                        mapObjects.insert_or_assign(desc.nUniqueID, desc);
+
+                        if (desc.nUniqueID == nPlayerID)
+                        {
+                            // Now we exist in game world
+                            bWaitingForConnection = false;
+                        }
+                        break;
+                    }
+
+                    case(NetworkMessage::Game_RemovePlayer):
+                    {
+                        uint32_t nRemovalID = 0;
+                        msg >> nRemovalID;
+                        mapObjects.erase(nRemovalID);
+                        break;
+                    }
+
+                    case(NetworkMessage::Game_UpdatePlayer):
+                    {
+                        sPlayerDescription desc;
+                        msg >> desc;
+                        mapObjects.insert_or_assign(desc.nUniqueID, desc);
+                        break;
+                    }
+                    }
+                }
+            }
+        }
+
         float deltaTime = fElapsedTime;
 
         Debug::OutputLine(to_wstring(GM.gameObjects.size()));
@@ -1900,6 +2027,10 @@ public:
     // Called once on application termination, so you can be one clean coder
     bool OnUserDestroy() override
     {
+        delete this->server;
+        this->serverThread->detach();
+        delete this->serverThread;
+
         delete this->awp_bmp;
         delete this->m4a1_bmp;
         delete this->scope_bmp;
