@@ -27,6 +27,7 @@ private:
     bool enableFog = true;
     bool renderBasedOnDistance = true;
     bool night = true;
+    bool lightGround = false;
 
 private:
     //BMP:
@@ -699,10 +700,8 @@ private:
             for (auto& item : GM.gameObjects)
             {
                 GameObject* go = item.second;
-
                 if (!go->active) continue;
                 if (go->remove) continue;
-
                 PointLight* pointLight = go->GetComponent<PointLight>();
                 if (pointLight != nullptr && pointLight->enable)
                 {
@@ -766,8 +765,6 @@ private:
                     // Work out normalised offset into planar tile
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
-
-                    vf2d pixelPos = vf2d(planeTileX + planeSampleX, planeTileY + planeSampleY);
 
                     Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0);
                     Draw(x, y, pixel);
@@ -1350,8 +1347,6 @@ private:
     //you can add shader code here:
     Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance, float _m)
     {
-        //vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
         //night:
@@ -1359,8 +1354,8 @@ private:
         {
             switch (side)
             {
-            case CellSide::Bottom:
             case CellSide::Top:
+            case CellSide::Bottom:
                 pixel.r = pixel.r * 0.25f;
                 pixel.g = pixel.g * 0.25f;
                 pixel.b = pixel.b * 0.25f;
@@ -1369,51 +1364,101 @@ private:
         }
 
         //point lights:
-        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
-
-        //fog:
-        if (enableFog)
+        if (side == CellSide::Bottom && lightGround)
         {
-            Color24 fogColor(192, 192, 192);
-            float fDistance = 1.0f;
-            float fog = 0.0f;
+            _m = 0.0f;
+            vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
 
-            if (_m > 0)
+            for (auto& item : GM.gameObjects)
             {
-                fogColor = Color24(255, 255, 255);
-                fDistance = 1.0f - std::min(distance / 60, 1.0f);
-                fog = 1.0 - fDistance;
+                GameObject* go = item.second;
+                if (!go->active) continue;
+                if (go->remove) continue;
+                PointLight* pointLight = go->GetComponent<PointLight>();
+                if (pointLight != nullptr && pointLight->enable)
+                {
+                    float distanceToPointLight = (go->transform->position - pixelPos).mag();
+                    _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+                }
             }
-            else
+
+            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+            //fog:
+            if (enableFog)
             {
+                Color24 fogColor(192, 192, 192);
+                float fDistance = 1.0f;
+                float fog = 0.0f;
+
                 fDistance = 1.0f - std::min(distance / 15, 1.0f);
                 fog = 1.0 - fDistance;
+
+                pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+                pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+                pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
             }
 
-            pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-            pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-            pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
-        }
-
-        //distance:
-        if (renderBasedOnDistance)
-        {
-            float _d = 1.0f;
-
-            if (_m > 0)
+            //distance:
+            if (renderBasedOnDistance)
             {
-                _d = 1.0f - std::min(distance / (depth * 4), 0.4f);
-            }
-            else
-            {
+                float _d = 1.0f;
                 _d = 1.0f - std::min(distance / depth, 0.4f);
+                pixel.r = clamp<float>(pixel.r * _d, 0, 255);
+                pixel.g = clamp<float>(pixel.g * _d, 0, 255);
+                pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+            }
+        }
+        else
+        {
+            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+            //fog:
+            if (enableFog)
+            {
+                Color24 fogColor(192, 192, 192);
+                float fDistance = 1.0f;
+                float fog = 0.0f;
+
+                if (_m > 0)
+                {
+                    fogColor = Color24(255, 255, 255);
+                    fDistance = 1.0f - std::min(distance / 60, 1.0f);
+                    fog = 1.0 - fDistance;
+                }
+                else
+                {
+                    fDistance = 1.0f - std::min(distance / 15, 1.0f);
+                    fog = 1.0 - fDistance;
+                }
+
+                pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+                pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+                pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
             }
 
-            pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-            pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-            pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+            //distance:
+            if (renderBasedOnDistance)
+            {
+                float _d = 1.0f;
+
+                if (_m > 0)
+                {
+                    _d = 1.0f - std::min(distance / (depth * 4), 0.4f);
+                }
+                else
+                {
+                    _d = 1.0f - std::min(distance / depth, 0.4f);
+                }
+
+                pixel.r = clamp<float>(pixel.r * _d, 0, 255);
+                pixel.g = clamp<float>(pixel.g * _d, 0, 255);
+                pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+            }
         }
 
         return pixel;
