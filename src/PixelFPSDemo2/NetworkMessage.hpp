@@ -6,9 +6,11 @@ using namespace std;
 
 enum class NetworkMessage : uint32_t
 {
+    //unuse start
     Unknown = 0,
     Server_GetStatus,
     Server_GetPing,
+    //unuse end
 
     Client_Accepted,
     Client_AssignID,

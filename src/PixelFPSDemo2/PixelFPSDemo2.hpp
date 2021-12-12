@@ -44,8 +44,8 @@ private:
     //========client========
     bool waitingForConnection = true;
     uint32_t playerID = 0; //unknown at beginning.
+    std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
-
 
 private:
     //graphics setting:
@@ -698,7 +698,7 @@ private:
                     Draw(x, y, Pixel(0, 128, 0));
                 }
             }
-    }
+        }
 #else
         //raycast:
         for (size_t i = 0; i < ScreenWidth() * ScreenHeight(); i++)
@@ -1068,7 +1068,7 @@ private:
                 }
             }
         }
-}
+    }
 
     void render_hud(float deltaTime)
     {
@@ -1923,8 +1923,8 @@ public:
 
                         PlayerNetData defaultPlayerNetData;
 
-                        defaultPlayerNetData.posX = 10;
-                        defaultPlayerNetData.posY = 12;
+                        defaultPlayerNetData.posX = playerX;
+                        defaultPlayerNetData.posY = playerY;
 
                         msg << defaultPlayerNetData;
                         Send(msg);
@@ -1943,6 +1943,15 @@ public:
                         msg >> desc;
                         mapObjects.insert_or_assign(desc.uniqueID, desc);
 
+                        //clone player, dont add repeat player, and dont add ourself.
+                        if (networkObjects.count(desc.uniqueID) == 0 && desc.uniqueID != playerID)
+                        {
+                            GameObject* newPlayer = new GameObject();
+                            newPlayer->transform->position = vf2d(desc.posX, desc.posY);
+                            newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+                            networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+                        }
+
                         if (desc.uniqueID == playerID)
                         {
                             // Now we exist in game world
@@ -1955,6 +1964,11 @@ public:
                         uint32_t nRemovalID = 0;
                         msg >> nRemovalID;
                         mapObjects.erase(nRemovalID);
+
+                        //delete player:
+                        delete networkObjects[nRemovalID];
+                        networkObjects.erase(nRemovalID);
+
                         break;
                     }
                     //we wont receive msg, which sent from our client.
@@ -1963,6 +1977,19 @@ public:
                         PlayerNetData desc;
                         msg >> desc;
                         mapObjects.insert_or_assign(desc.uniqueID, desc);
+
+                        //if dont exsists, add it.
+                        if (networkObjects.count(desc.uniqueID) == 0)
+                        {
+                            GameObject* newPlayer = new GameObject();
+                            newPlayer->transform->position = vf2d(desc.posX, desc.posY);
+                            newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+                            networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+                        }
+
+                        //sync object:
+                        networkObjects[desc.uniqueID]->transform->position = vf2d(desc.posX, desc.posY);
+
                         break;
                     }
                     }
@@ -1975,11 +2002,9 @@ public:
                     return true;
                 }
 
-                //sync objects:
-                for (auto& object : mapObjects)
-                {
-
-                }
+                //sync our position to other clients:
+                mapObjects[playerID].posX = playerX;
+                mapObjects[playerID].posY = playerY;
 
                 //send to server:
                 olc::net::message<NetworkMessage> msg;
@@ -2048,9 +2073,12 @@ public:
     // Called once on application termination, so you can be one clean coder
     bool OnUserDestroy() override
     {
-        delete this->server;
-        this->serverThread->detach();
-        delete this->serverThread;
+        if (networkType == NetworkType::Host)
+        {
+            delete this->server;
+            this->serverThread->detach();
+            delete this->serverThread;
+        }
 
         delete this->awp_bmp;
         delete this->m4a1_bmp;
