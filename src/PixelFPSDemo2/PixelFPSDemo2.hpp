@@ -27,7 +27,7 @@ private:
     bool enableFog = true;
     bool renderBasedOnDistance = true;
     bool night = true;
-    bool lightGround = false; //turn off by defualt, who can optimize it?
+    bool lightGround = true; //turn off by defualt, who can optimize it?
 
 private:
     //BMP:
@@ -654,6 +654,20 @@ private:
             this->depthBuffer[i] = INFINITY;
         }
 
+        //calculate point light distance:
+        vector<PointLight*> pointLights;
+        for (auto& item : GM.gameObjects)
+        {
+            GameObject* go = item.second;
+            if (!go->active) continue;
+            if (go->remove) continue;
+            PointLight* pointLight = go->GetComponent<PointLight>();
+            if (pointLight != nullptr && pointLight->enable)
+            {
+                pointLights.push_back(pointLight);
+            }
+        }
+
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
@@ -699,17 +713,10 @@ private:
             int floor = ScreenHeight() - ceiling;
 
             float _m = 0.0f;
-            for (auto& item : GM.gameObjects)
+            for (PointLight* pointLight : pointLights)
             {
-                GameObject* go = item.second;
-                if (!go->active) continue;
-                if (go->remove) continue;
-                PointLight* pointLight = go->GetComponent<PointLight>();
-                if (pointLight != nullptr && pointLight->enable)
-                {
-                    float distanceToPointLight = (go->transform->position - hitInfo.hitMapPos).mag();
-                    _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
-                }
+                float distanceToPointLight = (pointLight->gameObject->transform->position - hitInfo.hitMapPos).mag();
+                _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
             }
 
             for (int y = 0; y < ScreenHeight(); y++)
@@ -728,7 +735,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -746,7 +753,7 @@ private:
                         Color24 pixelColor = palette[foreColor];
                         UNUSED(backColor);
 
-                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall, _m);
+                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall, _m, pointLights);
                         DepthDraw(x, y, distanceToWall * cosf(diffAngle), pixel);
                     }
                     else
@@ -768,7 +775,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
             }
@@ -1347,7 +1354,7 @@ private:
     }
 
     //you can add shader code here:
-    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance, float _m)
+    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance, float _m, const vector<PointLight*>& pointLights)
     {
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
@@ -1378,27 +1385,27 @@ private:
             UNUSED(backColor);
             pixel = Pixel(pixelColor.r, pixelColor.g, pixelColor.b);
         }
-        else if (side == CellSide::Bottom && lightGround)
+        else if (side == CellSide::Bottom)
         {
-            _m = 0.0f;
-            vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-
-            for (auto& item : GM.gameObjects)
+            if (lightGround)
             {
-                GameObject* go = item.second;
-                if (!go->active) continue;
-                if (go->remove) continue;
-                PointLight* pointLight = go->GetComponent<PointLight>();
-                if (pointLight != nullptr && pointLight->enable)
+                _m = 0.0f;
+                vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+
+                for (PointLight* pointLight : pointLights)
                 {
-                    float distanceToPointLight = (go->transform->position - pixelPos).mag();
+                    float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
                     _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
                 }
-            }
 
-            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+                pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+            }
+            else
+            {
+
+            }
 
             //fog:
             if (enableFog)
