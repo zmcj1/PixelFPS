@@ -982,6 +982,26 @@ private:
                 else
                 {
                     go->remove = true;
+
+                    if (networkType != NetworkType::None)
+                    {
+                        NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                        if (net_collider != nullptr && net_collider->enable)
+                        {
+                            int removeIndex = -1;
+                            for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                            {
+                                if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                {
+                                    removeIndex = _i;
+                                }
+                            }
+                            if (removeIndex != -1)
+                            {
+                                mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                            }
+                        }
+                    }
                 }
             }
 

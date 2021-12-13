@@ -10,5 +10,5 @@ boxheadInConsole = true
 //1=multiplayer-host
 //2=multiplayer-client
 //0=singleplayer
-networkRole = 2
+networkRole = 1
 
