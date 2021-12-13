@@ -30,16 +30,20 @@ public:
     uint32_t id;
     float x;
     float y;
+    float vx;
+    float vy;
 
     NetBullet()
     {
     }
 
-    NetBullet(int id, float x, float y)
+    NetBullet(int id, float x, float y, float vx, float vy)
     {
         this->id = id;
         this->x = x;
         this->y = y;
+        this->vx = vx;
+        this->vy = vy;
     }
 };
 
@@ -88,9 +92,20 @@ public:
             buffer.resize(buffer.size() + sizeof(float));
             std::memcpy(buffer.data() + pointer, &bullet.x, sizeof(float));
             pointer += sizeof(float);
+
             //y:
             buffer.resize(buffer.size() + sizeof(float));
             std::memcpy(buffer.data() + pointer, &bullet.y, sizeof(float));
+            pointer += sizeof(float);
+
+            //vx:
+            buffer.resize(buffer.size() + sizeof(float));
+            std::memcpy(buffer.data() + pointer, &bullet.vx, sizeof(float));
+            pointer += sizeof(float);
+
+            //vy:
+            buffer.resize(buffer.size() + sizeof(float));
+            std::memcpy(buffer.data() + pointer, &bullet.vx, sizeof(float));
             pointer += sizeof(float);
         }
 
@@ -124,6 +139,12 @@ public:
             pointer += sizeof(float);
 
             std::memcpy(&bullet.y, buffer.data() + pointer, sizeof(float));
+            pointer += sizeof(float);
+
+            std::memcpy(&bullet.vx, buffer.data() + pointer, sizeof(float));
+            pointer += sizeof(float);
+
+            std::memcpy(&bullet.vy, buffer.data() + pointer, sizeof(float));
             pointer += sizeof(float);
 
             bullets.push_back(bullet);

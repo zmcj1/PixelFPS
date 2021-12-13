@@ -578,7 +578,9 @@ private:
                 //net:sync bullet:
                 if (this->networkType != NetworkType::None)
                 {
-                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex, bullet->transform->position.x, bullet->transform->position.y));
+                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex,
+                        bullet->transform->position.x, bullet->transform->position.y,
+                        bullet->transform->velocity.x, bullet->transform->velocity.y));
                     bullet->AddComponent<NetworkCollider>(this->playerID_BulletIndex);
                     this->playerID_BulletIndex++;
                 }
@@ -593,37 +595,48 @@ private:
             return;
         }
 
-        fuck_std::debug_output_line(to_wstring(mapObjects[playerID].bullets.size()));
+        //fuck_std::debug_output_line(to_wstring(mapObjects[playerID].bullets.size()));
 
-        return; //todo
-
-        for (auto item : networkBullets)
+        //remove all bullets:
+        for (const auto& item : networkBullets)
         {
-
-
+            for (const auto& go : item.second)
+            {
+                delete go;
+            }
         }
         networkBullets.clear();
 
-        for (auto object : mapObjects)
+        for (const auto& object : mapObjects)
         {
             if (object.first == playerID)
             {
                 continue; //网络行为不负责模拟自己
             }
 
-
-
-            vector<GameObject*> bullets;
-            networkBullets.insert_or_assign(object.first, bullets);
-
-            for (NetBullet bullet : object.second.bullets)
+            //add new bullets:
+            for (const NetBullet& bullet : object.second.bullets)
             {
+                GameObject* newBullet = new GameObject();
 
+                //set position:
+                newBullet->transform->position = vf2d(bullet.x, bullet.y);
 
+                //set velocity:
+                //newBullet->transform->velocity = vf2d(bullet.vx, bullet.vy);
 
+                //add collider:
+                newBullet->AddComponent<Collider>();
+
+                //add point light:
+                newBullet->AddComponent<PointLight>(2.0f);
+
+                //add sprite:
+                newBullet->AddComponent<SpriteRenderer>()->sprite = this->spriteBullet;
+
+                networkBullets[object.first].push_back(newBullet);
             }
         }
-
     }
 
     void DepthDraw(int x, int y, float z, olc::Pixel pixel)
@@ -749,7 +762,7 @@ private:
                 {
                     Draw(x, y, Pixel(0, 128, 0));
                 }
-            }
+}
         }
 #else
         //raycast:
@@ -1786,10 +1799,12 @@ public:
         case 1:
             this->networkType = NetworkType::Host;
             this->netIPAddress = "127.0.0.1"; //如果无法连接本机IP则需要修改Windows权限
+            this->sAppName = "PixelFPS Demo2 Host";
             break;
         case 2:
             this->networkType = NetworkType::Client;
             this->netIPAddress = String::WstringToString(database->GetString(L"ip", L""));
+            this->sAppName = "PixelFPS Demo2 Client";
             break;
         }
 
