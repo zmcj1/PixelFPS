@@ -1970,8 +1970,11 @@ public:
                         mapObjects.erase(nRemovalID);
 
                         //delete player:
-                        delete networkObjects[nRemovalID];
-                        networkObjects.erase(nRemovalID);
+                        if (networkObjects.count(nRemovalID) > 0)
+                        {
+                            delete networkObjects[nRemovalID];
+                            networkObjects.erase(nRemovalID);
+                        }
 
                         break;
                     }
@@ -2015,6 +2018,14 @@ public:
                 msg.header.id = NetworkMessage::Game_UpdatePlayer;
                 msg << mapObjects[playerID];
                 Send(msg);
+
+                //test:
+                //PlayerNetData data;
+                //data.posX = 1;
+                //data.posY = 1;
+                //data.uniqueID = 1000;
+                //vector<uint8_t> buffer = data.Serialize();
+                //data.Deserialize(buffer);
             }
         }
 

@@ -97,6 +97,11 @@ namespace olc
         // Message Body contains a header and a std::vector, containing raw bytes
         // of infomation. This way the message can be variable length, but the size
         // in the header must be updated.
+        // Convenience Operator overloads - These allow us to add and remove stuff from
+        // the body vector as if it were a stack, so First in, Last Out. These are a 
+        // template in itself, because we dont know what data type the user is pushing or 
+        // popping, so lets allow them all. NOTE: It assumes the data type is fundamentally
+        // Plain Old Data (POD). TLDR: Serialise & Deserialise into/from a vector
         template <typename T>
         class message
         {
@@ -118,11 +123,25 @@ namespace olc
                 return os;
             }
 
-            // Convenience Operator overloads - These allow us to add and remove stuff from
-            // the body vector as if it were a stack, so First in, Last Out. These are a 
-            // template in itself, because we dont know what data type the user is pushing or 
-            // popping, so lets allow them all. NOTE: It assumes the data type is fundamentally
-            // Plain Old Data (POD). TLDR: Serialise & Deserialise into/from a vector
+            void AddUInt32(std::uint32_t value)
+            {
+                // Resize the vector by the size of the data being pushed
+                body.resize(body.size() + sizeof(uint32_t));
+                // Physically copy the data into the newly allocated vector space
+                std::memcpy(body.data() + body.size(), &value, sizeof(uint32_t));
+                // Recalculate the message size
+                header.size = size();
+            }
+
+            void AddBytes(const std::vector<std::uint8_t>& buffer)
+            {
+                // Resize the vector by the size of the data being pushed
+                body.resize(body.size() + buffer.size());
+                // Physically copy the data into the newly allocated vector space
+                std::memcpy(body.data() + body.size(), buffer.data(), buffer.size());
+                // Recalculate the message size
+                header.size = size();
+            }
 
             // Pushes any POD-like data into the message buffer
             template<typename DataType>

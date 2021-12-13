@@ -31,9 +31,48 @@ public:
 
     float posX;
     float posY;
-    
+
     //todo:
     //vector<tuple<float, float>> bullets;
+
+    std::vector<uint8_t> Serialize() const
+    {
+        std::vector<uint8_t> buffer;
+
+        //module:
+        //buffer.resize(buffer.size() + sizeof(DataType));
+        //std::memcpy(buffer.data() + buffer.size(), &data, sizeof(DataType));
+
+        size_t pointer = 0;
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &uniqueID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        buffer.resize(buffer.size() + sizeof(float));
+        std::memcpy(buffer.data() + pointer, &posX, sizeof(float));
+        pointer += sizeof(float);
+
+        buffer.resize(buffer.size() + sizeof(float));
+        std::memcpy(buffer.data() + pointer, &posY, sizeof(float));
+        pointer += sizeof(float);
+
+        return buffer;
+    }
+
+    void Deserialize(const std::vector<uint8_t>& buffer)
+    {
+        size_t pointer = 0;
+
+        std::memcpy(&uniqueID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        std::memcpy(&posX, buffer.data() + pointer, sizeof(float));
+        pointer += sizeof(float);
+
+        std::memcpy(&posY, buffer.data() + pointer, sizeof(float));
+        pointer += sizeof(float);
+    }
 };
 
 enum class NetworkType
