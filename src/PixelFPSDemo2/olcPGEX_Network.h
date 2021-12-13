@@ -125,21 +125,17 @@ namespace olc
 
             void AddUInt32(std::uint32_t value)
             {
-                // Resize the vector by the size of the data being pushed
+                size_t beforeSize = body.size();
                 body.resize(body.size() + sizeof(uint32_t));
-                // Physically copy the data into the newly allocated vector space
-                std::memcpy(body.data() + body.size(), &value, sizeof(uint32_t));
-                // Recalculate the message size
+                std::memcpy(body.data() + beforeSize, &value, sizeof(uint32_t));
                 header.size = size();
             }
 
             void AddBytes(const std::vector<std::uint8_t>& buffer)
             {
-                // Resize the vector by the size of the data being pushed
+                size_t beforeSize = body.size();
                 body.resize(body.size() + buffer.size());
-                // Physically copy the data into the newly allocated vector space
-                std::memcpy(body.data() + body.size(), buffer.data(), buffer.size());
-                // Recalculate the message size
+                std::memcpy(body.data() + beforeSize, buffer.data(), buffer.size());
                 header.size = size();
             }
 
