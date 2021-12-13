@@ -2026,14 +2026,6 @@ public:
                 //msg << mapObjects[playerID];
                 msg.AddBytes(mapObjects[playerID].Serialize());
                 Send(msg);
-
-                //test:
-                //PlayerNetData data;
-                //data.posX = 1;
-                //data.posY = 1;
-                //data.uniqueID = 1000;
-                //vector<uint8_t> buffer = data.Serialize();
-                //data.Deserialize(buffer);
             }
         }
 

@@ -24,6 +24,19 @@ enum class NetworkMessage : uint32_t
     Game_UpdatePlayer,
 };
 
+struct NetBullet
+{
+public:
+    float x;
+    float y;
+
+    NetBullet(float x, float y)
+    {
+        this->x = x;
+        this->y = y;
+    }
+};
+
 struct PlayerNetData
 {
 public:
@@ -33,7 +46,7 @@ public:
     float posY;
 
     //todo:
-    //vector<tuple<float, float>> bullets;
+    vector<NetBullet> bullets;
 
     std::vector<uint8_t> Serialize() const
     {
