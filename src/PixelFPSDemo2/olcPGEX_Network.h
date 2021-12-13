@@ -98,8 +98,9 @@ namespace olc
 		// of infomation. This way the message can be variable length, but the size
 		// in the header must be updated.
 		template <typename T>
-		struct message
+		class message
 		{
+		public:
 			// Header & Body vector
 			message_header<T> header{};
 			std::vector<uint8_t> body;
@@ -129,19 +130,14 @@ namespace olc
 			{
 				// Check that the type of the data being pushed is trivially copyable
 				static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pushed into vector");
-
 				// Cache current size of vector, as this will be the point we insert the data
 				size_t i = msg.body.size();
-
 				// Resize the vector by the size of the data being pushed
 				msg.body.resize(msg.body.size() + sizeof(DataType));
-
 				// Physically copy the data into the newly allocated vector space
 				std::memcpy(msg.body.data() + i, &data, sizeof(DataType));
-
 				// Recalculate the message size
 				msg.header.size = msg.size();
-
 				// Return the target message so it can be "chained"
 				return msg;
 			}
@@ -152,24 +148,18 @@ namespace olc
 			{
 				// Check that the type of the data being pushed is trivially copyable
 				static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pulled from vector");
-
 				// Cache the location towards the end of the vector where the pulled data starts
 				size_t i = msg.body.size() - sizeof(DataType);
-
 				// Physically copy the data from the vector into the user variable
 				std::memcpy(&data, msg.body.data() + i, sizeof(DataType));
-
 				// Shrink the vector to remove read bytes, and reset end position
 				msg.body.resize(i);
-
 				// Recalculate the message size
 				msg.header.size = msg.size();
-
 				// Return the target message so it can be "chained"
 				return msg;
 			}
 		};
-
 
 		// An "owned" message is identical to a regular message, but it is associated with
 		// a connection. On a server, the owner would be the client that sent the message, 
@@ -192,7 +182,6 @@ namespace olc
 				return os;
 			}
 		};
-
 
 		// Queue
 		template<typename T>

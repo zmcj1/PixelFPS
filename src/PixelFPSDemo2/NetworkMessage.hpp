@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <vector>
+#include <tuple>
 #include <cstdint>
 
 using namespace std;
@@ -29,6 +31,9 @@ public:
 
     float posX;
     float posY;
+    
+    //todo:
+    //vector<tuple<float, float>> bullets;
 };
 
 enum class NetworkType
