@@ -70,6 +70,19 @@ public:
         std::memcpy(buffer.data() + pointer, &posY, sizeof(float));
         pointer += sizeof(float);
 
+        //bullets:
+        for (const NetBullet bullet : bullets)
+        {
+            //x:
+            buffer.resize(buffer.size() + sizeof(float));
+            std::memcpy(buffer.data() + pointer, &bullet.x, sizeof(float));
+            pointer += sizeof(float);
+            //y:
+            buffer.resize(buffer.size() + sizeof(float));
+            std::memcpy(buffer.data() + pointer, &bullet.y, sizeof(float));
+            pointer += sizeof(float);
+        }
+
         return buffer;
     }
 
@@ -85,6 +98,8 @@ public:
 
         std::memcpy(&posY, buffer.data() + pointer, sizeof(float));
         pointer += sizeof(float);
+
+        //bullets:
     }
 };
 

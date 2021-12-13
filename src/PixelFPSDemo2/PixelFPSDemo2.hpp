@@ -2026,6 +2026,12 @@ public:
                 //msg << mapObjects[playerID];
                 msg.AddBytes(mapObjects[playerID].Serialize());
                 Send(msg);
+
+                //test:
+                //PlayerNetData net_data;
+                //net_data;
+
+
             }
         }
 
