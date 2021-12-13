@@ -57,6 +57,7 @@ private:
     bool renderBasedOnDistance = true;
     bool night = true;
     bool lightGround = true; //turn off by defualt, who can optimize it?
+    int groundPixelIndex = 0;// for debug
 
 private:
     //BMP:
@@ -720,6 +721,8 @@ private:
             }
         }
 
+        this->groundPixelIndex = 0;
+
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
@@ -986,7 +989,7 @@ private:
                                         Color24 pixelColor = palette[foreColor];
                                         UNUSED(backColor);
 
-                                        //shade objects:
+                                        //draw objects:
                                         Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, _m);
                                         DepthDraw(x, y, distanceFromPlayer, pixel);
                                     }
@@ -1457,10 +1460,11 @@ private:
                     float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
                     _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
                 }
-
                 pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
                 pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
                 pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+                //this->groundPixelIndex++;
             }
             else
             {
