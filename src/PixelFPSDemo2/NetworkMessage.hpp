@@ -27,11 +27,17 @@ enum class NetworkMessage : uint32_t
 struct NetBullet
 {
 public:
+    uint32_t id;
     float x;
     float y;
 
-    NetBullet(float x, float y)
+    NetBullet()
     {
+    }
+
+    NetBullet(int id, float x, float y)
+    {
+        this->id = id;
         this->x = x;
         this->y = y;
     }
@@ -73,6 +79,11 @@ public:
         //bullets:
         for (const NetBullet bullet : bullets)
         {
+            //id:
+            buffer.resize(buffer.size() + sizeof(uint32_t));
+            std::memcpy(buffer.data() + pointer, &bullet.id, sizeof(uint32_t));
+            pointer += sizeof(uint32_t);
+
             //x:
             buffer.resize(buffer.size() + sizeof(float));
             std::memcpy(buffer.data() + pointer, &bullet.x, sizeof(float));
@@ -100,6 +111,23 @@ public:
         pointer += sizeof(float);
 
         //bullets:
+        int diff = buffer.size() - pointer;
+        bullets.clear();
+        for (int i = 0; i < (diff / sizeof(NetBullet)); i++)
+        {
+            NetBullet bullet;
+
+            std::memcpy(&bullet.id, buffer.data() + pointer, sizeof(uint32_t));
+            pointer += sizeof(uint32_t);
+
+            std::memcpy(&bullet.x, buffer.data() + pointer, sizeof(float));
+            pointer += sizeof(float);
+
+            std::memcpy(&bullet.y, buffer.data() + pointer, sizeof(float));
+            pointer += sizeof(float);
+
+            bullets.push_back(bullet);
+        }
     }
 };
 

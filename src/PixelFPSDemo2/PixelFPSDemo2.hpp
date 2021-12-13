@@ -44,8 +44,11 @@ private:
     //========client========
     bool waitingForConnection = true;
     uint32_t playerID = 0; //unknown at beginning.
+    uint32_t playerID_BulletIndex = 1;
     std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
+
+    std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
 
 private:
     //graphics setting:
@@ -571,8 +574,55 @@ private:
                 {
                     enableFlame = true;
                 }
+
+                //net:sync bullet:
+                if (this->networkType != NetworkType::None)
+                {
+                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex++, bullet->transform->position.x, bullet->transform->position.y));
+                }
             }
         }
+    }
+
+    void update_network(float deltaTime)
+    {
+        if (this->networkType == NetworkType::None)
+        {
+            return;
+        }
+
+
+
+        return; //todo
+
+        for (auto item : networkBullets)
+        {
+
+
+        }
+        networkBullets.clear();
+
+        for (auto object : mapObjects)
+        {
+            if (object.first == playerID)
+            {
+                continue; //网络行为不负责模拟自己
+            }
+
+
+
+            vector<GameObject*> bullets;
+            networkBullets.insert_or_assign(object.first, bullets);
+
+            for (NetBullet bullet : object.second.bullets)
+            {
+
+
+
+            }
+        }
+
+        fuck_std::debug_output_line(to_wstring(mapObjects[playerID].bullets.size()));
     }
 
     void DepthDraw(int x, int y, float z, olc::Pixel pixel)
@@ -2029,9 +2079,13 @@ public:
 
                 //test:
                 //PlayerNetData net_data;
-                //net_data;
-
-
+                //net_data.uniqueID = 1000;
+                //net_data.posX = 10;
+                //net_data.posY = 5;
+                //net_data.bullets.push_back(NetBullet(10, 5));
+                //auto arr = net_data.Serialize();
+                //net_data.Deserialize(arr);
+                //int xxxx = 0;
             }
         }
 
@@ -2069,6 +2123,8 @@ public:
         {
             receive_user_input(deltaTime);
         }
+
+        update_network(deltaTime);
 
         render_world(deltaTime);
 
