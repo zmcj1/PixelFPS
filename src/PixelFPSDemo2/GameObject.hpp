@@ -64,7 +64,9 @@ template< class ComponentType, typename... Args >
 ComponentType* GameObject::AddComponent(Args&&... params)
 {
     components.emplace_back(std::make_unique<ComponentType>(std::forward<Args>(params)...));
-    return static_cast<ComponentType*>(components[components.size() - 1].get());
+    ComponentType* component = static_cast<ComponentType*>(components[components.size() - 1].get());
+    component->gameObject = this;
+    return component;
 }
 
 //***************

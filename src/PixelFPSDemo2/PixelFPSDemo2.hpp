@@ -15,9 +15,38 @@
 #include "PointLight.hpp" //point light
 #include "EasyBMP.h" //BMP support
 #include <unordered_map>
+#include <thread> //thread support
 
-class PixelFPSDemo2 : public PixelGameEngine
+//net:
+#include "NetworkMessage.hpp"
+#include "FPS_Server.hpp"
+
+inline void serverTask(FPSServer* server)
 {
+    while (true)
+    {
+        server->Update(-1, true);
+    }
+}
+
+class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
+{
+private:
+    //net setting:
+    NetworkType networkType = NetworkType::None;
+    string netIPAddress;
+    const uint16_t net_port = 17971;
+
+    //========server========
+    FPSServer* server = nullptr;
+    std::thread* serverThread = nullptr;
+
+    //========client========
+    bool waitingForConnection = true;
+    uint32_t playerID = 0; //unknown at beginning.
+    std::unordered_map<uint32_t, GameObject*> networkObjects;
+    std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
+
 private:
     //graphics setting:
     bool useOldRaycastObject = true;
@@ -27,12 +56,14 @@ private:
     bool enableFog = true;
     bool renderBasedOnDistance = true;
     bool night = true;
-    bool lightGround = false; //turn off by defualt, who can optimize it?
+    bool lightGround = true; //turn off by defualt, who can optimize it?
+    int groundPixelIndex = 0;// for debug
 
 private:
     //BMP:
     BMP* awp_bmp = nullptr;
     BMP* m4a1_bmp = nullptr;
+    BMP* scope_bmp = nullptr;
 
 private:
     //map:
@@ -439,6 +470,21 @@ private:
 
         //fire:
         Weapon* weapon = weapons[(int)weapon_current];
+
+        //sniper scope:
+        if (weapon->weapon_type == WeaponType::Sniper)
+        {
+            weapon->openScope = GetMouse(Mouse::RIGHT).bHeld;
+            if (weapon->openScope)
+            {
+                moveSpeed = 1.5f;
+            }
+            else
+            {
+                moveSpeed = 5.0f;
+            }
+        }
+
         //update timer:
         weapon->UpdateWeaponTimer(deltaTime);
 
@@ -496,12 +542,21 @@ private:
                 if (weapon->weapon_enum == WeaponEnum::M4A1)
                 {
                     //play fire sound:
+                    bulletSpeed = 32.0f;
+                    noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.07f;
                     m4a1Pool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AWP)
                 {
-                    bulletSpeed = 35.0f;
-                    noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.05f;
+                    bulletSpeed = 50.0f;
+                    if (weapon->openScope)
+                    {
+                        noise = 0.0f;
+                    }
+                    else
+                    {
+                        noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.2f;
+                    }
                     awpPool->PlayOneShot(0.5f);
                 }
 
@@ -602,7 +657,7 @@ private:
             }
 
             //update depth buffer:
-            fDepthBuffer[x] = distanceToWall;
+            //fDepthBuffer[x] = distanceToWall;
 
             //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
             //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
@@ -652,6 +707,22 @@ private:
             this->depthBuffer[i] = INFINITY;
         }
 
+        //calculate point light distance:
+        vector<PointLight*> pointLights;
+        for (auto& item : GM.gameObjects)
+        {
+            GameObject* go = item.second;
+            if (!go->active) continue;
+            if (go->remove) continue;
+            PointLight* pointLight = go->GetComponent<PointLight>();
+            if (pointLight != nullptr && pointLight->enable)
+            {
+                pointLights.push_back(pointLight);
+            }
+        }
+
+        this->groundPixelIndex = 0;
+
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
@@ -697,17 +768,10 @@ private:
             int floor = ScreenHeight() - ceiling;
 
             float _m = 0.0f;
-            for (auto& item : GM.gameObjects)
+            for (PointLight* pointLight : pointLights)
             {
-                GameObject* go = item.second;
-                if (!go->active) continue;
-                if (go->remove) continue;
-                PointLight* pointLight = go->GetComponent<PointLight>();
-                if (pointLight != nullptr && pointLight->enable)
-                {
-                    float distanceToPointLight = (go->transform->position - hitInfo.hitMapPos).mag();
-                    _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
-                }
+                float distanceToPointLight = (pointLight->gameObject->transform->position - hitInfo.hitMapPos).mag();
+                _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
             }
 
             for (int y = 0; y < ScreenHeight(); y++)
@@ -726,7 +790,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -744,7 +808,7 @@ private:
                         Color24 pixelColor = palette[foreColor];
                         UNUSED(backColor);
 
-                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall, _m);
+                        Pixel pixel = shade(hitInfo.hitMapPos.x, hitInfo.hitMapPos.y, hitInfo.side, pixelColor, sampleX, sampleY, distanceToWall, _m, pointLights);
                         DepthDraw(x, y, distanceToWall * cosf(diffAngle), pixel);
                     }
                     else
@@ -766,7 +830,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
             }
@@ -925,7 +989,7 @@ private:
                                         Color24 pixelColor = palette[foreColor];
                                         UNUSED(backColor);
 
-                                        //shade objects:
+                                        //draw objects:
                                         Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, _m);
                                         DepthDraw(x, y, distanceFromPlayer, pixel);
                                     }
@@ -1166,7 +1230,15 @@ private:
                     //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
-                DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+                //draw scope/draw sniper:
+                if (weapons[(int)weapon_current]->openScope)
+                {
+                    DrawBMP(this->scope_bmp, 0, 0);
+                }
+                else
+                {
+                    DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+                }
             }
         }
     }
@@ -1345,7 +1417,7 @@ private:
     }
 
     //you can add shader code here:
-    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance, float _m)
+    Pixel shade(int mapPosX, int mapPosY, CellSide side, Color24 pixelColor, float sampleX, float sampleY, float distance, float _m, const vector<PointLight*>& pointLights)
     {
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
@@ -1365,6 +1437,7 @@ private:
 
         if (side == CellSide::Top)
         {
+            return pixel;
             //sky box
             short att = spriteWall->SampleColour(sampleX, sampleY);
 
@@ -1375,27 +1448,28 @@ private:
             UNUSED(backColor);
             pixel = Pixel(pixelColor.r, pixelColor.g, pixelColor.b);
         }
-        else if (side == CellSide::Bottom && lightGround)
+        else if (side == CellSide::Bottom)
         {
-            _m = 0.0f;
-            vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-
-            for (auto& item : GM.gameObjects)
+            if (lightGround)
             {
-                GameObject* go = item.second;
-                if (!go->active) continue;
-                if (go->remove) continue;
-                PointLight* pointLight = go->GetComponent<PointLight>();
-                if (pointLight != nullptr && pointLight->enable)
+                _m = 0.0f;
+                vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
+
+                for (PointLight* pointLight : pointLights)
                 {
-                    float distanceToPointLight = (go->transform->position - pixelPos).mag();
+                    float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
                     _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
                 }
-            }
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
 
-            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+                //this->groundPixelIndex++;
+            }
+            else
+            {
+
+            }
 
             //fog:
             if (enableFog)
@@ -1407,9 +1481,9 @@ private:
                 fDistance = 1.0f - std::min(distance / 15, 1.0f);
                 fog = 1.0 - fDistance;
 
-                pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-                pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-                pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+                pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+                pixel.g = fuck_std::clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+                pixel.b = fuck_std::clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
             }
 
             //distance:
@@ -1417,16 +1491,16 @@ private:
             {
                 float _d = 1.0f;
                 _d = 1.0f - std::min(distance / depth, 0.4f);
-                pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-                pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-                pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
             }
         }
         else
         {
-            pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-            pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-            pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+            pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+            pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+            pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
 
             //fog:
             if (enableFog)
@@ -1447,9 +1521,9 @@ private:
                     fog = 1.0 - fDistance;
                 }
 
-                pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-                pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-                pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+                pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+                pixel.g = fuck_std::clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+                pixel.b = fuck_std::clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
             }
 
             //distance:
@@ -1466,9 +1540,9 @@ private:
                     _d = 1.0f - std::min(distance / depth, 0.4f);
                 }
 
-                pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-                pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-                pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
             }
         }
 
@@ -1481,9 +1555,9 @@ private:
         Pixel pixel(pixelColor.r, pixelColor.g, pixelColor.b);
 
         //point lights:
-        pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-        pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-        pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+        pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+        pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+        pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
 
         //fog:
         if (enableFog)
@@ -1504,9 +1578,9 @@ private:
                 fog = 1.0 - fDistance;
             }
 
-            pixel.r = clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
-            pixel.g = clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
-            pixel.b = clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
+            pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
+            pixel.g = fuck_std::clamp<float>(fDistance * pixel.g + fog * fogColor.g, 0, 255);
+            pixel.b = fuck_std::clamp<float>(fDistance * pixel.b + fog * fogColor.b, 0, 255);
         }
 
         //distance:
@@ -1523,9 +1597,9 @@ private:
                 _d = 1.0f - std::min(distance / depth, 0.4f);
             }
 
-            pixel.r = clamp<float>(pixel.r * _d, 0, 255);
-            pixel.g = clamp<float>(pixel.g * _d, 0, 255);
-            pixel.b = clamp<float>(pixel.b * _d, 0, 255);
+            pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
+            pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
+            pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
         }
 
         return pixel;
@@ -1567,9 +1641,9 @@ private:
             {
                 float distanceToPointLight = (go->transform->position - pixelPos).mag();
                 float _m = max(0.0f, 1.0f - min(distanceToPointLight / 7, 1.0f));
-                pixel.r = clamp<float>(pixel.r * (1 + _m), 0, 255);
-                pixel.g = clamp<float>(pixel.g * (1 + _m), 0, 255);
-                pixel.b = clamp<float>(pixel.b * (1 + _m), 0, 255);
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
             }
         }
 
@@ -1635,6 +1709,19 @@ public:
         this->todayIsChristmas = database->GetBool(L"todayIsChristmas", false);
         this->boxheadInConsole = database->GetBool(L"boxheadInConsole", false);
 
+        int netWorkRole = database->GetInt(L"networkRole", 0);
+        switch (netWorkRole)
+        {
+        case 1:
+            this->networkType = NetworkType::Host;
+            this->netIPAddress = "127.0.0.1"; //如果无法连接本机IP则需要修改Windows权限
+            break;
+        case 2:
+            this->networkType = NetworkType::Client;
+            this->netIPAddress = String::WstringToString(database->GetString(L"ip", L""));
+            break;
+        }
+
         delete database;
     }
 
@@ -1646,6 +1733,25 @@ public:
     // Called once on application startup, use to load your resources
     bool OnUserCreate() override
     {
+        //multiplayer mode:
+        if (this->networkType == NetworkType::Host)
+        {
+            //open server:
+            this->server = new FPSServer(net_port);
+            this->server->Start();
+            //create new thread for msg handeling.
+            this->serverThread = new thread(serverTask, this->server);
+
+            //connect to server:
+            bool conn_suc = Connect(this->netIPAddress, this->net_port);
+        }
+        else if (this->networkType == NetworkType::Client)
+        {
+            //connect to server:
+            bool conn_suc = Connect(this->netIPAddress, this->net_port);
+        }
+
+        //Redirect:
         window = Window(this->__gameWindow);
 
         //create map:
@@ -1684,10 +1790,12 @@ public:
 
         this->awp_bmp = new BMP();
         this->m4a1_bmp = new BMP();
+        this->scope_bmp = new BMP();
 
         //load BMP:
         this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
         this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
+        this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -1798,6 +1906,129 @@ public:
     // Called every frame, and provides you with a time per frame value
     bool OnUserUpdate(float fElapsedTime) override
     {
+        //multiplayer mode: client code:
+        if (this->networkType != NetworkType::None)
+        {
+            //update client:
+            if (IsConnected())
+            {
+                //receive from server:
+                while (!Incoming().empty())
+                {
+                    auto msg = Incoming().pop_front().msg;
+
+                    switch (msg.header.id)
+                    {
+                    case(NetworkMessage::Client_Accepted):
+                    {
+                        std::cout << "Server accepted client - you're in!\n";
+                        olc::net::message<NetworkMessage> msg;
+                        msg.header.id = NetworkMessage::Client_RegisterWithServer;
+
+                        PlayerNetData defaultPlayerNetData;
+
+                        defaultPlayerNetData.posX = playerX;
+                        defaultPlayerNetData.posY = playerY;
+
+                        //msg << defaultPlayerNetData;
+                        msg.AddBytes(defaultPlayerNetData.Serialize());
+                        Send(msg);
+                        break;
+                    }
+                    case(NetworkMessage::Client_AssignID):
+                    {
+                        // Server is assigning us OUR id
+                        //msg >> playerID;
+                        playerID = msg.GetUInt32();
+                        std::cout << "Assigned Client ID = " << playerID << "\n";
+                        break;
+                    }
+                    case(NetworkMessage::Game_AddPlayer):
+                    {
+                        PlayerNetData desc;
+                        //msg >> desc;
+                        desc.Deserialize(msg.body);
+
+                        mapObjects.insert_or_assign(desc.uniqueID, desc);
+
+                        //clone player, dont add repeat player, and dont add ourself.
+                        if (networkObjects.count(desc.uniqueID) == 0 && desc.uniqueID != playerID)
+                        {
+                            GameObject* newPlayer = new GameObject();
+                            newPlayer->transform->position = vf2d(desc.posX, desc.posY);
+                            newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+                            networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+                        }
+
+                        if (desc.uniqueID == playerID)
+                        {
+                            // Now we exist in game world
+                            waitingForConnection = false;
+                        }
+                        break;
+                    }
+                    case(NetworkMessage::Game_RemovePlayer):
+                    {
+                        uint32_t nRemovalID = 0;
+                        //msg >> nRemovalID;
+                        nRemovalID = msg.GetUInt32();
+                        mapObjects.erase(nRemovalID);
+
+                        //delete player:
+                        if (networkObjects.count(nRemovalID) > 0)
+                        {
+                            delete networkObjects[nRemovalID];
+                            networkObjects.erase(nRemovalID);
+                        }
+
+                        break;
+                    }
+                    //we wont receive msg, which sent from our client.
+                    case(NetworkMessage::Game_UpdatePlayer):
+                    {
+                        PlayerNetData desc;
+                        //msg >> desc;
+                        desc.Deserialize(msg.body);
+
+                        mapObjects.insert_or_assign(desc.uniqueID, desc);
+
+                        //if dont exsists, add it.
+                        if (networkObjects.count(desc.uniqueID) == 0)
+                        {
+                            GameObject* newPlayer = new GameObject();
+                            newPlayer->transform->position = vf2d(desc.posX, desc.posY);
+                            newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+                            networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+                        }
+
+                        //sync object:
+                        networkObjects[desc.uniqueID]->transform->position = vf2d(desc.posX, desc.posY);
+
+                        break;
+                    }
+                    }
+                }
+
+                if (waitingForConnection)
+                {
+                    Clear(olc::DARK_BLUE);
+                    DrawString({ 10, 10 }, "Waiting To Connect...", olc::WHITE);
+                    return true;
+                }
+
+                //sync our position to other clients:
+                mapObjects[playerID].posX = playerX;
+                mapObjects[playerID].posY = playerY;
+
+                //send to server:
+                olc::net::message<NetworkMessage> msg;
+                msg.header.id = NetworkMessage::Game_UpdatePlayer;
+                //msg << mapObjects[playerID];
+                msg.AddBytes(mapObjects[playerID].Serialize());
+                Send(msg);
+            }
+        }
+
         float deltaTime = fElapsedTime;
 
         Debug::OutputLine(to_wstring(GM.gameObjects.size()));
@@ -1815,7 +2046,7 @@ public:
                     auto tar_vec = sr.path[1].position - sr.path[0].position;
                     simple_ai->x += tar_vec.x;
                     simple_ai->y += tar_vec.y;
-                    debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
+                    fuck_std::debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
                 }
             }
         }
@@ -1857,8 +2088,16 @@ public:
     // Called once on application termination, so you can be one clean coder
     bool OnUserDestroy() override
     {
+        if (networkType == NetworkType::Host)
+        {
+            delete this->server;
+            this->serverThread->detach();
+            delete this->serverThread;
+        }
+
         delete this->awp_bmp;
         delete this->m4a1_bmp;
+        delete this->scope_bmp;
 
         delete this->spriteWall;
         delete this->spriteLamp;
