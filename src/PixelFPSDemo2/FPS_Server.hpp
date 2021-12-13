@@ -62,7 +62,8 @@ public:
             {
                 olc::net::message<NetworkMessage> m;
                 m.header.id = NetworkMessage::Game_RemovePlayer;
-                m << pid;
+                //m << pid;
+                m.AddUInt32(pid);
                 std::cout << "Removing " << pid << "\n";
                 MessageAllClients(m);
             }
@@ -74,25 +75,30 @@ public:
         case NetworkMessage::Client_RegisterWithServer:
         {
             PlayerNetData desc;
-            msg >> desc;
+            //msg >> desc;
+            desc.Deserialize(msg.body);
+
             desc.uniqueID = client->GetID();
             playerNetDataDict.insert_or_assign(desc.uniqueID, desc);
 
             olc::net::message<NetworkMessage> msgSendID;
             msgSendID.header.id = NetworkMessage::Client_AssignID;
-            msgSendID << desc.uniqueID;
+            //msgSendID << desc.uniqueID;
+            msgSendID.AddUInt32(desc.uniqueID);
             MessageClient(client, msgSendID);
 
             olc::net::message<NetworkMessage> msgAddPlayer;
             msgAddPlayer.header.id = NetworkMessage::Game_AddPlayer;
-            msgAddPlayer << desc;
+            //msgAddPlayer << desc;
+            msgAddPlayer.AddBytes(desc.Serialize());
             MessageAllClients(msgAddPlayer);
 
             for (const auto& player : playerNetDataDict)
             {
                 olc::net::message<NetworkMessage> msgAddOtherPlayers;
                 msgAddOtherPlayers.header.id = NetworkMessage::Game_AddPlayer;
-                msgAddOtherPlayers << player.second;
+                //msgAddOtherPlayers << player.second;
+                msgAddOtherPlayers.AddBytes(player.second.Serialize());
                 MessageClient(client, msgAddOtherPlayers);
             }
 

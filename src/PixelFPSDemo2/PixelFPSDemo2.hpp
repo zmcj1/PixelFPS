@@ -1930,21 +1930,25 @@ public:
                         defaultPlayerNetData.posX = playerX;
                         defaultPlayerNetData.posY = playerY;
 
-                        msg << defaultPlayerNetData;
+                        //msg << defaultPlayerNetData;
+                        msg.AddBytes(defaultPlayerNetData.Serialize());
                         Send(msg);
                         break;
                     }
                     case(NetworkMessage::Client_AssignID):
                     {
                         // Server is assigning us OUR id
-                        msg >> playerID;
+                        //msg >> playerID;
+                        playerID = msg.GetUInt32();
                         std::cout << "Assigned Client ID = " << playerID << "\n";
                         break;
                     }
                     case(NetworkMessage::Game_AddPlayer):
                     {
                         PlayerNetData desc;
-                        msg >> desc;
+                        //msg >> desc;
+                        desc.Deserialize(msg.body);
+
                         mapObjects.insert_or_assign(desc.uniqueID, desc);
 
                         //clone player, dont add repeat player, and dont add ourself.
@@ -1966,7 +1970,8 @@ public:
                     case(NetworkMessage::Game_RemovePlayer):
                     {
                         uint32_t nRemovalID = 0;
-                        msg >> nRemovalID;
+                        //msg >> nRemovalID;
+                        nRemovalID = msg.GetUInt32();
                         mapObjects.erase(nRemovalID);
 
                         //delete player:
@@ -1982,7 +1987,9 @@ public:
                     case(NetworkMessage::Game_UpdatePlayer):
                     {
                         PlayerNetData desc;
-                        msg >> desc;
+                        //msg >> desc;
+                        desc.Deserialize(msg.body);
+
                         mapObjects.insert_or_assign(desc.uniqueID, desc);
 
                         //if dont exsists, add it.
@@ -2016,7 +2023,8 @@ public:
                 //send to server:
                 olc::net::message<NetworkMessage> msg;
                 msg.header.id = NetworkMessage::Game_UpdatePlayer;
-                msg << mapObjects[playerID];
+                //msg << mapObjects[playerID];
+                msg.AddBytes(mapObjects[playerID].Serialize());
                 Send(msg);
 
                 //test:
