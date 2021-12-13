@@ -150,6 +150,7 @@
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="LifeController.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NetworkCollider.cpp" />
     <ClCompile Include="olcPixelGameEngine.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />
     <ClInclude Include="LifeController.hpp" />
+    <ClInclude Include="NetworkCollider.hpp" />
     <ClInclude Include="NetworkMessage.hpp" />
     <ClInclude Include="olcPGEX_Network.h" />
     <ClInclude Include="PixelEditor.hpp" />

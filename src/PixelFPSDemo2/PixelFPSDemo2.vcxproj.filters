@@ -45,6 +45,9 @@
     <ClCompile Include="EasyBMP.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="NetworkCollider.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -114,6 +117,9 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="FPS_Client.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkCollider.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>

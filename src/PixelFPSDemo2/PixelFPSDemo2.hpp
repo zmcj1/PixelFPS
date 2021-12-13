@@ -16,6 +16,7 @@
 #include "EasyBMP.h" //BMP support
 #include <unordered_map>
 #include <thread> //thread support
+#include "NetworkCollider.hpp" //net collider
 
 //net:
 #include "NetworkMessage.hpp"
@@ -45,9 +46,8 @@ private:
     bool waitingForConnection = true;
     uint32_t playerID = 0; //unknown at beginning.
     uint32_t playerID_BulletIndex = 1;
-    std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
-
+    std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
 
 private:
@@ -109,7 +109,7 @@ private:
 
     //camera:
     const float FOV = 3.14159f / 4; // Field of view
-    const float depth = 32.0f;      // Maximum rendering distance
+    const float depth = 64.0f;      // Maximum rendering distance
 
     //sprites:
     OLCSprite* spriteWall;
@@ -578,7 +578,9 @@ private:
                 //net:sync bullet:
                 if (this->networkType != NetworkType::None)
                 {
-                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex++, bullet->transform->position.x, bullet->transform->position.y));
+                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex, bullet->transform->position.x, bullet->transform->position.y));
+                    bullet->AddComponent<NetworkCollider>(this->playerID_BulletIndex);
+                    this->playerID_BulletIndex++;
                 }
             }
         }
@@ -591,7 +593,7 @@ private:
             return;
         }
 
-
+        fuck_std::debug_output_line(to_wstring(mapObjects[playerID].bullets.size()));
 
         return; //todo
 
@@ -622,7 +624,6 @@ private:
             }
         }
 
-        fuck_std::debug_output_line(to_wstring(mapObjects[playerID].bullets.size()));
     }
 
     void DepthDraw(int x, int y, float z, olc::Pixel pixel)
@@ -940,6 +941,26 @@ private:
 
                         LifeController* life = explosion->AddComponent<LifeController>();
                         life->lifeTime = 0.25f;
+
+                        if (networkType != NetworkType::None)
+                        {
+                            NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                            if (net_collider != nullptr && net_collider->enable)
+                            {
+                                int removeIndex = -1;
+                                for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                                {
+                                    if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                    {
+                                        removeIndex = _i;
+                                    }
+                                }
+                                if (removeIndex != -1)
+                                {
+                                    mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                                }
+                            }
+                        }
                     }
 
                     //collsion with other objects:
@@ -2049,6 +2070,9 @@ public:
                             newPlayer->transform->position = vf2d(desc.posX, desc.posY);
                             newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+
+                            //bullet:
+                            networkBullets.insert_or_assign(desc.uniqueID, vector<GameObject*>());
                         }
 
                         //sync object:
