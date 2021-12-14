@@ -1007,6 +1007,7 @@ private:
                                 }
 
                                 BulletHitInfo info;
+                                info.myID = playerID;
                                 info.otherPlayerID = ob.first;
                                 info.damage = weapons[(int)weapon_current]->damage;
                                 olc::net::message<NetworkMessage> msg;
@@ -2196,7 +2197,30 @@ public:
                         if (info.otherPlayerID == playerID)
                         {
                             this->playerHealth -= info.damage;
+                            if (this->playerHealth <= 0)
+                            {
+                                olc::net::message<NetworkMessage> dead_msg;
+                                dead_msg.header.id = NetworkMessage::Game_ImDead;
+                                ImDead imdead;
+                                imdead.ID = playerID;
+                                imdead.killerID = info.myID;
+                                dead_msg.AddBytes(mapObjects[playerID].Serialize());
+                                Send(dead_msg);
+                            }
                         }
+                        break;
+                    case NetworkMessage::Game_ImDead:
+                        ImDead imdead;
+                        imdead.Deserialize(msg.body);
+                        //玩家死亡后禁用其游戏物体:
+                        networkObjects[imdead.ID]->active = false;
+                        //imdead.killerID;
+                        break;
+                    case NetworkMessage::Game_IRespawn:
+                        IRespawn iRespawn;
+                        iRespawn.Deserialize(msg.body);
+                        //玩家复活后显示其游戏物体:
+                        networkObjects[iRespawn.uniqueID]->active = true;
                         break;
                     }
                 }
@@ -2279,6 +2303,20 @@ public:
                 this->playerX = 8.5f;
                 this->playerY = 14.7f;
                 this->playerAngle = 0.0f;
+
+                if (networkType != NetworkType::None)
+                {
+                    IRespawn iRespawn;
+                    iRespawn.uniqueID = playerID;
+                    iRespawn.health = playerHealth;
+                    iRespawn.posX = playerX;
+                    iRespawn.posY = playerY;
+
+                    olc::net::message<NetworkMessage> msg;
+                    msg.header.id = NetworkMessage::Game_IRespawn;
+                    msg.AddBytes(iRespawn.Serialize());
+                    Send(msg);
+                }
             }
             return true;
         }
