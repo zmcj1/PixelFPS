@@ -72,6 +72,8 @@ private:
 private:
     //shader setting:
     bool enableFog = true;
+    //Color24 defaultFogColor = Color24(192, 192, 192);
+    Color24 defaultFogColor = Color24(0, 0, 0);
     bool renderBasedOnDistance = true;
     bool night = true;
     bool lightGround = true; //turn off by defualt, who can optimize it?
@@ -1738,8 +1740,9 @@ private:
 
                 for (PointLight* pointLight : pointLights)
                 {
-                    float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
-                    _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+                    //float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
+                    float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag2();
+                    _m += max(0.0f, 1.0f - min(distanceToPointLight / (pointLight->range * 1.5f), 1.0f));
                 }
                 pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
                 pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
@@ -1755,11 +1758,20 @@ private:
             //fog:
             if (enableFog)
             {
-                Color24 fogColor(192, 192, 192);
+                Color24 fogColor = defaultFogColor;
                 float fDistance = 1.0f;
                 float fog = 0.0f;
 
-                fDistance = 1.0f - std::min(distance / 15, 1.0f);
+                if (_m > 0)
+                {
+                    fogColor = Color24(255, 255, 255);
+                    fDistance = 1.0f - std::min(distance / 10.0f, 1.0f);
+                }
+                else
+                {
+                    fDistance = 1.0f - std::min(distance / 7.5f, 1.0f);
+                }
+
                 fog = 1.0 - fDistance;
 
                 pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
@@ -1771,7 +1783,9 @@ private:
             if (renderBasedOnDistance)
             {
                 float _d = 1.0f;
-                _d = 1.0f - std::min(distance / depth, 0.4f);
+
+                _d = 1.0f - std::min(distance / depth, 0.25f);
+
                 pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
                 pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
                 pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
@@ -1786,7 +1800,7 @@ private:
             //fog:
             if (enableFog)
             {
-                Color24 fogColor(192, 192, 192);
+                Color24 fogColor = defaultFogColor;
                 float fDistance = 1.0f;
                 float fog = 0.0f;
 
