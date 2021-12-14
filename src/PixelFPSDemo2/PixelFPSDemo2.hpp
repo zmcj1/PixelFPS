@@ -31,8 +31,20 @@ inline void serverTask(FPSServer* server)
     }
 }
 
+enum class GraphicalQuality
+{
+    Low = 1,
+    Middle = 2,
+    Hign = 3,
+    Ultra = 4,
+};
+
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
+private:
+    //Graphical Quality:
+    GraphicalQuality graphicalQuality = GraphicalQuality::Middle;
+
 private:
     //net setting:
     NetworkType networkType = NetworkType::None;
@@ -1706,7 +1718,8 @@ private:
         if (side == CellSide::Top)
         {
             return pixel;
-            //sky box
+
+            //TODO:sky box
             short att = spriteWall->SampleColour(sampleX, sampleY);
 
             ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
@@ -1979,6 +1992,45 @@ public:
 
         this->mouseSpeed = database->GetFloat(L"mouseSpeed", 0.05f);
         this->disableBGM = database->GetBool(L"disableBGM", false);
+
+        int graphicalQualityLevel = database->GetInt(L"GQ", 2);
+        switch (graphicalQualityLevel)
+        {
+        case 1:
+            this->graphicalQuality = GraphicalQuality::Low;
+            break;
+        case 2:
+            this->graphicalQuality = GraphicalQuality::Middle;
+            break;
+        case 3:
+            this->graphicalQuality = GraphicalQuality::Hign;
+            break;
+        case 4:
+            this->graphicalQuality = GraphicalQuality::Ultra;
+            break;
+        default:
+            this->graphicalQuality = GraphicalQuality::Middle;
+            break;
+        }
+
+        switch (this->graphicalQuality)
+        {
+        case GraphicalQuality::Low:
+            this->night = true;
+            this->enableFog = false;
+            this->renderBasedOnDistance = false;
+            this->lightGround = false;
+            break;
+        case GraphicalQuality::Middle:
+        case GraphicalQuality::Hign:
+        case GraphicalQuality::Ultra:
+            this->night = true;
+            this->enableFog = true;
+            this->renderBasedOnDistance = true;
+            this->lightGround = true;
+            break;
+        }
+
 
         int netWorkRole = database->GetInt(L"networkRole", 0);
         switch (netWorkRole)
