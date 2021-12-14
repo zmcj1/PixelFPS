@@ -48,6 +48,7 @@ private:
     uint32_t playerID = 0; //unknown at beginning.
     uint32_t playerID_BulletIndex = 1;
     std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
+    std::unordered_map<uint32_t, vf2d> networkObjectPositions; //cache, lerp
     std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
     vector<GameObject*> myBullets;
@@ -2189,6 +2190,8 @@ public:
     // Called every frame, and provides you with a time per frame value
     bool OnUserUpdate(float fElapsedTime) override
     {
+        float deltaTime = fElapsedTime;
+
         //multiplayer mode: client code:
         if (this->networkType != NetworkType::None)
         {
@@ -2246,6 +2249,9 @@ public:
                             newPlayer_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+
+                            //add cache:
+                            networkObjectPositions.insert_or_assign(desc.uniqueID, vf2d(desc.posX, desc.posY));
                         }
 
                         if (desc.uniqueID == playerID)
@@ -2267,6 +2273,7 @@ public:
                         {
                             delete networkObjects[nRemovalID];
                             networkObjects.erase(nRemovalID);
+                            networkObjectPositions.erase(nRemovalID);
                         }
 
                         break;
@@ -2293,12 +2300,16 @@ public:
 
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
 
+                            //add cache:
+                            networkObjectPositions.insert_or_assign(desc.uniqueID, vf2d(desc.posX, desc.posY));
+
                             //bullet:
                             networkBullets.insert_or_assign(desc.uniqueID, vector<GameObject*>());
                         }
 
-                        //sync object:
-                        networkObjects[desc.uniqueID]->transform->position = vf2d(desc.posX, desc.posY);
+                        //sync object position:
+                        //networkObjects[desc.uniqueID]->transform->position = vf2d(desc.posX, desc.posY);
+                        networkObjectPositions[desc.uniqueID] = vf2d(desc.posX, desc.posY);
 
                         break;
                     }
@@ -2376,7 +2387,19 @@ public:
             }
         }
 
-        float deltaTime = fElapsedTime;
+        if (networkType != NetworkType::None)
+        {
+            //other player position lerp:
+            for (const auto& p : networkObjectPositions)
+            {
+                //lerp object position:
+                networkObjects[p.first]->transform->position.x =
+                    fuck_std::lerpf(networkObjects[p.first]->transform->position.x, p.second.x, deltaTime);
+
+                networkObjects[p.first]->transform->position.y =
+                    fuck_std::lerpf(networkObjects[p.first]->transform->position.y, p.second.y, deltaTime);
+            }
+        }
 
         Debug::OutputLine(to_wstring(GM.gameObjects.size()));
 

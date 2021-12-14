@@ -31,4 +31,9 @@ namespace fuck_std
         //assert(!(hi < lo));
         return v < lo ? lo : hi < v ? hi : v;
     }
+
+    inline float lerpf(float a, float b, float t)
+    {
+        return a + (b - a) * t;
+    }
 };
