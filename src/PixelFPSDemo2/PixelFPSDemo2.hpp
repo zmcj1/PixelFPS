@@ -50,6 +50,8 @@ private:
     std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
 
+    vector<GameObject*> myBullets;
+
 private:
     //graphics setting:
     bool useOldRaycastObject = true;
@@ -578,9 +580,9 @@ private:
                 //net:sync bullet:
                 if (this->networkType != NetworkType::None)
                 {
-                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex,
-                        bullet->transform->position.x, bullet->transform->position.y,
-                        bullet->transform->velocity.x, bullet->transform->velocity.y));
+                    myBullets.push_back(bullet);
+                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex, bullet->transform->position.x, bullet->transform->position.y));
+
                     bullet->AddComponent<NetworkCollider>(this->playerID_BulletIndex);
                     this->playerID_BulletIndex++;
                 }
@@ -621,12 +623,6 @@ private:
 
                 //set position:
                 newBullet->transform->position = vf2d(bullet.x, bullet.y);
-
-                //set velocity:
-                //newBullet->transform->velocity = vf2d(bullet.vx, bullet.vy);
-
-                //add collider:
-                newBullet->AddComponent<Collider>();
 
                 //add point light:
                 newBullet->AddComponent<PointLight>(2.0f);
@@ -762,7 +758,7 @@ private:
                 {
                     Draw(x, y, Pixel(0, 128, 0));
                 }
-}
+            }
         }
 #else
         //raycast:
@@ -970,6 +966,7 @@ private:
                                 }
                                 if (removeIndex != -1)
                                 {
+                                    myBullets.erase(myBullets.begin() + removeIndex);
                                     mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
                                 }
                             }
@@ -998,6 +995,7 @@ private:
                             }
                             if (removeIndex != -1)
                             {
+                                myBullets.erase(myBullets.begin() + removeIndex);
                                 mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
                             }
                         }
@@ -2128,6 +2126,13 @@ public:
                 //sync our position to other clients:
                 mapObjects[playerID].posX = playerX;
                 mapObjects[playerID].posY = playerY;
+
+                //sync bullets positon:
+                for (int i = 0; i < mapObjects[playerID].bullets.size(); i++)
+                {
+                    mapObjects[playerID].bullets[i].x = myBullets[i]->transform->position.x;
+                    mapObjects[playerID].bullets[i].y = myBullets[i]->transform->position.y;
+                }
 
                 //send to server:
                 olc::net::message<NetworkMessage> msg;
