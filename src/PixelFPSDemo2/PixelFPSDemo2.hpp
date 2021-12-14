@@ -144,6 +144,7 @@ private:
     Audio* bgm = nullptr;
     Audio* bgm2 = nullptr;
     bool startedPlayBGM = false;
+    bool disableBGM = false;
 
     //sounds:    
     Audio* explosionSound = nullptr;
@@ -1505,6 +1506,11 @@ private:
         }
     }
 
+    void draw_behit_hud(float deltaTime)
+    {
+
+    }
+
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
 
     // Identifies side of cell
@@ -1972,6 +1978,7 @@ public:
         this->boxheadInConsole = database->GetBool(L"boxheadInConsole", false);
 
         this->mouseSpeed = database->GetFloat(L"mouseSpeed", 0.05f);
+        this->disableBGM = database->GetBool(L"disableBGM", false);
 
         int netWorkRole = database->GetInt(L"networkRole", 0);
         switch (netWorkRole)
@@ -2093,7 +2100,10 @@ public:
 
         //play bgm:
         this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
-        this->bgm2->Play(false, false);
+        if (!disableBGM)
+        {
+            this->bgm2->Play(false, false);
+        }
 
         //add lamps:
         GameObject* lamp1 = new GameObject();
@@ -2343,6 +2353,9 @@ public:
                         iRespawn.Deserialize(msg.body);
                         //玩家复活后显示其游戏物体:
                         networkObjects[iRespawn.uniqueID]->active = true;
+                        //设置坐标防止复活后还移动插值:
+                        networkObjects[iRespawn.uniqueID]->transform->position.x = iRespawn.posX;
+                        networkObjects[iRespawn.uniqueID]->transform->position.y = iRespawn.posY;
                         break;
                     }
                 }
@@ -2394,10 +2407,10 @@ public:
             {
                 //lerp object position:
                 networkObjects[p.first]->transform->position.x =
-                    fuck_std::lerpf(networkObjects[p.first]->transform->position.x, p.second.x, deltaTime);
+                    fuck_std::lerpf(networkObjects[p.first]->transform->position.x, p.second.x, deltaTime * 2.0f);
 
                 networkObjects[p.first]->transform->position.y =
-                    fuck_std::lerpf(networkObjects[p.first]->transform->position.y, p.second.y, deltaTime);
+                    fuck_std::lerpf(networkObjects[p.first]->transform->position.y, p.second.y, deltaTime * 2.0f);
             }
         }
 

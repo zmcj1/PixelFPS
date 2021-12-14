@@ -1,5 +1,6 @@
 useMouse = true
 mouseSpeed = 0.03
+disableBGM = true
 
 //try set it true :)
 todayIsChristmas = false
