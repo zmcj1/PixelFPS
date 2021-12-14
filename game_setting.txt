@@ -1,4 +1,5 @@
 useMouse = true
+mouseSpeed = 0.03
 
 //try set it true :)
 todayIsChristmas = false

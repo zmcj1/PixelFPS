@@ -47,11 +47,9 @@ struct PlayerNetData
 {
 public:
     uint32_t uniqueID = 0;
-
     float posX;
     float posY;
-
-    //todo:
+    int health;
     vector<NetBullet> bullets;
 
     std::vector<uint8_t> Serialize() const
@@ -75,6 +73,10 @@ public:
         buffer.resize(buffer.size() + sizeof(float));
         std::memcpy(buffer.data() + pointer, &posY, sizeof(float));
         pointer += sizeof(float);
+
+        buffer.resize(buffer.size() + sizeof(int));
+        std::memcpy(buffer.data() + pointer, &health, sizeof(int));
+        pointer += sizeof(int);
 
         //bullets:
         for (const NetBullet bullet : bullets)
@@ -110,6 +112,9 @@ public:
 
         std::memcpy(&posY, buffer.data() + pointer, sizeof(float));
         pointer += sizeof(float);
+
+        std::memcpy(&health, buffer.data() + pointer, sizeof(int));
+        pointer += sizeof(int);
 
         //bullets:
         int diff = buffer.size() - pointer;

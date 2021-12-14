@@ -80,7 +80,7 @@ private:
     float playerX = 8.5f;           // Player Start Position
     float playerY = 14.7f;
     float playerAngle = 0.0f;       // Player Start Rotation(in rad)
-    float moveSpeed = 5.0f;         // Walking Speed
+    float moveSpeed = 2.5f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
     // enable mouse rotate:
@@ -98,7 +98,9 @@ private:
 
     //hud
     bool enableWeaponHud = true;
-    bool enableBloodBar = false;
+    bool enableBloodBar = true;
+    int bloodBarPosX = 20;
+    int bloodBarPosY = 150;
 
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
@@ -482,11 +484,11 @@ private:
             weapon->openScope = GetMouse(Mouse::RIGHT).bHeld;
             if (weapon->openScope)
             {
-                moveSpeed = 1.5f;
+                moveSpeed = 1.0f;
             }
             else
             {
-                moveSpeed = 5.0f;
+                moveSpeed = 2.5f;
             }
         }
 
@@ -1197,7 +1199,7 @@ private:
         Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
 
         //draw health bar
-        if (enableBloodBar)
+        if (enableBloodBar && false)
         {
             for (int y = 160, effect = 0; y <= 170; y++, effect++)
             {
@@ -1342,6 +1344,30 @@ private:
                     DrawBMP(this->awp_bmp, drawPosX, drawPosY);
                 }
             }
+        }
+
+        if (enableBloodBar)
+        {
+            for (size_t i = 0; i < 10; i++)
+            {
+                for (size_t j = 0; j < 70; j++)
+                {
+                    if (this->playerHealth <= 25)
+                    {
+                        Draw(bloodBarPosX + j, bloodBarPosY + i, Pixel(227, 23, 0));
+                    }
+                    else if (this->playerHealth <= 50)
+                    {
+                        Draw(bloodBarPosX + j, bloodBarPosY + i, Pixel(255, 97, 0));
+                    }
+                    else
+                    {
+                        Draw(bloodBarPosX + j, bloodBarPosY + i, Pixel(0, 201, 87));
+                    }
+                }
+            }
+
+            DrawString(bloodBarPosX + 25, bloodBarPosY + 1, to_string(this->playerHealth), Pixel(255, 255, 255));
         }
     }
 
@@ -1811,6 +1837,8 @@ public:
         this->todayIsChristmas = database->GetBool(L"todayIsChristmas", false);
         this->boxheadInConsole = database->GetBool(L"boxheadInConsole", false);
 
+        this->mouseSpeed = database->GetFloat(L"mouseSpeed", 0.05f);
+
         int netWorkRole = database->GetInt(L"networkRole", 0);
         switch (netWorkRole)
         {
@@ -2031,6 +2059,7 @@ public:
 
                         PlayerNetData defaultPlayerNetData;
 
+                        defaultPlayerNetData.health = playerHealth;
                         defaultPlayerNetData.posX = playerX;
                         defaultPlayerNetData.posY = playerY;
 
@@ -2178,6 +2207,14 @@ public:
         if (GetKey(Key::ESCAPE).bPressed)
         {
             return false;
+        }
+
+        //Player Dead:
+        if (this->playerHealth <= 0)
+        {
+            Clear(Pixel(0, 0, 255));
+            DrawString(100, 100, "You are dead!");
+            return true;
         }
 
         update_audio();
