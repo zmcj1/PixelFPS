@@ -12,6 +12,24 @@ my library:https://github.com/zmcj1/BoxheadConsoleGameEngine
 
 massive massive thx javidx9!
 
+### game_setting help
+
+useMouse [true/false] //use mouse or not.
+
+todayIsChristmas [true/false] //Easter eggs
+
+boxheadInConsole [true/false] //Easter eggs
+
+mouseSpeed [0.01-0.1] //mouse Sensitivity
+
+disableBGM [true/false] //disable background music
+
+GQ [1-4] //graphical quality, 1=low, 4=ultra
+
+networkRole [1/2] //1=host, 2=client
+
+ip ["ip address"] //if you are client, this is target ip address.
+
 ### TODO
 
 After several days of research, New TODO is out:
