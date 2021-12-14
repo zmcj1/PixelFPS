@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include <vector>
-#include <tuple>
 #include <cstdint>
+#include <cstring>
 
 using namespace std;
 
