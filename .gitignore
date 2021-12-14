@@ -12,6 +12,8 @@ CTestTestfile.cmake
 _deps
 # ignore out folder
 out/
+# In linux we should ignore this executable file
+src/PixelFPSDemo2_Server/PixelFPSDemo2_Server
 # For cmake end
 
 
