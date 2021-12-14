@@ -65,6 +65,11 @@ private:
     std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
     vector<GameObject*> myBullets;
 
+    //net ui:
+    const float beHitEffectLastTime = 0.75f;
+    bool netBeHit = false;
+    float beHitEffectTimer = 0.0f;
+
 private:
     //graphics setting:
     bool useOldRaycastObject = true;
@@ -239,6 +244,17 @@ private:
                 pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
 
                 Draw(posX + x, posY + y, pixel);
+            }
+        }
+    }
+
+    void DrawPanel(Color32 color)
+    {
+        for (size_t i = 0; i < ScreenHeight(); i++)
+        {
+            for (size_t j = 0; j < ScreenWidth(); j++)
+            {
+                Draw(j, i, Pixel(color.r, color.g, color.b, color.a));
             }
         }
     }
@@ -472,9 +488,11 @@ private:
         }
 
         //self Damage
-        if (GetKey(Key::K).bHeld)
+        if (GetKey(Key::X).bHeld)
         {
             playerHealth -= selfDamage;
+
+            this->netBeHit = true;
         }
 
         //switch weapon:
@@ -1550,7 +1568,18 @@ private:
 
     void draw_behit_hud(float deltaTime)
     {
-
+        if (this->netBeHit)
+        {
+            beHitEffectTimer += deltaTime;
+            //stop it
+            if (beHitEffectTimer >= beHitEffectLastTime)
+            {
+                beHitEffectTimer = 0.0f;
+                this->netBeHit = false;
+            }
+            //display:
+            DrawString(10, 30, "HP----------------------------------", Pixel(255, 0, 0));
+        }
     }
 
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
@@ -2296,6 +2325,11 @@ public:
     {
         float deltaTime = fElapsedTime;
 
+        if (GetKey(Key::ESCAPE).bPressed)
+        {
+            return false;
+        }
+
         //multiplayer mode: client code:
         if (this->networkType != NetworkType::None)
         {
@@ -2420,11 +2454,20 @@ public:
                     case NetworkMessage::Game_BulletHitOther:
                         BulletHitInfo info;
                         info.Deserialize(msg.body);
+                        //behit
                         if (info.otherPlayerID == playerID)
                         {
                             this->playerHealth -= info.damage;
+
+                            //set behit ui:
+                            this->netBeHit = true;
+
                             if (this->playerHealth <= 0)
                             {
+                                //reset behit ui:
+                                this->netBeHit = false;
+                                this->beHitEffectTimer = 0.0f;
+
                                 olc::net::message<NetworkMessage> dead_msg;
                                 dead_msg.header.id = NetworkMessage::Game_ImDead;
                                 ImDead imdead;
@@ -2494,9 +2537,9 @@ public:
             }
         }
 
+        //other player position lerp:
         if (networkType != NetworkType::None)
         {
-            //other player position lerp:
             for (const auto& p : networkObjectPositions)
             {
                 //lerp object position:
@@ -2528,11 +2571,6 @@ public:
             }
         }
 
-        if (GetKey(Key::ESCAPE).bPressed)
-        {
-            return false;
-        }
-
         //Player Dead:
         if (this->playerHealth <= 0)
         {
@@ -2544,6 +2582,9 @@ public:
                 this->playerX = 8.5f;
                 this->playerY = 14.7f;
                 this->playerAngle = 0.0f;
+
+                beHitEffectTimer = 0.0f;
+                netBeHit = false;
 
                 if (networkType != NetworkType::None)
                 {
@@ -2575,6 +2616,8 @@ public:
         render_world(deltaTime);
 
         render_hud(deltaTime);
+
+        draw_behit_hud(deltaTime);
 
         vector<int> readyToDeleteIds;
         for (auto& item : GM.gameObjects)
