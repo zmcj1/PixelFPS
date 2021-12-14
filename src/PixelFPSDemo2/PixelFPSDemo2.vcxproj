@@ -159,7 +159,6 @@
     <ClCompile Include="Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BMP.h" />
     <ClInclude Include="BMPRenderer.hpp" />
     <ClInclude Include="Collider.hpp" />
     <ClInclude Include="Component.hpp" />
@@ -167,7 +166,6 @@
     <ClInclude Include="EasyBMP_BMP.h" />
     <ClInclude Include="EasyBMP_DataStructures.h" />
     <ClInclude Include="EasyBMP_VariousBMPutilities.h" />
-    <ClInclude Include="FPS_Client.hpp" />
     <ClInclude Include="FPS_Server.hpp" />
     <ClInclude Include="GameManager.hpp" />
     <ClInclude Include="GameObject.hpp" />

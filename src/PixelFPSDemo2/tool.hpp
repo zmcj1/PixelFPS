@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include "olcPixelGameEngine.h"
-#include "BMP.h"
 #include "MinConsoleNative.hpp"
 #include <string>
 #include <vector>
