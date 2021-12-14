@@ -22,6 +22,14 @@ enum class NetworkMessage : uint32_t
     Game_AddPlayer,
     Game_RemovePlayer,
     Game_UpdatePlayer,
+    Game_BulletHitOther,
+};
+
+enum class NetworkType
+{
+    None = 0,
+    Host = 1,   //server + client
+    Client = 2, //client
 };
 
 struct NetBullet
@@ -55,10 +63,6 @@ public:
     std::vector<uint8_t> Serialize() const
     {
         std::vector<uint8_t> buffer;
-
-        //module:
-        //buffer.resize(buffer.size() + sizeof(DataType));
-        //std::memcpy(buffer.data() + buffer.size(), &data, sizeof(DataType));
 
         size_t pointer = 0;
 
@@ -137,9 +141,37 @@ public:
     }
 };
 
-enum class NetworkType
+struct BulletHitInfo
 {
-    None = 0,
-    Host = 1,   //server + client
-    Client = 2, //client
+public:
+    uint32_t otherPlayerID;
+    float damage;
+
+    std::vector<uint8_t> Serialize() const
+    {
+        std::vector<uint8_t> buffer;
+
+        size_t pointer = 0;
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &otherPlayerID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        buffer.resize(buffer.size() + sizeof(float));
+        std::memcpy(buffer.data() + pointer, &damage, sizeof(float));
+        pointer += sizeof(float);
+
+        return buffer;
+    }
+
+    void Deserialize(const std::vector<uint8_t>& buffer)
+    {
+        size_t pointer = 0;
+
+        std::memcpy(&otherPlayerID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        std::memcpy(&damage, buffer.data() + pointer, sizeof(float));
+        pointer += sizeof(float);
+    }
 };

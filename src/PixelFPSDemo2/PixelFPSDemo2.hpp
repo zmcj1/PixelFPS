@@ -976,7 +976,47 @@ private:
                     }
 
                     //collsion with other objects:
-                    //todo:
+                    if (this->networkType != NetworkType::None)
+                    {
+                        for (auto& ob : mapObjects)
+                        {
+                            if (ob.first == playerID) continue; //不要检测自己
+
+                            int bx = (int)go->transform->position.x;
+                            int by = (int)go->transform->position.y;
+                            //if hit:
+                            if ((int)ob.second.posX == bx && (int)ob.second.posY == by)
+                            {
+                                go->remove = true;
+
+                                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                                if (net_collider != nullptr && net_collider->enable)
+                                {
+                                    int removeIndex = -1;
+                                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                                    {
+                                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                        {
+                                            removeIndex = _i;
+                                        }
+                                    }
+                                    if (removeIndex != -1)
+                                    {
+                                        myBullets.erase(myBullets.begin() + removeIndex);
+                                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                                    }
+                                }
+
+                                BulletHitInfo info;
+                                info.otherPlayerID = ob.first;
+                                info.damage = 10.0f;
+                                olc::net::message<NetworkMessage> msg;
+                                msg.header.id = NetworkMessage::Game_BulletHitOther;
+                                msg.AddBytes(info.Serialize());
+                                Send(msg);
+                            }
+                        }
+                    }
                 }
                 else
                 {
@@ -2142,6 +2182,14 @@ public:
 
                         break;
                     }
+                    case NetworkMessage::Game_BulletHitOther:
+                        BulletHitInfo info;
+                        info.Deserialize(msg.body);
+                        if (info.otherPlayerID == playerID)
+                        {
+                            this->playerHealth -= info.damage;
+                        }
+                        break;
                     }
                 }
 
@@ -2162,6 +2210,9 @@ public:
                     mapObjects[playerID].bullets[i].x = myBullets[i]->transform->position.x;
                     mapObjects[playerID].bullets[i].y = myBullets[i]->transform->position.y;
                 }
+
+                //sync health:
+                mapObjects[playerID].health = this->playerHealth;
 
                 //send to server:
                 olc::net::message<NetworkMessage> msg;
@@ -2213,7 +2264,14 @@ public:
         if (this->playerHealth <= 0)
         {
             Clear(Pixel(0, 0, 255));
-            DrawString(100, 100, "You are dead!");
+            DrawString(10, 100, "You are dead! Press 'R' to respawn.");
+            if (GetKey(Key::R).bPressed)
+            {
+                this->playerHealth = this->fullHealth;
+                this->playerX = 8.5f;
+                this->playerY = 14.7f;
+                this->playerAngle = 0.0f;
+            }
             return true;
         }
 

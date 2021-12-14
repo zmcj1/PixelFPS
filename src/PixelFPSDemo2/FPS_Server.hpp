@@ -111,6 +111,7 @@ public:
         }
 
         case NetworkMessage::Game_UpdatePlayer:
+        case NetworkMessage::Game_BulletHitOther:
         {
             // Simply bounce update to everyone except incoming client
             MessageAllClients(msg, client);
