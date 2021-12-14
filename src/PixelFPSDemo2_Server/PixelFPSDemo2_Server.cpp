@@ -1,9 +1,16 @@
-﻿#include "PixelFPSDemo2_Server.h"
+﻿#include "FPS_Server.hpp"
 
 using namespace std;
 
 int main()
 {
-	cout << "Hello CMake." << endl;
+	FPSServer server(17971);
+	server.Start();
+
+	while (true)
+	{
+		server.Update(-1, true);
+	}
+
 	return 0;
 }
