@@ -48,6 +48,9 @@
     <ClCompile Include="NetworkCollider.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="BMPRenderer.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -120,6 +123,9 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="NetworkCollider.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="BMPRenderer.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>
