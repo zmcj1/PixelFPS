@@ -217,7 +217,7 @@ private:
         }
     }
 
-    void DrawBMP(BMP* bmp, int posX, int posY, int zoomPixelScaler = 1)
+    void DrawBMP(BMP* bmp, int posX, int posY, int zoomPixelScaler = 1, float _m = 0.0f)
     {
         for (size_t y = 0; y < bmp->TellHeight(); y++)
         {
@@ -231,7 +231,14 @@ private:
                     continue;
                 }
 
-                Draw(posX + x, posY + y, Pixel(color.Red, color.Green, color.Blue));
+                //light:
+                Pixel pixel(color.Red, color.Green, color.Blue);
+
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+                Draw(posX + x, posY + y, pixel);
             }
         }
     }
@@ -1429,6 +1436,27 @@ private:
             int drawPosX = 0;
             int drawPosY = 0;
 
+            //calculate point light distance:
+            vector<PointLight*> pointLights;
+            for (auto& item : GM.gameObjects)
+            {
+                GameObject* go = item.second;
+                if (!go->active) continue;
+                if (go->remove) continue;
+                PointLight* pointLight = go->GetComponent<PointLight>();
+                if (pointLight != nullptr && pointLight->enable)
+                {
+                    pointLights.push_back(pointLight);
+                }
+            }
+
+            float _m = 0.0f;
+            for (PointLight* pointLight : pointLights)
+            {
+                float distanceToPointLight = (pointLight->gameObject->transform->position - vf2d(playerX, playerY)).mag();
+                _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+            }
+
             //draw weapon & draw muzzle flame
             if (weapon_current == WeaponEnum::DESERT_EAGLE)
             {
@@ -1442,7 +1470,7 @@ private:
 
                 DisplaySprite(spriteDesertEagle, drawPosX, drawPosY, 1);
             }
-            if (weapon_current == WeaponEnum::AK47)
+            else if (weapon_current == WeaponEnum::AK47)
             {
                 drawPosX = 50 + int(weapon_Xcof * 4);
                 drawPosY = int(-120 - weapon_Ypos);
@@ -1454,14 +1482,14 @@ private:
 
                 DisplaySprite(spriteAK47, drawPosX, drawPosY, 1);
             }
-            if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
+            else if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
             {
                 drawPosX = 200 + int(weapon_Xcof * 4);
                 drawPosY = int(0 - weapon_Ypos / 2);
 
                 DisplaySprite(sptireWeapon_aek, drawPosX, drawPosY, 3);
             }
-            if (weapon_current == WeaponEnum::M4A1)
+            else if (weapon_current == WeaponEnum::M4A1)
             {
                 drawPosX = int(weapon_Xcof * 2);
                 drawPosY = int(weapon_Ypos / 2);
@@ -1471,9 +1499,9 @@ private:
                     //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
-                DrawBMP(this->m4a1_bmp, drawPosX, drawPosY);
+                DrawBMP(this->m4a1_bmp, drawPosX, drawPosY, 1, _m);
             }
-            if (weapon_current == WeaponEnum::AWP)
+            else if (weapon_current == WeaponEnum::AWP)
             {
                 drawPosX = int(weapon_Xcof * 2);
                 drawPosY = int(weapon_Ypos / 2);
@@ -1490,7 +1518,7 @@ private:
                 }
                 else
                 {
-                    DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+                    DrawBMP(this->awp_bmp, drawPosX, drawPosY, 1, _m);
                 }
             }
         }
