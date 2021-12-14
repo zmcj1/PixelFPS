@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <thread> //thread support
 #include "NetworkCollider.hpp" //net collider
+#include "BMPRenderer.hpp" //bmp renderer
 
 //net:
 #include "NetworkMessage.hpp"
@@ -68,6 +69,7 @@ private:
     BMP* awp_bmp = nullptr;
     BMP* m4a1_bmp = nullptr;
     BMP* scope_bmp = nullptr;
+    BMP* GSG9_bmp = nullptr;
 
 private:
     //map:
@@ -1007,6 +1009,7 @@ private:
                                 }
 
                                 BulletHitInfo info;
+                                info.myID = playerID;
                                 info.otherPlayerID = ob.first;
                                 info.damage = weapons[(int)weapon_current]->damage;
                                 olc::net::message<NetworkMessage> msg;
@@ -1054,7 +1057,7 @@ private:
                 }
             }
 
-            //render:
+            //sprite renderer:
             SpriteRenderer* renderer = go->GetComponent<SpriteRenderer>();
             if (renderer != nullptr && renderer->enable)
             {
@@ -1213,6 +1216,97 @@ private:
                     }
                 }
             }
+
+            //bmp renderer:
+            BMPRenderer* bmp_renderer = go->GetComponent<BMPRenderer>();
+            if (bmp_renderer != nullptr && bmp_renderer->enable)
+            {
+                // Can object be seen?
+                float vecX = go->transform->position.x - playerX;
+                float vecY = go->transform->position.y - playerY;
+                float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
+
+                float eyeX = cosf(playerAngle);
+                float eyeY = sinf(playerAngle);
+                float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
+
+                //限制取值范围在+PI与-PI之间
+                //set limit : [-PI, PI]
+                if (objectAngle < -3.14159f)
+                    objectAngle += 2.0f * 3.14159f;
+                if (objectAngle > 3.14159f)
+                    objectAngle -= 2.0f * 3.14159f;
+
+                bool inPlayerFOV = fabs(objectAngle) < (FOV + 1.0f / distanceFromPlayer) / 2.0f;
+                //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+                //draw object witch is in FOV
+                if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
+                {
+                    // Work out its position on the floor...
+                    olc::vf2d floorPoint;
+
+                    // Horizontal screen location is determined based on object angle relative to camera heading
+                    floorPoint.x = (objectAngle / FOV + 0.5f) * ScreenWidth();
+
+                    // Vertical screen location is projected distance
+                    //floorPoint.y = (ScreenHeight() / 2.0f) + (ScreenHeight() / distanceFromPlayer) / std::cos(objectAngle / 2.0f);
+                    floorPoint.y = ScreenHeight() / 2.0f + ScreenHeight() / distanceFromPlayer;
+
+                    // First we need the objects size...
+                    olc::vf2d objectSize = bmp_renderer->ObjectSize;
+
+                    // ...which we can scale into world space (maintaining aspect ratio)...
+                    objectSize *= 2.0f * ScreenHeight();
+
+                    // ...then project into screen space
+                    objectSize /= distanceFromPlayer;
+
+                    // Second we need the objects top left position in screen space...
+                    // ...which is relative to the objects size and assumes the middle of the object is
+                    // the location in world space
+                    olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
+
+                    // Now iterate through the objects screen pixels
+                    for (float y = 0; y < objectSize.y; y++)
+                    {
+                        for (float x = 0; x < objectSize.x; x++)
+                        {
+                            // Create a normalised sample coordinate
+                            float sampleX = x / objectSize.x;
+                            float sampleY = y / objectSize.y;
+
+                            // Calculate screen pixel location
+                            olc::vi2d a = { int(objectTopLeft.x + x), int(objectTopLeft.y + y) };
+
+                            // Check if location is actually on screen (to not go OOB on depth buffer)
+                            if (a.x >= 0 && a.x < ScreenWidth() && a.y >= 0 && a.y < ScreenHeight())
+                            {
+                                Color32 color32 = bmp_renderer->SampleColour(sampleX, sampleY);
+
+                                //treat pure white pixel as alpha transparency.
+                                if (color32.r == 255 && color32.g == 255 && color32.b == 255)
+                                {
+                                    continue;
+                                }
+
+                                Color24 pixelColor = Color24(color32.r, color32.g, color32.b);
+
+                                // Get pixel from a suitable texture
+                                float object_fHeading = 0.0f; //todo
+                                float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
+                                if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
+
+                                Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, 0);
+                                // Draw the pixel taking into account the depth buffer
+                                DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
+                            }
+                        }
+                    }
+                }
+
+            }
+
         }
     }
 
@@ -1962,11 +2056,13 @@ public:
         this->awp_bmp = new BMP();
         this->m4a1_bmp = new BMP();
         this->scope_bmp = new BMP();
+        this->GSG9_bmp = new BMP();
 
         //load BMP:
         this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
         this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
         this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
+        this->GSG9_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "Player.bmp"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -2013,6 +2109,13 @@ public:
         lamp3->transform->position = vf2d(10.5f, 3.5f);
         lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
         lamp3->AddComponent<PointLight>(5.0f);
+
+        //add players:
+        GameObject* player1 = new GameObject();
+        player1->transform->position = vf2d(8.5f, 14.7f);
+        BMPRenderer* player1_bmpRenderer = player1->AddComponent<BMPRenderer>();
+        player1_bmpRenderer->bmp = this->GSG9_bmp;
+        player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
         //add weapons:
         Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
@@ -2196,7 +2299,30 @@ public:
                         if (info.otherPlayerID == playerID)
                         {
                             this->playerHealth -= info.damage;
+                            if (this->playerHealth <= 0)
+                            {
+                                olc::net::message<NetworkMessage> dead_msg;
+                                dead_msg.header.id = NetworkMessage::Game_ImDead;
+                                ImDead imdead;
+                                imdead.ID = playerID;
+                                imdead.killerID = info.myID;
+                                dead_msg.AddBytes(mapObjects[playerID].Serialize());
+                                Send(dead_msg);
+                            }
                         }
+                        break;
+                    case NetworkMessage::Game_ImDead:
+                        ImDead imdead;
+                        imdead.Deserialize(msg.body);
+                        //玩家死亡后禁用其游戏物体:
+                        networkObjects[imdead.ID]->active = false;
+                        //imdead.killerID;
+                        break;
+                    case NetworkMessage::Game_IRespawn:
+                        IRespawn iRespawn;
+                        iRespawn.Deserialize(msg.body);
+                        //玩家复活后显示其游戏物体:
+                        networkObjects[iRespawn.uniqueID]->active = true;
                         break;
                     }
                 }
@@ -2279,6 +2405,20 @@ public:
                 this->playerX = 8.5f;
                 this->playerY = 14.7f;
                 this->playerAngle = 0.0f;
+
+                if (networkType != NetworkType::None)
+                {
+                    IRespawn iRespawn;
+                    iRespawn.uniqueID = playerID;
+                    iRespawn.health = playerHealth;
+                    iRespawn.posX = playerX;
+                    iRespawn.posY = playerY;
+
+                    olc::net::message<NetworkMessage> msg;
+                    msg.header.id = NetworkMessage::Game_IRespawn;
+                    msg.AddBytes(iRespawn.Serialize());
+                    Send(msg);
+                }
             }
             return true;
         }
@@ -2327,6 +2467,7 @@ public:
         delete this->awp_bmp;
         delete this->m4a1_bmp;
         delete this->scope_bmp;
+        delete this->GSG9_bmp;
 
         delete this->spriteWall;
         delete this->spriteLamp;

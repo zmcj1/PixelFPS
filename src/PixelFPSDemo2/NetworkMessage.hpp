@@ -23,6 +23,8 @@ enum class NetworkMessage : uint32_t
     Game_RemovePlayer,
     Game_UpdatePlayer,
     Game_BulletHitOther,
+    Game_ImDead,
+    Game_IRespawn,
 };
 
 enum class NetworkType
@@ -144,6 +146,7 @@ public:
 struct BulletHitInfo
 {
 public:
+    uint32_t myID;
     uint32_t otherPlayerID;
     float damage;
 
@@ -152,6 +155,10 @@ public:
         std::vector<uint8_t> buffer;
 
         size_t pointer = 0;
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &myID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
 
         buffer.resize(buffer.size() + sizeof(uint32_t));
         std::memcpy(buffer.data() + pointer, &otherPlayerID, sizeof(uint32_t));
@@ -168,10 +175,99 @@ public:
     {
         size_t pointer = 0;
 
+        std::memcpy(&myID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
         std::memcpy(&otherPlayerID, buffer.data() + pointer, sizeof(uint32_t));
         pointer += sizeof(uint32_t);
 
         std::memcpy(&damage, buffer.data() + pointer, sizeof(float));
         pointer += sizeof(float);
+    }
+};
+
+struct ImDead
+{
+public:
+    uint32_t ID;
+    uint32_t killerID;
+
+    std::vector<uint8_t> Serialize() const
+    {
+        std::vector<uint8_t> buffer;
+
+        size_t pointer = 0;
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &ID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &killerID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        return buffer;
+    }
+
+    void Deserialize(const std::vector<uint8_t>& buffer)
+    {
+        size_t pointer = 0;
+
+        std::memcpy(&ID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        std::memcpy(&killerID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+    }
+};
+
+struct IRespawn
+{
+public:
+    uint32_t uniqueID = 0;
+    float posX;
+    float posY;
+    int health;
+
+    std::vector<uint8_t> Serialize() const
+    {
+        std::vector<uint8_t> buffer;
+
+        size_t pointer = 0;
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &uniqueID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        buffer.resize(buffer.size() + sizeof(float));
+        std::memcpy(buffer.data() + pointer, &posX, sizeof(float));
+        pointer += sizeof(float);
+
+        buffer.resize(buffer.size() + sizeof(float));
+        std::memcpy(buffer.data() + pointer, &posY, sizeof(float));
+        pointer += sizeof(float);
+
+        buffer.resize(buffer.size() + sizeof(int));
+        std::memcpy(buffer.data() + pointer, &health, sizeof(int));
+        pointer += sizeof(int);
+
+        return buffer;
+    }
+
+    void Deserialize(const std::vector<uint8_t>& buffer)
+    {
+        size_t pointer = 0;
+
+        std::memcpy(&uniqueID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        std::memcpy(&posX, buffer.data() + pointer, sizeof(float));
+        pointer += sizeof(float);
+
+        std::memcpy(&posY, buffer.data() + pointer, sizeof(float));
+        pointer += sizeof(float);
+
+        std::memcpy(&health, buffer.data() + pointer, sizeof(int));
+        pointer += sizeof(int);
     }
 };
