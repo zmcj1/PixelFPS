@@ -2111,11 +2111,11 @@ public:
         lamp3->AddComponent<PointLight>(5.0f);
 
         //add players:
-        GameObject* player1 = new GameObject();
-        player1->transform->position = vf2d(8.5f, 14.7f);
-        BMPRenderer* player1_bmpRenderer = player1->AddComponent<BMPRenderer>();
-        player1_bmpRenderer->bmp = this->GSG9_bmp;
-        player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+        //GameObject* player1 = new GameObject();
+        //player1->transform->position = vf2d(8.5f, 14.7f);
+        //BMPRenderer* player1_bmpRenderer = player1->AddComponent<BMPRenderer>();
+        //player1_bmpRenderer->bmp = this->GSG9_bmp;
+        //player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
         //add weapons:
         Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
@@ -2240,7 +2240,11 @@ public:
                         {
                             GameObject* newPlayer = new GameObject();
                             newPlayer->transform->position = vf2d(desc.posX, desc.posY);
-                            newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+                            BMPRenderer* newPlayer_bmpRenderer = newPlayer->AddComponent<BMPRenderer>();
+                            newPlayer_bmpRenderer->bmp = this->GSG9_bmp;
+                            newPlayer_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
                         }
 
@@ -2280,8 +2284,13 @@ public:
                         if (networkObjects.count(desc.uniqueID) == 0)
                         {
                             GameObject* newPlayer = new GameObject();
+
                             newPlayer->transform->position = vf2d(desc.posX, desc.posY);
-                            newPlayer->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+
+                            BMPRenderer* newPlayer_bmpRenderer = newPlayer->AddComponent<BMPRenderer>();
+                            newPlayer_bmpRenderer->bmp = this->GSG9_bmp;
+                            newPlayer_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
 
                             //bullet:
