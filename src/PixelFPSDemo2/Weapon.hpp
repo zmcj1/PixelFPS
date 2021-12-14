@@ -34,7 +34,9 @@ private:
     float fire_timer = 0.0f;
 
 public:
+    //properties
     float fire_interval = 0.5f; //just a default value
+    float damage = 10.0f;
 
 public:
     WeaponEnum weapon_enum;

@@ -49,7 +49,6 @@ private:
     std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
     std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
-
     vector<GameObject*> myBullets;
 
 private:
@@ -1009,7 +1008,7 @@ private:
 
                                 BulletHitInfo info;
                                 info.otherPlayerID = ob.first;
-                                info.damage = 10.0f;
+                                info.damage = weapons[(int)weapon_current]->damage;
                                 olc::net::message<NetworkMessage> msg;
                                 msg.header.id = NetworkMessage::Game_BulletHitOther;
                                 msg.AddBytes(info.Serialize());
@@ -2032,10 +2031,19 @@ public:
         weapons.insert_or_assign((int)awp->weapon_enum, awp);
 
         desertEagle->fire_interval = 0.45f;
+        desertEagle->damage = 25.5f;
+
         ak47->fire_interval = 0.1f;
+        ak47->damage = 15.5f;
+
         aek_971->fire_interval = 0.125f;
+        aek_971->damage = 18.6f;
+
         m4a1->fire_interval = 0.08f;
+        m4a1->damage = 12.7f;
+
         awp->fire_interval = 1.5f;
+        awp->damage = 65.4f;
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
