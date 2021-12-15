@@ -42,6 +42,8 @@ class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<Network
 private:
     //Graphical Quality:
     GraphicalQuality graphicalQuality = GraphicalQuality::Middle;
+    Color24 groundColor = Color24(212, 212, 212);
+    Color24 skyColor = Color24(0, 0, 255);
 
 private:
     //more hud:
@@ -950,7 +952,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0, pointLights);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, skyColor, planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -990,7 +992,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0, pointLights);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, groundColor, planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
             }
