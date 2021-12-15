@@ -115,6 +115,7 @@ private:
     BMP* m4a1_bmp = nullptr;
     BMP* scope_bmp = nullptr;
     BMP* GSG9_bmp = nullptr;
+    BMP* Zombie_bmp = nullptr;
 
 private:
     //map:
@@ -2419,12 +2420,14 @@ public:
         this->m4a1_bmp = new BMP();
         this->scope_bmp = new BMP();
         this->GSG9_bmp = new BMP();
+        this->Zombie_bmp = new BMP();
 
         //load BMP:
         this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
         this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
         this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
         this->GSG9_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "Player.bmp"));
+        this->Zombie_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "zombie.bmp"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -2481,6 +2484,19 @@ public:
         //BMPRenderer* player1_bmpRenderer = player1->AddComponent<BMPRenderer>();
         //player1_bmpRenderer->bmp = this->GSG9_bmp;
         //player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+
+        //add zombies:
+        //GameObject* zombie1 = new GameObject();
+        //zombie1->transform->position = vf2d(6, 16);
+        //BMPRenderer* zombie1_bmpRenderer = zombie1->AddComponent<BMPRenderer>();
+        //zombie1_bmpRenderer->bmp = this->Zombie_bmp;
+        //zombie1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+
+        //GameObject* zombie2 = new GameObject();
+        //zombie2->transform->position = vf2d(8, 16);
+        //BMPRenderer* zombie2_bmpRenderer = zombie2->AddComponent<BMPRenderer>();
+        //zombie2_bmpRenderer->bmp = this->Zombie_bmp;
+        //zombie2_bmpRenderer->ObjectSize = vf2d(2.5f, 1.15f);
 
         if (networkType != NetworkType::Client)
         {
@@ -2903,6 +2919,7 @@ public:
         delete this->m4a1_bmp;
         delete this->scope_bmp;
         delete this->GSG9_bmp;
+        delete this->Zombie_bmp;
 
         delete this->spriteWall;
         delete this->spriteLamp;
