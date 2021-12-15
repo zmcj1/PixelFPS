@@ -50,6 +50,11 @@ private:
     float hitOtherTimer = 0.0f;
     float hitOtherLastTime = 0.5f;
 
+    //kill hud:
+    bool killOther = false;
+    float killOtherTimer = 0.0f;
+    float killOtherLastTime = 0.75f;
+
 private:
     //net setting:
     NetworkType networkType = NetworkType::None;
@@ -693,6 +698,29 @@ private:
         }
     }
 
+    void make_kill_hud()
+    {
+        this->killOther = true;
+        this->killOtherTimer = 0.0f;
+    }
+
+    void draw_kill_hud(float deltaTime)
+    {
+        if (killOther)
+        {
+            killOtherTimer += deltaTime;
+
+            if (killOtherTimer >= killOtherLastTime)
+            {
+                this->killOther = false;
+                this->killOtherTimer = 0.0f;
+            }
+
+            //display:
+            DrawString(125, 75, "KILL!!!", Pixel(255, 140, 0));
+        }
+    }
+
     void make_hit_hud(float damage)
     {
         this->hitOther = true;
@@ -708,8 +736,8 @@ private:
 
             if (hitOtherTimer >= hitOtherLastTime)
             {
-                hitOtherTimer = 0.0f;
                 hitOther = false;
+                hitOtherTimer = 0.0f;
             }
 
             DrawString(50, 50, to_string(hitDamage));
@@ -2493,6 +2521,7 @@ public:
                             //set behit ui:
                             this->netBeHit = true;
 
+                            //dead:
                             if (this->playerHealth <= 0)
                             {
                                 //reset behit ui:
@@ -2504,7 +2533,7 @@ public:
                                 ImDead imdead;
                                 imdead.ID = playerID;
                                 imdead.killerID = info.myID;
-                                dead_msg.AddBytes(mapObjects[playerID].Serialize());
+                                dead_msg.AddBytes(imdead.Serialize());
                                 Send(dead_msg);
                             }
                         }
@@ -2514,7 +2543,13 @@ public:
                         imdead.Deserialize(msg.body);
                         //玩家死亡后禁用其游戏物体:
                         networkObjects[imdead.ID]->active = false;
-                        //imdead.killerID;
+
+                        //if I kill the player:
+                        if (imdead.killerID == playerID)
+                        {
+                            make_kill_hud();
+                        }
+
                         break;
                     case NetworkMessage::Game_IRespawn:
                         IRespawn iRespawn;
@@ -2651,6 +2686,8 @@ public:
         draw_behit_hud(deltaTime);
 
         draw_hit_hud(deltaTime);
+
+        draw_kill_hud(deltaTime);
 
         vector<int> readyToDeleteIds;
         for (auto& item : GM.gameObjects)
