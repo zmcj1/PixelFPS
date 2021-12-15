@@ -23,11 +23,11 @@ networkRole = 1
 //1 = SinglePlayer_SurvivalMode
 //2 = MultiPlayer_SoloMode
 //3 = MultiPlayer_ZombieEscapeMode
-gameMode = 1
+gameMode = 2
 
 //ak47
 //aek971
 //de
 //awp
 //m4a1
-soloWeapon = m4a1
+soloWeapon = awp

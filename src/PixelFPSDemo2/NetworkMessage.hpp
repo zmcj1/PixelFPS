@@ -25,6 +25,7 @@ enum class NetworkMessage : uint32_t
     Game_BulletHitOther,
     Game_ImDead,
     Game_IRespawn,
+    Game_HostChooseMode, //this value should be sent by Host.
 };
 
 enum class NetworkType
@@ -268,6 +269,49 @@ public:
         pointer += sizeof(float);
 
         std::memcpy(&health, buffer.data() + pointer, sizeof(int));
+        pointer += sizeof(int);
+    }
+};
+
+struct HostChoose
+{
+public:
+    uint32_t uniqueID = 0;
+    int gameMode = 0;
+    int soloWeapon = 0;
+
+    std::vector<uint8_t> Serialize() const
+    {
+        std::vector<uint8_t> buffer;
+
+        size_t pointer = 0;
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &uniqueID, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        buffer.resize(buffer.size() + sizeof(int));
+        std::memcpy(buffer.data() + pointer, &gameMode, sizeof(int));
+        pointer += sizeof(int);
+
+        buffer.resize(buffer.size() + sizeof(int));
+        std::memcpy(buffer.data() + pointer, &soloWeapon, sizeof(int));
+        pointer += sizeof(int);
+
+        return buffer;
+    }
+
+    void Deserialize(const std::vector<uint8_t>& buffer)
+    {
+        size_t pointer = 0;
+
+        std::memcpy(&uniqueID, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
+
+        std::memcpy(&gameMode, buffer.data() + pointer, sizeof(int));
+        pointer += sizeof(int);
+
+        std::memcpy(&soloWeapon, buffer.data() + pointer, sizeof(int));
         pointer += sizeof(int);
     }
 };
