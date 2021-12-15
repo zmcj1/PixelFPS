@@ -18,10 +18,8 @@
 #include <thread> //thread support
 #include "NetworkCollider.hpp" //net collider
 #include "BMPRenderer.hpp" //bmp renderer
-
-//net:
-#include "NetworkMessage.hpp"
-#include "FPS_Server.hpp"
+#include "NetworkMessage.hpp" //net
+#include "FPS_Server.hpp" //net server
 
 inline void serverTask(FPSServer* server)
 {
@@ -44,6 +42,13 @@ class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<Network
 private:
     //Graphical Quality:
     GraphicalQuality graphicalQuality = GraphicalQuality::Middle;
+
+private:
+    //more hud:
+    bool hitOther = false;
+    float hitDamage = 0.0f;
+    float hitOtherTimer = 0.0f;
+    float hitOtherLastTime = 0.5f;
 
 private:
     //net setting:
@@ -688,6 +693,29 @@ private:
         }
     }
 
+    void make_hit_hud(float damage)
+    {
+        this->hitOther = true;
+        this->hitOtherTimer = 0.0f;
+        this->hitDamage = damage;
+    }
+
+    void draw_hit_hud(float deltaTime)
+    {
+        if (hitOther)
+        {
+            hitOtherTimer += deltaTime;
+
+            if (hitOtherTimer >= hitOtherLastTime)
+            {
+                hitOtherTimer = 0.0f;
+                hitOther = false;
+            }
+
+            DrawString(50, 50, to_string(hitDamage));
+        }
+    }
+
     void render_world(float deltaTime)
     {
         //#define OLD_RAYCAST
@@ -1048,6 +1076,9 @@ private:
                                         mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
                                     }
                                 }
+
+                                //display:
+                                make_hit_hud(weapons[(int)weapon_current]->damage);
 
                                 BulletHitInfo info;
                                 info.myID = playerID;
@@ -2618,6 +2649,8 @@ public:
         render_hud(deltaTime);
 
         draw_behit_hud(deltaTime);
+
+        draw_hit_hud(deltaTime);
 
         vector<int> readyToDeleteIds;
         for (auto& item : GM.gameObjects)
