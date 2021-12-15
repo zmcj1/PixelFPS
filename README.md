@@ -6,6 +6,8 @@ date:2021/12/15
 
 game repo:https://github.com/zmcj1/PixelFPS
 
+asio:https://github.com/chriskohlhoff/asio
+
 game engine:https://github.com/OneLoneCoder/olcPixelGameEngine
 
 my library:https://github.com/zmcj1/BoxheadConsoleGameEngine
@@ -23,6 +25,8 @@ boxheadInConsole [true/false] //Easter eggs
 mouseSpeed [0.01-0.1] //mouse Sensitivity
 
 disableBGM [true/false] //disable background music
+
+muteAll [true/false] //disable all audios, disable this option can optimize game.
 
 GQ [1-4] //graphical quality, 1=low, 4=ultra
 

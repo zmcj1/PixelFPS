@@ -1094,14 +1094,16 @@ private:
                     //collsion with other objects:
                     if (this->networkType != NetworkType::None)
                     {
-                        for (auto& ob : mapObjects)
+                        for (const auto& ob : networkObjects)
                         {
                             if (ob.first == playerID) continue; //不要检测自己
+                            if (!ob.second->active) continue; //不要鞭尸
 
                             int bx = (int)go->transform->position.x;
                             int by = (int)go->transform->position.y;
+
                             //if hit:
-                            if ((int)ob.second.posX == bx && (int)ob.second.posY == by)
+                            if ((int)ob.second->transform->position.x == bx && (int)ob.second->transform->position.y == by)
                             {
                                 go->remove = true;
 
