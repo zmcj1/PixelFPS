@@ -26,6 +26,7 @@ enum class NetworkMessage : uint32_t
     Game_ImDead,
     Game_IRespawn,
     Game_HostChooseMode, //this value should be sent by Host.
+    Game_ZombieModeStart,
 };
 
 enum class NetworkType

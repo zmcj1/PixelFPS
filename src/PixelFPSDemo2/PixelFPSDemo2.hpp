@@ -356,7 +356,20 @@ private:
         }
         else if (gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
         {
+            //add weapons:
+            Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+            weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
 
+            Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+            weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
+
+            desertEagle->fire_interval = 0.45f;
+            desertEagle->damage = 125.5f;
+
+            ak47->fire_interval = 0.35f;
+            ak47->damage = 105.7f;
+
+            weapon_current = WeaponEnum::AK47;
         }
     }
 
@@ -2719,7 +2732,7 @@ public:
                     {
                         HostChoose choose;
                         choose.Deserialize(msg.body);
-                        
+
                         //set game mode:
                         this->gameMode = (GameMode)choose.gameMode;
                         this->soloWeapon = (WeaponEnum)choose.soloWeapon;
