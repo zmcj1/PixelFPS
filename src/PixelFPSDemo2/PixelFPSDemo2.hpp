@@ -37,8 +37,21 @@ enum class GraphicalQuality
     Ultra = 4,
 };
 
+enum class GameMode
+{
+    Unknown = 0,
+    SinglePlayer_SurvivalMode,
+    MultiPlayer_SoloMode,
+    MultiPlayer_ZombieEscapeMode,
+};
+
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
+private:
+    //game mode:
+    GameMode gameMode = GameMode::SinglePlayer_SurvivalMode;
+    WeaponEnum soloWeapon = WeaponEnum::DESERT_EAGLE;
+
 private:
     //Graphical Quality:
     GraphicalQuality graphicalQuality = GraphicalQuality::Middle;
@@ -504,6 +517,8 @@ private:
             this->netBeHit = true;
         }
 
+        WeaponEnum beforeCurrentWeapon = weapon_current;
+
         //switch weapon:
         if (GetKey(Key::K1).bPressed)
         {
@@ -526,7 +541,11 @@ private:
             weapon_current = WeaponEnum::AWP;
         }
 
-        //fire:
+        if (weapons.count((int)weapon_current) == 0)
+        {
+            weapon_current = beforeCurrentWeapon;
+        }
+
         Weapon* weapon = weapons[(int)weapon_current];
 
         //sniper scope:
@@ -1044,7 +1063,7 @@ private:
                 {
                     Draw(x, y, Pixel(0, 128, 0));
                 }
-            }
+}
         }
 #else
         //raycast:
@@ -2196,7 +2215,6 @@ public:
             break;
         }
 
-
         int netWorkRole = database->GetInt(L"networkRole", 0);
         switch (netWorkRole)
         {
@@ -2210,6 +2228,33 @@ public:
             this->netIPAddress = String::WstringToString(database->GetString(L"ip", L""));
             this->sAppName = "PixelFPS Demo2 Client";
             break;
+        }
+
+        this->gameMode = (GameMode)database->GetInt(L"gameMode", 1);
+        wstring soloWeaponText = database->GetString(L"soloWeapon", L"de");
+        if (soloWeaponText == L"de")
+        {
+            this->soloWeapon = WeaponEnum::DESERT_EAGLE;
+        }
+        else if (soloWeaponText == L"ak47")
+        {
+            this->soloWeapon = WeaponEnum::AK47;
+        }
+        else if (soloWeaponText == L"aek971")
+        {
+            this->soloWeapon = WeaponEnum::AEK_971;
+        }
+        else if (soloWeaponText == L"awp")
+        {
+            this->soloWeapon = WeaponEnum::AWP;
+        }
+        else if (soloWeaponText == L"m4a1")
+        {
+            this->soloWeapon = WeaponEnum::M4A1;
+        }
+        else
+        {
+            this->soloWeapon = WeaponEnum::DESERT_EAGLE;
         }
 
         delete database;
@@ -2345,36 +2390,81 @@ public:
         //player1_bmpRenderer->bmp = this->GSG9_bmp;
         //player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
-        //add weapons:
-        Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
-        weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
+        if (gameMode == GameMode::SinglePlayer_SurvivalMode)
+        {
+            //add weapons:
+            Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+            weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
 
-        Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
-        weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
+            Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+            weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
 
-        Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
-        weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
+            Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
+            weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
 
-        Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
-        weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
+            Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
+            weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
 
-        Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
-        weapons.insert_or_assign((int)awp->weapon_enum, awp);
+            Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
+            weapons.insert_or_assign((int)awp->weapon_enum, awp);
 
-        desertEagle->fire_interval = 0.45f;
-        desertEagle->damage = 25.5f;
+            desertEagle->fire_interval = 0.45f;
+            desertEagle->damage = 25.5f;
 
-        ak47->fire_interval = 0.1f;
-        ak47->damage = 15.5f;
+            ak47->fire_interval = 0.1f;
+            ak47->damage = 15.5f;
 
-        aek_971->fire_interval = 0.125f;
-        aek_971->damage = 18.6f;
+            aek_971->fire_interval = 0.125f;
+            aek_971->damage = 18.6f;
 
-        m4a1->fire_interval = 0.08f;
-        m4a1->damage = 12.7f;
+            m4a1->fire_interval = 0.08f;
+            m4a1->damage = 12.7f;
 
-        awp->fire_interval = 1.5f;
-        awp->damage = 65.4f;
+            awp->fire_interval = 1.5f;
+            awp->damage = 65.4f;
+        }
+        else if (gameMode == GameMode::MultiPlayer_SoloMode)
+        {
+            Weapon* weapon = nullptr;
+            switch (soloWeapon)
+            {
+            case WeaponEnum::DESERT_EAGLE:
+                weapon = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+                weapon->fire_interval = 0.35f;
+                weapon->damage = 35.5f;
+                break;
+            case WeaponEnum::AK47:
+                weapon = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+                weapon->fire_interval = 0.15f;
+                weapon->damage = 11.5f;
+                break;
+            case WeaponEnum::M4A1:
+                weapon = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, nullptr);
+                weapon->fire_interval = 0.12f;
+                weapon->damage = 7.7f;
+                break;
+            case WeaponEnum::AWP:
+                weapon = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
+                weapon->fire_interval = 1.9f;
+                weapon->damage = 85.4f;
+                break;
+            case WeaponEnum::AEK_971:
+                weapon = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
+                weapon->fire_interval = 0.125f;
+                weapon->damage = 5.6f;
+                break;
+            default:
+                throw "??? Unknown Weapon ???";
+                break;
+            }
+
+            weapon_current = weapon->weapon_enum;
+            weapons.insert_or_assign((int)weapon->weapon_enum, weapon);
+        }
+        else if (gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
+        {
+
+        }
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };

@@ -28,9 +28,9 @@ disableBGM [true/false] //disable background music
 
 muteAll [true/false] //disable all audios, disable this option can optimize game.
 
-GQ [1-4] //graphical quality, 1=low, 4=ultra
+GQ [1-4] //graphical quality, 1 = low, 4 = ultra
 
-networkRole [1/2] //1=host, 2=client
+networkRole [1/2] //1 = host, 2 = client
 
 ip ["ip address"] //if you are client, this is target ip address.
 ```
