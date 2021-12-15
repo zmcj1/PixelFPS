@@ -1,6 +1,7 @@
 useMouse = true
 mouseSpeed = 0.03
 disableBGM = true
+muteAll = true
 
 GQ = 2
 

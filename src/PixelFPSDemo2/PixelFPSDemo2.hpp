@@ -171,20 +171,16 @@ private:
     //A depth buffer used to sort pixels in Z-Axis:
     float* depthBuffer = nullptr;
 
+    bool startedPlayBGM = false;
+    bool disableBGM = false;
+    bool muteAll = false;
+
     //audios:
     Audio* bgm = nullptr;
     Audio* bgm2 = nullptr;
-    bool startedPlayBGM = false;
-    bool disableBGM = false;
-
-    //sounds:    
-    Audio* explosionSound = nullptr;
-    Audio* fireBallSound = nullptr;
     AudioPool* explosionPool = nullptr;
     AudioPool* fireBallPool = nullptr;
     AudioPool* aekBulletPool = nullptr;
-
-    //new sounds:
     AudioPool* dePool = nullptr;
     AudioPool* ak47Pool = nullptr;
     AudioPool* m4a1Pool = nullptr;
@@ -274,25 +270,26 @@ private:
 private:
     void update_audio()
     {
-        //check audio state:
-        if (this->bgm2->IsOver() && !startedPlayBGM)
+        if (!muteAll)
         {
-            startedPlayBGM = true;
+            //check audio state:
+            if (this->bgm2->IsOver() && !startedPlayBGM)
+            {
+                startedPlayBGM = true;
 
-            this->bgm->SetVolume(MCI_MAX_VOLUME / 3);
-            this->bgm->Play(true, false);
+                this->bgm->SetVolume(MCI_MAX_VOLUME / 3);
+                this->bgm->Play(true, false);
+            }
+
+            //clean audio pool:
+            explosionPool->Clean();
+            fireBallPool->Clean();
+            aekBulletPool->Clean();
+            dePool->Clean();
+            ak47Pool->Clean();
+            m4a1Pool->Clean();
+            awpPool->Clean();
         }
-
-        //clean audiopool:
-        explosionPool->Clean();
-        fireBallPool->Clean();
-
-        //clean all weapon audio pool:
-        aekBulletPool->Clean();
-        dePool->Clean();
-        ak47Pool->Clean();
-        m4a1Pool->Clean();
-        awpPool->Clean();
     }
 
     void clamp_mouse_in_client()
@@ -587,28 +584,45 @@ private:
 
                 if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
                 {
-                    //play fire sound:
-                    dePool->PlayOneShot(0.5f);
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        dePool->PlayOneShot(0.5f);
+                    }
                 }
                 if (weapon->weapon_enum == WeaponEnum::AK47)
                 {
-                    //play fire sound:
-                    ak47Pool->PlayOneShot(0.5f);
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        ak47Pool->PlayOneShot(0.5f);
+                    }
                 }
                 if (weapon->weapon_enum == WeaponEnum::AEK_971)
                 {
-                    //play fire sound:
-                    aekBulletPool->PlayOneShot(0.5f);
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        aekBulletPool->PlayOneShot(0.5f);
+                    }
                 }
                 if (weapon->weapon_enum == WeaponEnum::M4A1)
                 {
-                    //play fire sound:
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        m4a1Pool->PlayOneShot(0.5f);
+                    }
                     bulletSpeed = 32.0f;
                     noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.07f;
-                    m4a1Pool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AWP)
                 {
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        awpPool->PlayOneShot(0.5f);
+                    }
                     bulletSpeed = 50.0f;
                     if (weapon->openScope)
                     {
@@ -618,7 +632,6 @@ private:
                     {
                         noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.2f;
                     }
-                    awpPool->PlayOneShot(0.5f);
                 }
 
                 float vx = cosf(playerAngle + noise) * bulletSpeed;
@@ -1035,8 +1048,11 @@ private:
                     {
                         go->remove = true;
 
-                        //play explosion sound:
-                        explosionPool->PlayOneShot();
+                        if (!muteAll)
+                        {
+                            //play explosion sound:
+                            explosionPool->PlayOneShot();
+                        }
 
                         //instantiate explosion:
                         //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
@@ -2124,6 +2140,7 @@ public:
 
         this->mouseSpeed = database->GetFloat(L"mouseSpeed", 0.05f);
         this->disableBGM = database->GetBool(L"disableBGM", false);
+        this->muteAll = database->GetBool(L"muteAll", false);
 
         int graphicalQualityLevel = database->GetInt(L"GQ", 2);
         switch (graphicalQualityLevel)
@@ -2269,24 +2286,24 @@ public:
         //this->spriteM4A1 = Resources::Load<OLCSprite>(L"../../", L"res/", L"M4A1.spr");
 
         //load audios:
-        this->bgm = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - Laura Plays The Piano.mp3");
-        this->bgm2 = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - True.mp3");
-        this->explosionSound = Resources::Load<Audio>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
-        this->fireBallSound = Resources::Load<Audio>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
-
-        this->explosionPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
-        this->fireBallPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
-        this->aekBulletPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"aek_shot.mp3");
-        this->dePool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"deagle-1.wav");
-        this->ak47Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"ak47-1.wav");
-        this->m4a1Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"m4a1_unsil-1.wav");
-        this->awpPool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"awp1.wav");
-
-        //play bgm:
-        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
-        if (!disableBGM)
+        if (!muteAll)
         {
-            this->bgm2->Play(false, false);
+            this->bgm = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - Laura Plays The Piano.mp3");
+            this->bgm2 = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - True.mp3");
+            this->explosionPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
+            this->fireBallPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
+            this->aekBulletPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"aek_shot.mp3");
+            this->dePool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"deagle-1.wav");
+            this->ak47Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"ak47-1.wav");
+            this->m4a1Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"m4a1_unsil-1.wav");
+            this->awpPool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"awp1.wav");
+
+            //play bgm:
+            this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
+            if (!disableBGM)
+            {
+                this->bgm2->Play(false, false);
+            }
         }
 
         //add lamps:
@@ -2730,17 +2747,18 @@ public:
         delete this->spriteFlower;
         delete this->sptireWeapon_aek;
 
-        delete this->bgm;
-        delete this->bgm2;
-        delete this->explosionSound;
-        delete this->fireBallSound;
-        delete this->explosionPool;
-        delete this->fireBallPool;
-        delete this->aekBulletPool;
-        delete this->dePool;
-        delete this->ak47Pool;
-        delete this->m4a1Pool;
-        delete this->awpPool;
+        if (!muteAll)
+        {
+            delete this->bgm;
+            delete this->bgm2;
+            delete this->explosionPool;
+            delete this->fireBallPool;
+            delete this->aekBulletPool;
+            delete this->dePool;
+            delete this->ak47Pool;
+            delete this->m4a1Pool;
+            delete this->awpPool;
+        }
 
         delete[] this->depthBuffer;
 
