@@ -95,6 +95,20 @@ namespace MinConsoleNative
                 return L' ';
             else
                 return glyphs[sy * Width + sx];
+
+            //int sx = (int)(x * (float)Width);
+            //int sy = (int)(y * (float)Height);
+            //if (sx < 0 || sx >= Width || sy < 0 || sy >= Height)
+            //    return L' ';
+            //else
+            //{
+            //    int index = sy * Width + sx;
+            //    if (index < 0 || index > Width * Height - 1)
+            //    {
+            //        return L' ';
+            //    }
+            //    return glyphs[sy * Width + sx];
+            //}
         }
 
         ushort SampleColour(float x, float y)
@@ -105,6 +119,20 @@ namespace MinConsoleNative
                 return 0;
             else
                 return colours[sy * Width + sx];
+
+            //int sx = (int)(x * (float)Width);
+            //int sy = (int)(y * (float)Height);
+            //if (sx < 0 || sx >= Width || sy < 0 || sy >= Height)
+            //    return 0;
+            //else
+            //{
+            //    int index = sy * Width + sx;
+            //    if (index < 0 || index > Width * Height - 1)
+            //    {
+            //        return L' ';
+            //    }
+            //    return colours[sy * Width + sx];
+            //}
         }
 
         bool Save(std::wstring path)

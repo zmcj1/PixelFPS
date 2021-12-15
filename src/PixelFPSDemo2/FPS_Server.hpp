@@ -13,6 +13,11 @@ using namespace olc::net;
 class FPSServer : public server_interface<NetworkMessage>
 {
 private:
+    int hostID = 0;
+    int gameMode = 0;
+    int soloWeapon = 0;
+
+private:
     std::unordered_map<uint32_t, PlayerNetData> playerNetDataDict;
     std::vector<uint32_t> garbageIDs;
 
@@ -93,6 +98,20 @@ public:
             msgAddPlayer.AddBytes(desc.Serialize());
             MessageAllClients(msgAddPlayer);
 
+            //tell this client current game mode:
+            //dont send it to host.
+            if (this->gameMode != 0 && desc.uniqueID != hostID)
+            {
+                olc::net::message<NetworkMessage> msgChooseMode;
+                msgChooseMode.header.id = NetworkMessage::Game_HostChooseMode;
+                HostChoose choose;
+                choose.gameMode = this->gameMode;
+                choose.uniqueID = this->hostID;
+                choose.soloWeapon = this->soloWeapon;
+                msgChooseMode.AddBytes(choose.Serialize());
+                MessageClient(client, msgChooseMode);
+            }
+
             for (const auto& player : playerNetDataDict)
             {
                 olc::net::message<NetworkMessage> msgAddOtherPlayers;
@@ -119,6 +138,13 @@ public:
             MessageAllClients(msg, client);
             break;
         }
+        case NetworkMessage::Game_HostChooseMode:
+            HostChoose hostChoose;
+            hostChoose.Deserialize(msg.body);
+            this->gameMode = hostChoose.gameMode;
+            this->hostID = hostChoose.uniqueID;
+            this->soloWeapon = hostChoose.soloWeapon;
+            break;
         }
     }
 };

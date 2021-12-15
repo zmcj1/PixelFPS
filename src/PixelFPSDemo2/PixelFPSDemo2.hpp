@@ -18,10 +18,8 @@
 #include <thread> //thread support
 #include "NetworkCollider.hpp" //net collider
 #include "BMPRenderer.hpp" //bmp renderer
-
-//net:
-#include "NetworkMessage.hpp"
-#include "FPS_Server.hpp"
+#include "NetworkMessage.hpp" //net
+#include "FPS_Server.hpp" //net server
 
 inline void serverTask(FPSServer* server)
 {
@@ -31,8 +29,47 @@ inline void serverTask(FPSServer* server)
     }
 }
 
+enum class GraphicalQuality
+{
+    Low = 1,
+    Middle = 2,
+    Hign = 3,
+    Ultra = 4,
+};
+
+enum class GameMode
+{
+    Unknown = 0,
+    SinglePlayer_SurvivalMode,
+    MultiPlayer_SoloMode,
+    MultiPlayer_ZombieEscapeMode,
+};
+
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
+private:
+    //game mode:
+    GameMode gameMode = GameMode::SinglePlayer_SurvivalMode;
+    WeaponEnum soloWeapon = WeaponEnum::DESERT_EAGLE;
+
+private:
+    //Graphical Quality:
+    GraphicalQuality graphicalQuality = GraphicalQuality::Middle;
+    Color24 groundColor = Color24(212, 212, 212);
+    Color24 skyColor = Color24(0, 0, 255);
+
+private:
+    //more hud:
+    bool hitOther = false;
+    float hitDamage = 0.0f;
+    float hitOtherTimer = 0.0f;
+    float hitOtherLastTime = 0.5f;
+
+    //kill hud:
+    bool killOther = false;
+    float killOtherTimer = 0.0f;
+    float killOtherLastTime = 0.75f;
+
 private:
     //net setting:
     NetworkType networkType = NetworkType::None;
@@ -48,9 +85,15 @@ private:
     uint32_t playerID = 0; //unknown at beginning.
     uint32_t playerID_BulletIndex = 1;
     std::unordered_map<uint32_t, PlayerNetData> mapObjects; //all player datas
+    std::unordered_map<uint32_t, vf2d> networkObjectPositions; //cache, lerp
     std::unordered_map<uint32_t, GameObject*> networkObjects;
     std::unordered_map<uint32_t, vector<GameObject*>> networkBullets;
     vector<GameObject*> myBullets;
+
+    //net ui:
+    const float beHitEffectLastTime = 0.75f;
+    bool netBeHit = false;
+    float beHitEffectTimer = 0.0f;
 
 private:
     //graphics setting:
@@ -59,6 +102,8 @@ private:
 private:
     //shader setting:
     bool enableFog = true;
+    //Color24 defaultFogColor = Color24(192, 192, 192);
+    Color24 defaultFogColor = Color24(0, 0, 0);
     bool renderBasedOnDistance = true;
     bool night = true;
     bool lightGround = true; //turn off by defualt, who can optimize it?
@@ -139,19 +184,16 @@ private:
     //A depth buffer used to sort pixels in Z-Axis:
     float* depthBuffer = nullptr;
 
+    bool startedPlayBGM = false;
+    bool disableBGM = false;
+    bool muteAll = false;
+
     //audios:
     Audio* bgm = nullptr;
     Audio* bgm2 = nullptr;
-    bool startedPlayBGM = false;
-
-    //sounds:    
-    Audio* explosionSound = nullptr;
-    Audio* fireBallSound = nullptr;
     AudioPool* explosionPool = nullptr;
     AudioPool* fireBallPool = nullptr;
     AudioPool* aekBulletPool = nullptr;
-
-    //new sounds:
     AudioPool* dePool = nullptr;
     AudioPool* ak47Pool = nullptr;
     AudioPool* m4a1Pool = nullptr;
@@ -201,7 +243,7 @@ private:
         }
     }
 
-    void DrawBMP(BMP* bmp, int posX, int posY, int zoomPixelScaler = 1)
+    void DrawBMP(BMP* bmp, int posX, int posY, int zoomPixelScaler = 1, float _m = 0.0f)
     {
         for (size_t y = 0; y < bmp->TellHeight(); y++)
         {
@@ -215,33 +257,145 @@ private:
                     continue;
                 }
 
-                Draw(posX + x, posY + y, Pixel(color.Red, color.Green, color.Blue));
+                //light:
+                Pixel pixel(color.Red, color.Green, color.Blue);
+
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+                Draw(posX + x, posY + y, pixel);
             }
+        }
+    }
+
+    void DrawPanel(Color32 color)
+    {
+        for (size_t i = 0; i < ScreenHeight(); i++)
+        {
+            for (size_t j = 0; j < ScreenWidth(); j++)
+            {
+                Draw(j, i, Pixel(color.r, color.g, color.b, color.a));
+            }
+        }
+    }
+
+private:
+    void ChangeGameMode(GameMode gameMode)
+    {
+        if (gameMode == GameMode::SinglePlayer_SurvivalMode)
+        {
+            //add weapons:
+            Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+            weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
+
+            Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+            weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
+
+            Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
+            weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
+
+            Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
+            weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
+
+            Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
+            weapons.insert_or_assign((int)awp->weapon_enum, awp);
+
+            desertEagle->fire_interval = 0.45f;
+            desertEagle->damage = 25.5f;
+
+            ak47->fire_interval = 0.1f;
+            ak47->damage = 15.5f;
+
+            aek_971->fire_interval = 0.125f;
+            aek_971->damage = 18.6f;
+
+            m4a1->fire_interval = 0.08f;
+            m4a1->damage = 12.7f;
+
+            awp->fire_interval = 1.5f;
+            awp->damage = 65.4f;
+        }
+        else if (gameMode == GameMode::MultiPlayer_SoloMode)
+        {
+            Weapon* weapon = nullptr;
+            switch (soloWeapon)
+            {
+            case WeaponEnum::DESERT_EAGLE:
+                weapon = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+                weapon->fire_interval = 0.35f;
+                weapon->damage = 35.5f;
+                break;
+            case WeaponEnum::AK47:
+                weapon = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+                weapon->fire_interval = 0.15f;
+                weapon->damage = 11.5f;
+                break;
+            case WeaponEnum::M4A1:
+                weapon = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, nullptr);
+                weapon->fire_interval = 0.12f;
+                weapon->damage = 7.7f;
+                break;
+            case WeaponEnum::AWP:
+                weapon = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
+                weapon->fire_interval = 1.9f;
+                weapon->damage = 85.4f;
+                break;
+            case WeaponEnum::AEK_971:
+                weapon = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
+                weapon->fire_interval = 0.125f;
+                weapon->damage = 5.6f;
+                break;
+            default:
+                throw "??? Unknown Weapon ???";
+                break;
+            }
+
+            weapon_current = weapon->weapon_enum;
+            weapons.insert_or_assign((int)weapon->weapon_enum, weapon);
+        }
+        else if (gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
+        {
+            //add weapons:
+            Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
+            weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
+
+            Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
+            weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
+
+            desertEagle->fire_interval = 0.45f;
+            desertEagle->damage = 125.5f;
+
+            ak47->fire_interval = 0.35f;
+            ak47->damage = 105.7f;
+
+            weapon_current = WeaponEnum::AK47;
         }
     }
 
 private:
     void update_audio()
     {
-        //check audio state:
-        if (this->bgm2->IsOver() && !startedPlayBGM)
+        if (!muteAll)
         {
-            startedPlayBGM = true;
+            //check audio state:
+            if (this->bgm2->IsOver() && !startedPlayBGM)
+            {
+                startedPlayBGM = true;
 
-            this->bgm->SetVolume(MCI_MAX_VOLUME / 3);
-            this->bgm->Play(true, false);
+                this->bgm->SetVolume(MCI_MAX_VOLUME / 3);
+                this->bgm->Play(true, false);
+            }
+
+            //clean audio pool:
+            explosionPool->Clean();
+            fireBallPool->Clean();
+            aekBulletPool->Clean();
+            dePool->Clean();
+            ak47Pool->Clean();
+            m4a1Pool->Clean();
+            awpPool->Clean();
         }
-
-        //clean audiopool:
-        explosionPool->Clean();
-        fireBallPool->Clean();
-
-        //clean all weapon audio pool:
-        aekBulletPool->Clean();
-        dePool->Clean();
-        ak47Pool->Clean();
-        m4a1Pool->Clean();
-        awpPool->Clean();
     }
 
     void clamp_mouse_in_client()
@@ -449,10 +603,14 @@ private:
         }
 
         //self Damage
-        if (GetKey(Key::K).bHeld)
+        if (GetKey(Key::X).bHeld)
         {
             playerHealth -= selfDamage;
+
+            this->netBeHit = true;
         }
+
+        WeaponEnum beforeCurrentWeapon = weapon_current;
 
         //switch weapon:
         if (GetKey(Key::K1).bPressed)
@@ -476,7 +634,11 @@ private:
             weapon_current = WeaponEnum::AWP;
         }
 
-        //fire:
+        if (weapons.count((int)weapon_current) == 0)
+        {
+            weapon_current = beforeCurrentWeapon;
+        }
+
         Weapon* weapon = weapons[(int)weapon_current];
 
         //sniper scope:
@@ -534,28 +696,45 @@ private:
 
                 if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
                 {
-                    //play fire sound:
-                    dePool->PlayOneShot(0.5f);
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        dePool->PlayOneShot(0.5f);
+                    }
                 }
                 if (weapon->weapon_enum == WeaponEnum::AK47)
                 {
-                    //play fire sound:
-                    ak47Pool->PlayOneShot(0.5f);
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        ak47Pool->PlayOneShot(0.5f);
+                    }
                 }
                 if (weapon->weapon_enum == WeaponEnum::AEK_971)
                 {
-                    //play fire sound:
-                    aekBulletPool->PlayOneShot(0.5f);
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        aekBulletPool->PlayOneShot(0.5f);
+                    }
                 }
                 if (weapon->weapon_enum == WeaponEnum::M4A1)
                 {
-                    //play fire sound:
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        m4a1Pool->PlayOneShot(0.5f);
+                    }
                     bulletSpeed = 32.0f;
                     noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.07f;
-                    m4a1Pool->PlayOneShot(0.5f);
                 }
                 if (weapon->weapon_enum == WeaponEnum::AWP)
                 {
+                    if (!muteAll)
+                    {
+                        //play fire sound:
+                        awpPool->PlayOneShot(0.5f);
+                    }
                     bulletSpeed = 50.0f;
                     if (weapon->openScope)
                     {
@@ -565,7 +744,6 @@ private:
                     {
                         noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.2f;
                     }
-                    awpPool->PlayOneShot(0.5f);
                 }
 
                 float vx = cosf(playerAngle + noise) * bulletSpeed;
@@ -644,6 +822,222 @@ private:
         {
             Draw({ x, y }, pixel);
             depthBuffer[y * ScreenWidth() + x] = z;
+        }
+    }
+
+    void make_kill_hud()
+    {
+        this->killOther = true;
+        this->killOtherTimer = 0.0f;
+    }
+
+    void draw_kill_hud(float deltaTime)
+    {
+        if (killOther)
+        {
+            killOtherTimer += deltaTime;
+
+            if (killOtherTimer >= killOtherLastTime)
+            {
+                this->killOther = false;
+                this->killOtherTimer = 0.0f;
+            }
+
+            //display:
+            DrawString(125, 75, "KILL!!!", Pixel(255, 140, 0));
+        }
+    }
+
+    void make_hit_hud(float damage)
+    {
+        this->hitOther = true;
+        this->hitOtherTimer = 0.0f;
+        this->hitDamage = damage;
+    }
+
+    void draw_hit_hud(float deltaTime)
+    {
+        if (hitOther)
+        {
+            hitOtherTimer += deltaTime;
+
+            if (hitOtherTimer >= hitOtherLastTime)
+            {
+                hitOther = false;
+                hitOtherTimer = 0.0f;
+            }
+
+            DrawString(50, 50, to_string(hitDamage));
+        }
+    }
+
+    void update_world(float deltaTime)
+    {
+        for (auto& item : GM.gameObjects)
+        {
+            GameObject* go = item.second;
+
+            if (!go->active) continue;
+            if (go->remove) continue;
+
+            //lifetime detect:
+            LifeController* life = go->GetComponent<LifeController>();
+            if (life != nullptr && life->enable)
+            {
+                life->lifeTime -= deltaTime;
+                if (life->lifeTime <= 0)
+                {
+                    go->remove = true;
+                    continue;
+                }
+            }
+
+            //update physics:
+            go->transform->position += go->transform->velocity * deltaTime;
+
+            //collision detect:
+            Collider* collider = go->GetComponent<Collider>();
+            if (collider != nullptr && collider->enable)
+            {
+                // Check if object is inside wall - set flag for removing
+                if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
+                    go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
+                {
+                    //collsion with walls:
+                    if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
+                    {
+                        go->remove = true;
+
+                        if (!muteAll)
+                        {
+                            //play explosion sound:
+                            explosionPool->PlayOneShot();
+                        }
+
+                        //instantiate explosion:
+                        //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
+                        GameObject* explosion = new GameObject();
+                        explosion->transform->position =
+                            go->transform->position - go->transform->velocity * deltaTime;
+
+                        PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
+                        pl->attenuation = 3.0f;
+
+                        SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
+                        renderer->sprite = this->spriteExplosion;
+
+                        LifeController* life = explosion->AddComponent<LifeController>();
+                        life->lifeTime = 0.25f;
+
+                        if (networkType != NetworkType::None)
+                        {
+                            NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                            if (net_collider != nullptr && net_collider->enable)
+                            {
+                                int removeIndex = -1;
+                                for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                                {
+                                    if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                    {
+                                        removeIndex = _i;
+                                    }
+                                }
+                                if (removeIndex != -1)
+                                {
+                                    myBullets.erase(myBullets.begin() + removeIndex);
+                                    mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                                }
+                            }
+                        }
+                    }
+
+                    //collsion with other objects:
+                    if (this->networkType != NetworkType::None)
+                    {
+                        for (const auto& ob : networkObjects)
+                        {
+                            if (ob.first == playerID) continue; //不要检测自己
+                            if (!ob.second->active) continue; //不要鞭尸
+
+                            int bx = (int)go->transform->position.x;
+                            int by = (int)go->transform->position.y;
+
+                            //if hit:
+                            if ((int)ob.second->transform->position.x == bx && (int)ob.second->transform->position.y == by)
+                            {
+                                go->remove = true;
+
+                                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                                if (net_collider != nullptr && net_collider->enable)
+                                {
+                                    int removeIndex = -1;
+                                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                                    {
+                                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                        {
+                                            removeIndex = _i;
+                                        }
+                                    }
+                                    if (removeIndex != -1)
+                                    {
+                                        myBullets.erase(myBullets.begin() + removeIndex);
+                                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                                    }
+                                }
+
+                                //display:
+                                make_hit_hud(weapons[(int)weapon_current]->damage);
+
+                                BulletHitInfo info;
+                                info.myID = playerID;
+                                info.otherPlayerID = ob.first;
+                                info.damage = weapons[(int)weapon_current]->damage;
+                                olc::net::message<NetworkMessage> msg;
+                                msg.header.id = NetworkMessage::Game_BulletHitOther;
+                                msg.AddBytes(info.Serialize());
+                                Send(msg);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    go->remove = true;
+
+                    if (networkType != NetworkType::None)
+                    {
+                        NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                        if (net_collider != nullptr && net_collider->enable)
+                        {
+                            int removeIndex = -1;
+                            for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                            {
+                                if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                {
+                                    removeIndex = _i;
+                                }
+                            }
+                            if (removeIndex != -1)
+                            {
+                                myBullets.erase(myBullets.begin() + removeIndex);
+                                mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //灯光衰减:
+            PointLight* pointLightCom = go->GetComponent<PointLight>();
+            if (pointLightCom != nullptr && pointLightCom->enable)
+            {
+                pointLightCom->range -= pointLightCom->attenuation * deltaTime;
+                if (pointLightCom->range < 0.0f)
+                {
+                    pointLightCom->range = 0.0f;
+                }
+            }
+
         }
     }
 
@@ -853,7 +1247,7 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, Color24(0, 0, 255), planeSampleX, planeSampleY, planeZ, 0, pointLights);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Top, skyColor, planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
                 //draw wall
@@ -893,169 +1287,20 @@ private:
                     float planeSampleX = planePoint.x - planeTileX;
                     float planeSampleY = planePoint.y - planeTileY;
 
-                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, Color24(0, 128, 0), planeSampleX, planeSampleY, planeZ, 0, pointLights);
+                    Pixel pixel = shade(planeTileX, planeTileY, CellSide::Bottom, groundColor, planeSampleX, planeSampleY, planeZ, 0, pointLights);
                     Draw(x, y, pixel);
                 }
             }
         }
 #endif
 
-        //update game objects(render & collision):
+        //render game objects:
         for (auto& item : GM.gameObjects)
         {
             GameObject* go = item.second;
 
             if (!go->active) continue;
             if (go->remove) continue;
-
-            //lifetime detect:
-            LifeController* life = go->GetComponent<LifeController>();
-            if (life != nullptr && life->enable)
-            {
-                life->lifeTime -= deltaTime;
-                if (life->lifeTime <= 0)
-                {
-                    go->remove = true;
-                    continue;
-                }
-            }
-
-            //update physics:
-            go->transform->position += go->transform->velocity * deltaTime;
-
-            //collision detect:
-            Collider* collider = go->GetComponent<Collider>();
-            if (collider != nullptr && collider->enable)
-            {
-                // Check if object is inside wall - set flag for removing
-                if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
-                    go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
-                {
-                    //collsion with walls:
-                    if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
-                    {
-                        go->remove = true;
-
-                        //play explosion sound:
-                        explosionPool->PlayOneShot();
-
-                        //instantiate explosion:
-                        //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
-                        GameObject* explosion = new GameObject();
-                        explosion->transform->position =
-                            go->transform->position - go->transform->velocity * deltaTime;
-
-                        PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
-                        pl->attenuation = 3.0f;
-
-                        SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
-                        renderer->sprite = this->spriteExplosion;
-
-                        LifeController* life = explosion->AddComponent<LifeController>();
-                        life->lifeTime = 0.25f;
-
-                        if (networkType != NetworkType::None)
-                        {
-                            NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                            if (net_collider != nullptr && net_collider->enable)
-                            {
-                                int removeIndex = -1;
-                                for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                                {
-                                    if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                    {
-                                        removeIndex = _i;
-                                    }
-                                }
-                                if (removeIndex != -1)
-                                {
-                                    myBullets.erase(myBullets.begin() + removeIndex);
-                                    mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                                }
-                            }
-                        }
-                    }
-
-                    //collsion with other objects:
-                    if (this->networkType != NetworkType::None)
-                    {
-                        for (auto& ob : mapObjects)
-                        {
-                            if (ob.first == playerID) continue; //不要检测自己
-
-                            int bx = (int)go->transform->position.x;
-                            int by = (int)go->transform->position.y;
-                            //if hit:
-                            if ((int)ob.second.posX == bx && (int)ob.second.posY == by)
-                            {
-                                go->remove = true;
-
-                                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                                if (net_collider != nullptr && net_collider->enable)
-                                {
-                                    int removeIndex = -1;
-                                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                                    {
-                                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                        {
-                                            removeIndex = _i;
-                                        }
-                                    }
-                                    if (removeIndex != -1)
-                                    {
-                                        myBullets.erase(myBullets.begin() + removeIndex);
-                                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                                    }
-                                }
-
-                                BulletHitInfo info;
-                                info.myID = playerID;
-                                info.otherPlayerID = ob.first;
-                                info.damage = weapons[(int)weapon_current]->damage;
-                                olc::net::message<NetworkMessage> msg;
-                                msg.header.id = NetworkMessage::Game_BulletHitOther;
-                                msg.AddBytes(info.Serialize());
-                                Send(msg);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    go->remove = true;
-
-                    if (networkType != NetworkType::None)
-                    {
-                        NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                        if (net_collider != nullptr && net_collider->enable)
-                        {
-                            int removeIndex = -1;
-                            for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                            {
-                                if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                {
-                                    removeIndex = _i;
-                                }
-                            }
-                            if (removeIndex != -1)
-                            {
-                                myBullets.erase(myBullets.begin() + removeIndex);
-                                mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                            }
-                        }
-                    }
-                }
-            }
-
-            PointLight* pointLightCom = go->GetComponent<PointLight>();
-            if (pointLightCom != nullptr && pointLightCom->enable)
-            {
-                pointLightCom->range -= pointLightCom->attenuation * deltaTime;
-                if (pointLightCom->range < 0.0f)
-                {
-                    pointLightCom->range = 0.0f;
-                }
-            }
 
             //sprite renderer:
             SpriteRenderer* renderer = go->GetComponent<SpriteRenderer>();
@@ -1413,6 +1658,27 @@ private:
             int drawPosX = 0;
             int drawPosY = 0;
 
+            //calculate point light distance:
+            vector<PointLight*> pointLights;
+            for (auto& item : GM.gameObjects)
+            {
+                GameObject* go = item.second;
+                if (!go->active) continue;
+                if (go->remove) continue;
+                PointLight* pointLight = go->GetComponent<PointLight>();
+                if (pointLight != nullptr && pointLight->enable)
+                {
+                    pointLights.push_back(pointLight);
+                }
+            }
+
+            float _m = 0.0f;
+            for (PointLight* pointLight : pointLights)
+            {
+                float distanceToPointLight = (pointLight->gameObject->transform->position - vf2d(playerX, playerY)).mag();
+                _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+            }
+
             //draw weapon & draw muzzle flame
             if (weapon_current == WeaponEnum::DESERT_EAGLE)
             {
@@ -1426,7 +1692,7 @@ private:
 
                 DisplaySprite(spriteDesertEagle, drawPosX, drawPosY, 1);
             }
-            if (weapon_current == WeaponEnum::AK47)
+            else if (weapon_current == WeaponEnum::AK47)
             {
                 drawPosX = 50 + int(weapon_Xcof * 4);
                 drawPosY = int(-120 - weapon_Ypos);
@@ -1438,14 +1704,14 @@ private:
 
                 DisplaySprite(spriteAK47, drawPosX, drawPosY, 1);
             }
-            if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
+            else if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
             {
                 drawPosX = 200 + int(weapon_Xcof * 4);
                 drawPosY = int(0 - weapon_Ypos / 2);
 
                 DisplaySprite(sptireWeapon_aek, drawPosX, drawPosY, 3);
             }
-            if (weapon_current == WeaponEnum::M4A1)
+            else if (weapon_current == WeaponEnum::M4A1)
             {
                 drawPosX = int(weapon_Xcof * 2);
                 drawPosY = int(weapon_Ypos / 2);
@@ -1455,9 +1721,9 @@ private:
                     //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
-                DrawBMP(this->m4a1_bmp, drawPosX, drawPosY);
+                DrawBMP(this->m4a1_bmp, drawPosX, drawPosY, 1, _m);
             }
-            if (weapon_current == WeaponEnum::AWP)
+            else if (weapon_current == WeaponEnum::AWP)
             {
                 drawPosX = int(weapon_Xcof * 2);
                 drawPosY = int(weapon_Ypos / 2);
@@ -1474,7 +1740,7 @@ private:
                 }
                 else
                 {
-                    DrawBMP(this->awp_bmp, drawPosX, drawPosY);
+                    DrawBMP(this->awp_bmp, drawPosX, drawPosY, 1, _m);
                 }
             }
         }
@@ -1501,6 +1767,22 @@ private:
             }
 
             DrawString(bloodBarPosX + 25, bloodBarPosY + 1, to_string(this->playerHealth), Pixel(255, 255, 255));
+        }
+    }
+
+    void draw_behit_hud(float deltaTime)
+    {
+        if (this->netBeHit)
+        {
+            beHitEffectTimer += deltaTime;
+            //stop it
+            if (beHitEffectTimer >= beHitEffectLastTime)
+            {
+                beHitEffectTimer = 0.0f;
+                this->netBeHit = false;
+            }
+            //display:
+            DrawString(10, 30, "HP----------------------------------", Pixel(255, 0, 0));
         }
     }
 
@@ -1699,7 +1981,8 @@ private:
         if (side == CellSide::Top)
         {
             return pixel;
-            //sky box
+
+            //TODO:sky box
             short att = spriteWall->SampleColour(sampleX, sampleY);
 
             ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
@@ -1718,8 +2001,9 @@ private:
 
                 for (PointLight* pointLight : pointLights)
                 {
-                    float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
-                    _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
+                    //float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag();
+                    float distanceToPointLight = (pointLight->gameObject->transform->position - pixelPos).mag2();
+                    _m += max(0.0f, 1.0f - min(distanceToPointLight / (pointLight->range * 1.5f), 1.0f));
                 }
                 pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
                 pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
@@ -1735,11 +2019,20 @@ private:
             //fog:
             if (enableFog)
             {
-                Color24 fogColor(192, 192, 192);
+                Color24 fogColor = defaultFogColor;
                 float fDistance = 1.0f;
                 float fog = 0.0f;
 
-                fDistance = 1.0f - std::min(distance / 15, 1.0f);
+                if (_m > 0)
+                {
+                    fogColor = Color24(255, 255, 255);
+                    fDistance = 1.0f - std::min(distance / 10.0f, 1.0f);
+                }
+                else
+                {
+                    fDistance = 1.0f - std::min(distance / 7.5f, 1.0f);
+                }
+
                 fog = 1.0 - fDistance;
 
                 pixel.r = fuck_std::clamp<float>(fDistance * pixel.r + fog * fogColor.r, 0, 255);
@@ -1751,7 +2044,9 @@ private:
             if (renderBasedOnDistance)
             {
                 float _d = 1.0f;
-                _d = 1.0f - std::min(distance / depth, 0.4f);
+
+                _d = 1.0f - std::min(distance / depth, 0.25f);
+
                 pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
                 pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
                 pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
@@ -1766,7 +2061,7 @@ private:
             //fog:
             if (enableFog)
             {
-                Color24 fogColor(192, 192, 192);
+                Color24 fogColor = defaultFogColor;
                 float fDistance = 1.0f;
                 float fog = 0.0f;
 
@@ -1971,6 +2266,46 @@ public:
         this->boxheadInConsole = database->GetBool(L"boxheadInConsole", false);
 
         this->mouseSpeed = database->GetFloat(L"mouseSpeed", 0.05f);
+        this->disableBGM = database->GetBool(L"disableBGM", false);
+        this->muteAll = database->GetBool(L"muteAll", false);
+
+        int graphicalQualityLevel = database->GetInt(L"GQ", 2);
+        switch (graphicalQualityLevel)
+        {
+        case 1:
+            this->graphicalQuality = GraphicalQuality::Low;
+            break;
+        case 2:
+            this->graphicalQuality = GraphicalQuality::Middle;
+            break;
+        case 3:
+            this->graphicalQuality = GraphicalQuality::Hign;
+            break;
+        case 4:
+            this->graphicalQuality = GraphicalQuality::Ultra;
+            break;
+        default:
+            this->graphicalQuality = GraphicalQuality::Middle;
+            break;
+        }
+
+        switch (this->graphicalQuality)
+        {
+        case GraphicalQuality::Low:
+            this->night = true;
+            this->enableFog = false;
+            this->renderBasedOnDistance = false;
+            this->lightGround = false;
+            break;
+        case GraphicalQuality::Middle:
+        case GraphicalQuality::Hign:
+        case GraphicalQuality::Ultra:
+            this->night = true;
+            this->enableFog = true;
+            this->renderBasedOnDistance = true;
+            this->lightGround = true;
+            break;
+        }
 
         int netWorkRole = database->GetInt(L"networkRole", 0);
         switch (netWorkRole)
@@ -1985,6 +2320,33 @@ public:
             this->netIPAddress = String::WstringToString(database->GetString(L"ip", L""));
             this->sAppName = "PixelFPS Demo2 Client";
             break;
+        }
+
+        this->gameMode = (GameMode)database->GetInt(L"gameMode", 1);
+        wstring soloWeaponText = database->GetString(L"soloWeapon", L"de");
+        if (soloWeaponText == L"de")
+        {
+            this->soloWeapon = WeaponEnum::DESERT_EAGLE;
+        }
+        else if (soloWeaponText == L"ak47")
+        {
+            this->soloWeapon = WeaponEnum::AK47;
+        }
+        else if (soloWeaponText == L"aek971")
+        {
+            this->soloWeapon = WeaponEnum::AEK_971;
+        }
+        else if (soloWeaponText == L"awp")
+        {
+            this->soloWeapon = WeaponEnum::AWP;
+        }
+        else if (soloWeaponText == L"m4a1")
+        {
+            this->soloWeapon = WeaponEnum::M4A1;
+        }
+        else
+        {
+            this->soloWeapon = WeaponEnum::DESERT_EAGLE;
         }
 
         delete database;
@@ -2077,22 +2439,25 @@ public:
         //this->spriteM4A1 = Resources::Load<OLCSprite>(L"../../", L"res/", L"M4A1.spr");
 
         //load audios:
-        this->bgm = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - Laura Plays The Piano.mp3");
-        this->bgm2 = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - True.mp3");
-        this->explosionSound = Resources::Load<Audio>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
-        this->fireBallSound = Resources::Load<Audio>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
+        if (!muteAll)
+        {
+            this->bgm = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - Laura Plays The Piano.mp3");
+            this->bgm2 = Resources::Load<Audio>(L"../../", L"res/audios/", L"Silent Hill 2 OST - True.mp3");
+            this->explosionPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
+            this->fireBallPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
+            this->aekBulletPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"aek_shot.mp3");
+            this->dePool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"deagle-1.wav");
+            this->ak47Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"ak47-1.wav");
+            this->m4a1Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"m4a1_unsil-1.wav");
+            this->awpPool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"awp1.wav");
 
-        this->explosionPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"548_Effect.Explosion.wav.mp3");
-        this->fireBallPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"560_Weapon.Rocket.Fire.wav.mp3");
-        this->aekBulletPool = Resources::Load<AudioPool>(L"../../", L"res/audios/", L"aek_shot.mp3");
-        this->dePool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"deagle-1.wav");
-        this->ak47Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"ak47-1.wav");
-        this->m4a1Pool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"m4a1_unsil-1.wav");
-        this->awpPool = Resources::Load<AudioPool>(L"../../", L"res/audios/weapons/", L"awp1.wav");
-
-        //play bgm:
-        this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
-        this->bgm2->Play(false, false);
+            //play bgm:
+            this->bgm2->SetVolume(MCI_MAX_VOLUME / 3);
+            if (!disableBGM)
+            {
+                this->bgm2->Play(false, false);
+            }
+        }
 
         //add lamps:
         GameObject* lamp1 = new GameObject();
@@ -2117,36 +2482,10 @@ public:
         //player1_bmpRenderer->bmp = this->GSG9_bmp;
         //player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
-        //add weapons:
-        Weapon* desertEagle = new Weapon(WeaponEnum::DESERT_EAGLE, WeaponType::Pistol, spriteDesertEagle);
-        weapons.insert_or_assign((int)desertEagle->weapon_enum, desertEagle);
-
-        Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
-        weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
-
-        Weapon* aek_971 = new Weapon(WeaponEnum::AEK_971, WeaponType::Rifle, sptireWeapon_aek);
-        weapons.insert_or_assign((int)aek_971->weapon_enum, aek_971);
-
-        Weapon* m4a1 = new Weapon(WeaponEnum::M4A1, WeaponType::Rifle, spriteM4A1);
-        weapons.insert_or_assign((int)m4a1->weapon_enum, m4a1);
-
-        Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
-        weapons.insert_or_assign((int)awp->weapon_enum, awp);
-
-        desertEagle->fire_interval = 0.45f;
-        desertEagle->damage = 25.5f;
-
-        ak47->fire_interval = 0.1f;
-        ak47->damage = 15.5f;
-
-        aek_971->fire_interval = 0.125f;
-        aek_971->damage = 18.6f;
-
-        m4a1->fire_interval = 0.08f;
-        m4a1->damage = 12.7f;
-
-        awp->fire_interval = 1.5f;
-        awp->damage = 65.4f;
+        if (networkType != NetworkType::Client)
+        {
+            ChangeGameMode(this->gameMode);
+        }
 
         this->palette[ConsoleColor::BLACK] = { 0, 0, 0 };
         this->palette[ConsoleColor::DARKBLUE] = { 0, 0, 128 };
@@ -2189,6 +2528,16 @@ public:
     // Called every frame, and provides you with a time per frame value
     bool OnUserUpdate(float fElapsedTime) override
     {
+        float deltaTime = fElapsedTime;
+
+        Debug::OutputLine(to_wstring(GM.gameObjects.size()));
+
+        //quit game:
+        if (GetKey(Key::ESCAPE).bPressed)
+        {
+            return false;
+        }
+
         //multiplayer mode: client code:
         if (this->networkType != NetworkType::None)
         {
@@ -2225,6 +2574,20 @@ public:
                         //msg >> playerID;
                         playerID = msg.GetUInt32();
                         std::cout << "Assigned Client ID = " << playerID << "\n";
+
+                        //tell server game mode if you are host:
+                        if (networkType == NetworkType::Host)
+                        {
+                            olc::net::message<NetworkMessage> msg;
+                            msg.header.id = NetworkMessage::Game_HostChooseMode;
+                            HostChoose hostChoose;
+                            hostChoose.uniqueID = playerID;
+                            hostChoose.gameMode = (int)this->gameMode;
+                            hostChoose.soloWeapon = (int)this->soloWeapon;
+                            msg.AddBytes(hostChoose.Serialize());
+                            Send(msg);
+                        }
+
                         break;
                     }
                     case(NetworkMessage::Game_AddPlayer):
@@ -2246,6 +2609,9 @@ public:
                             newPlayer_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
+
+                            //add cache:
+                            networkObjectPositions.insert_or_assign(desc.uniqueID, vf2d(desc.posX, desc.posY));
                         }
 
                         if (desc.uniqueID == playerID)
@@ -2267,6 +2633,7 @@ public:
                         {
                             delete networkObjects[nRemovalID];
                             networkObjects.erase(nRemovalID);
+                            networkObjectPositions.erase(nRemovalID);
                         }
 
                         break;
@@ -2293,46 +2660,85 @@ public:
 
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
 
+                            //add cache:
+                            networkObjectPositions.insert_or_assign(desc.uniqueID, vf2d(desc.posX, desc.posY));
+
                             //bullet:
                             networkBullets.insert_or_assign(desc.uniqueID, vector<GameObject*>());
                         }
 
-                        //sync object:
-                        networkObjects[desc.uniqueID]->transform->position = vf2d(desc.posX, desc.posY);
+                        //sync object position:
+                        //networkObjects[desc.uniqueID]->transform->position = vf2d(desc.posX, desc.posY);
+                        networkObjectPositions[desc.uniqueID] = vf2d(desc.posX, desc.posY);
 
                         break;
                     }
                     case NetworkMessage::Game_BulletHitOther:
+                    {
                         BulletHitInfo info;
                         info.Deserialize(msg.body);
+                        //behit
                         if (info.otherPlayerID == playerID)
                         {
                             this->playerHealth -= info.damage;
+
+                            //set behit ui:
+                            this->netBeHit = true;
+
+                            //dead:
                             if (this->playerHealth <= 0)
                             {
+                                //reset behit ui:
+                                this->netBeHit = false;
+                                this->beHitEffectTimer = 0.0f;
+
                                 olc::net::message<NetworkMessage> dead_msg;
                                 dead_msg.header.id = NetworkMessage::Game_ImDead;
                                 ImDead imdead;
                                 imdead.ID = playerID;
                                 imdead.killerID = info.myID;
-                                dead_msg.AddBytes(mapObjects[playerID].Serialize());
+                                dead_msg.AddBytes(imdead.Serialize());
                                 Send(dead_msg);
                             }
                         }
-                        break;
+                    }
+                    break;
                     case NetworkMessage::Game_ImDead:
+                    {
                         ImDead imdead;
                         imdead.Deserialize(msg.body);
                         //玩家死亡后禁用其游戏物体:
                         networkObjects[imdead.ID]->active = false;
-                        //imdead.killerID;
-                        break;
+
+                        //if I kill the player:
+                        if (imdead.killerID == playerID)
+                        {
+                            make_kill_hud();
+                        }
+                    }
+                    break;
                     case NetworkMessage::Game_IRespawn:
+                    {
                         IRespawn iRespawn;
                         iRespawn.Deserialize(msg.body);
                         //玩家复活后显示其游戏物体:
                         networkObjects[iRespawn.uniqueID]->active = true;
-                        break;
+                        //设置坐标防止复活后还移动插值:
+                        networkObjects[iRespawn.uniqueID]->transform->position.x = iRespawn.posX;
+                        networkObjects[iRespawn.uniqueID]->transform->position.y = iRespawn.posY;
+                    }
+                    break;
+                    case NetworkMessage::Game_HostChooseMode:
+                    {
+                        HostChoose choose;
+                        choose.Deserialize(msg.body);
+
+                        //set game mode:
+                        this->gameMode = (GameMode)choose.gameMode;
+                        this->soloWeapon = (WeaponEnum)choose.soloWeapon;
+                        ChangeGameMode(this->gameMode);
+                    }
+                    break;
                     }
                 }
 
@@ -2376,9 +2782,25 @@ public:
             }
         }
 
-        float deltaTime = fElapsedTime;
+        //other player position lerp:
+        if (networkType != NetworkType::None)
+        {
+            for (const auto& p : networkObjectPositions)
+            {
+                //lerp object position:
+                networkObjects[p.first]->transform->position.x =
+                    fuck_std::lerpf(networkObjects[p.first]->transform->position.x, p.second.x, deltaTime * 2.0f);
 
-        Debug::OutputLine(to_wstring(GM.gameObjects.size()));
+                networkObjects[p.first]->transform->position.y =
+                    fuck_std::lerpf(networkObjects[p.first]->transform->position.y, p.second.y, deltaTime * 2.0f);
+            }
+        }
+
+        //update game:
+        update_network(deltaTime);
+
+        //update audio:
+        update_audio();
 
         //ai nav:
         if (enableNav)
@@ -2398,10 +2820,8 @@ public:
             }
         }
 
-        if (GetKey(Key::ESCAPE).bPressed)
-        {
-            return false;
-        }
+        //update physics & collision detect:
+        update_world(deltaTime);
 
         //Player Dead:
         if (this->playerHealth <= 0)
@@ -2414,6 +2834,9 @@ public:
                 this->playerX = 8.5f;
                 this->playerY = 14.7f;
                 this->playerAngle = 0.0f;
+
+                beHitEffectTimer = 0.0f;
+                netBeHit = false;
 
                 if (networkType != NetworkType::None)
                 {
@@ -2432,20 +2855,23 @@ public:
             return true;
         }
 
-        update_audio();
-
         HWND foreWindow = GetForegroundWindow();
         if (foreWindow == this->__gameWindow)
         {
             receive_user_input(deltaTime);
         }
 
-        update_network(deltaTime);
-
         render_world(deltaTime);
 
         render_hud(deltaTime);
 
+        draw_behit_hud(deltaTime);
+
+        draw_hit_hud(deltaTime);
+
+        draw_kill_hud(deltaTime);
+
+        //remove garbage game objects:
         vector<int> readyToDeleteIds;
         for (auto& item : GM.gameObjects)
         {
@@ -2485,17 +2911,18 @@ public:
         delete this->spriteFlower;
         delete this->sptireWeapon_aek;
 
-        delete this->bgm;
-        delete this->bgm2;
-        delete this->explosionSound;
-        delete this->fireBallSound;
-        delete this->explosionPool;
-        delete this->fireBallPool;
-        delete this->aekBulletPool;
-        delete this->dePool;
-        delete this->ak47Pool;
-        delete this->m4a1Pool;
-        delete this->awpPool;
+        if (!muteAll)
+        {
+            delete this->bgm;
+            delete this->bgm2;
+            delete this->explosionPool;
+            delete this->fireBallPool;
+            delete this->aekBulletPool;
+            delete this->dePool;
+            delete this->ak47Pool;
+            delete this->m4a1Pool;
+            delete this->awpPool;
+        }
 
         delete[] this->depthBuffer;
 

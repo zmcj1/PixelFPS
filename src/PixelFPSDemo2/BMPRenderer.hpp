@@ -30,7 +30,7 @@ public:
     {
         Color32 color(0, 0, 0, 0);
         int sx = (int)(x * (float)GetWidth());
-        int sy = (int)(y * (float)GetHeight() - 1.0f);
+        int sy = (int)(y * (float)GetHeight());
         if (sx < 0 || sx >= GetWidth() || sy < 0 || sy >= GetHeight())
         {
             return color;

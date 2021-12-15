@@ -1,5 +1,9 @@
 useMouse = true
 mouseSpeed = 0.03
+disableBGM = true
+muteAll = true
+
+GQ = 2
 
 //try set it true :)
 todayIsChristmas = false
@@ -7,9 +11,23 @@ todayIsChristmas = false
 //todo:
 boxheadInConsole = true
 
+//My Linux ip address
+//ip = 192.168.75.128
+
 //networkRole:
-//1=multiplayer-host
-//2=multiplayer-client
-//0=singleplayer
+//1 = multiplayer-host
+//2 = multiplayer-client
+//0 = singleplayer
 networkRole = 1
 
+//1 = SinglePlayer_SurvivalMode
+//2 = MultiPlayer_SoloMode
+//3 = MultiPlayer_ZombieEscapeMode
+gameMode = 3
+
+//ak47
+//aek971
+//de
+//awp
+//m4a1
+soloWeapon = awp

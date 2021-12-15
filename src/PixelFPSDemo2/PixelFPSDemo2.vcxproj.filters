@@ -95,9 +95,6 @@
     <ClInclude Include="PointLight.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
-    <ClInclude Include="BMP.h">
-      <Filter>HPP</Filter>
-    </ClInclude>
     <ClInclude Include="EasyBMP.h">
       <Filter>HPP</Filter>
     </ClInclude>
@@ -117,9 +114,6 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="FPS_Server.hpp">
-      <Filter>HPP</Filter>
-    </ClInclude>
-    <ClInclude Include="FPS_Client.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="NetworkCollider.hpp">
