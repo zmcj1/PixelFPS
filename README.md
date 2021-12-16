@@ -2,7 +2,7 @@
 
 authors : zmcj1, Vladimir_Maks, ChiefBYW
 
-date:2021/12/16
+date:2021/12/17
 
 game repo:https://github.com/zmcj1/PixelFPS
 
@@ -13,6 +13,10 @@ game engine:https://github.com/OneLoneCoder/olcPixelGameEngine
 my library:https://github.com/zmcj1/BoxheadConsoleGameEngine
 
 massive massive thx javidx9!
+
+### Play
+
+Double click PixelFPSDemo2.exe
 
 ### game_setting.txt guide
 ```cpp
