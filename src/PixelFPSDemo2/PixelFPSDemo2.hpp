@@ -2748,9 +2748,9 @@ public:
     {
         if (networkType == NetworkType::Host)
         {
-            delete this->server;
             this->serverThread->detach();
             delete this->serverThread;
+            //delete this->server; //disable this line avoid exception.
         }
 
         delete this->awp_bmp;
