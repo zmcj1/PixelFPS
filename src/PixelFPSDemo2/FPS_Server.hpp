@@ -12,6 +12,9 @@ using namespace olc::net;
 
 class FPSServer : public server_interface<NetworkMessage>
 {
+public:
+    bool isHost = false;
+
 private:
     int hostID = 0;
     int gameMode = 0;
@@ -97,6 +100,20 @@ public:
             //msgAddPlayer << desc;
             msgAddPlayer.AddBytes(desc.Serialize());
             MessageAllClients(msgAddPlayer);
+
+            //如果是纯服务器而且没有选择模式则发送一个默认模式1
+            if (!this->isHost && this->gameMode == 0)
+            {
+                cout << "send to client : survival mode.";
+                olc::net::message<NetworkMessage> msgChooseMode;
+                msgChooseMode.header.id = NetworkMessage::Game_HostChooseMode;
+                HostChoose choose;
+                choose.gameMode = 1;
+                choose.uniqueID = 0;
+                choose.soloWeapon = 0;
+                msgChooseMode.AddBytes(choose.Serialize());
+                MessageClient(client, msgChooseMode);
+            }
 
             //tell this client current game mode:
             //dont send it to host.

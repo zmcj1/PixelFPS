@@ -2366,6 +2366,7 @@ public:
         {
             //open server:
             this->server = new FPSServer(net_port);
+            this->server->isHost = true;
             this->server->Start();
             //create new thread for msg handeling.
             this->serverThread = new thread(serverTask, this->server);

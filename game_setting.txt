@@ -18,7 +18,7 @@ boxheadInConsole = true
 //1 = multiplayer-host
 //2 = multiplayer-client
 //0 = singleplayer
-networkRole = 1
+networkRole = 2
 
 //1 = SinglePlayer_SurvivalMode
 //2 = MultiPlayer_SoloMode
