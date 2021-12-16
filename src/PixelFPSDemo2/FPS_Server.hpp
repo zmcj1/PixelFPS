@@ -104,7 +104,7 @@ public:
             //如果是纯服务器而且没有选择模式则发送一个默认模式1
             if (!this->isHost && this->gameMode == 0)
             {
-                cout << "send to client : survival mode.";
+                cout << "send to client : survival mode.\n";
                 olc::net::message<NetworkMessage> msgChooseMode;
                 msgChooseMode.header.id = NetworkMessage::Game_HostChooseMode;
                 HostChoose choose;
