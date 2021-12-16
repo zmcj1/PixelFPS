@@ -107,7 +107,6 @@ private:
     bool renderBasedOnDistance = true;
     bool night = true;
     bool lightGround = true; //turn off by defualt, who can optimize it?
-    int groundPixelIndex = 0;// for debug
 
 private:
     //BMP:
@@ -1044,122 +1043,7 @@ private:
 
     void render_world(float deltaTime)
     {
-        //#define OLD_RAYCAST
-#ifdef OLD_RAYCAST
-        //raycast
-        for (int x = 0; x < ScreenWidth(); x++)
-        {
-            float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
-            float diffAngle = playerAngle - rayAngle;
-
-            float stepSize = 0.01f;
-            float distanceToWall = 0.0f;
-
-            bool hitWall = false;
-
-            float eyeX = ::cosf(rayAngle);
-            float eyeY = ::sinf(rayAngle);
-
-            float sampleX = 0.0f;
-
-            while (!hitWall && distanceToWall < depth)
-            {
-                distanceToWall += stepSize;
-
-                int testX = (int)(playerX + eyeX * distanceToWall);
-                int testY = (int)(playerY + eyeY * distanceToWall);
-
-                //超出地图边界
-                //out of map:
-                if (testX < 0 || testX >= mapWidth || testY < 0 || testY >= mapHeight)
-                {
-                    hitWall = true;
-                    distanceToWall = depth;
-                }
-                //与墙壁发生了碰撞
-                //collsion detect
-                else if (map[testY * mapWidth + testX] == L'#')
-                {
-                    hitWall = true;
-
-                    //墙壁中心点(假设每一堵墙壁都是1X1大小)
-                    //suppose wall' size is 1X1
-                    float blockMidX = (float)testX + 0.5f;
-                    float blockMidY = (float)testY + 0.5f;
-                    //射线命中点
-                    //hit point position
-                    float testPointX = playerX + eyeX * distanceToWall;
-                    float testPointY = playerY + eyeY * distanceToWall;
-
-                    //testAngle为从block中点出发, 射向射线命中点的向量与X轴的夹角
-                    //angle between vector and x axis
-                    float testAngle = atan2f(testPointY - blockMidY, testPointX - blockMidX);
-
-                    //命中右方
-                    //hit right side
-                    if (testAngle >= -3.14159f * 0.25f && testAngle < 3.14159f * 0.25f)
-                        sampleX = testPointY - (float)testY;
-                    //命中上方
-                    //hit top side
-                    if (testAngle >= 3.14159f * 0.25f && testAngle < 3.14159f * 0.75f)
-                        sampleX = testPointX - (float)testX;
-                    //命中下方
-                    //hit bottom side
-                    if (testAngle < -3.14159f * 0.25f && testAngle >= -3.14159f * 0.75f)
-                        sampleX = testPointX - (float)testX;
-                    //命中左方
-                    //hit left side
-                    if (testAngle >= 3.14159f * 0.75f || testAngle < -3.14159f * 0.75f)
-                        sampleX = testPointY - (float)testY;
-                }
-            }
-
-            //update depth buffer:
-            //fDepthBuffer[x] = distanceToWall;
-
-            //note!!! * cosf(diffAngle) will cause noise on screen, but we fixed fisheye problem.
-            //int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / distanceToWall);
-            int ceiling = (int)(ScreenHeight() / 2.0f - ScreenHeight() / (distanceToWall * cosf(diffAngle)));
-            int floor = ScreenHeight() - ceiling;
-
-            for (int y = 0; y < ScreenHeight(); y++)
-            {
-                //draw ceiling
-                if (y <= ceiling)
-                {
-                    Draw(x, y, Pixel(0, 0, 255));
-                }
-                //draw wall
-                else if (y > ceiling && y <= floor)
-                {
-                    if (distanceToWall < depth)
-                    {
-                        float sampleY = ((float)y - (float)ceiling) / ((float)floor - (float)ceiling);
-
-                        short att = spriteWall->SampleColour(sampleX, sampleY);
-
-                        ConsoleColor foreColor = (ConsoleColor)(att & 0x000F);
-                        ConsoleColor backColor = (ConsoleColor)((att & 0x00F0) / 16);
-
-                        Color24 pixelColor = palette[foreColor];
-                        UNUSED(backColor);
-
-                        Draw(x, y, Pixel(pixelColor.r, pixelColor.g, pixelColor.b));
-                    }
-                    else
-                    {
-                        Draw(x, y, Pixel(0, 0, 0));
-                    }
-                }
-                //draw floor
-                else
-                {
-                    Draw(x, y, Pixel(0, 128, 0));
-                }
-            }
-        }
-#else
-        //raycast:
+        //reset buffer array:
         for (size_t i = 0; i < ScreenWidth() * ScreenHeight(); i++)
         {
             this->depthBuffer[i] = INFINITY;
@@ -1179,8 +1063,7 @@ private:
             }
         }
 
-        this->groundPixelIndex = 0;
-
+        //raycast:
         for (int x = 0; x < ScreenWidth(); x++)
         {
             float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
@@ -1226,7 +1109,7 @@ private:
             int floor = ScreenHeight() - ceiling;
 
             float _m = 0.0f;
-            for (PointLight* pointLight : pointLights)
+            for (const PointLight* pointLight : pointLights)
             {
                 float distanceToPointLight = (pointLight->gameObject->transform->position - hitInfo.hitMapPos).mag();
                 _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
@@ -1293,7 +1176,6 @@ private:
                 }
             }
         }
-#endif
 
         //render game objects:
         for (auto& item : GM.gameObjects)
@@ -1340,21 +1222,12 @@ private:
 
                         //point light:
                         float _m = 0.0f;
-                        for (auto& item : GM.gameObjects)
+                        for (const auto& light : pointLights)
                         {
-                            GameObject* other_go = item.second;
-
-                            if (!other_go->active) continue;
-                            if (other_go->remove) continue;
-
-                            PointLight* pointLight = other_go->GetComponent<PointLight>();
-                            if (pointLight != nullptr && pointLight->enable)
-                            {
-                                float distanceToPointLight = (other_go->transform->position - go->transform->position).mag();
-                                _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
-                            }
+                            float distanceToPointLight = (light->gameObject->transform->position - go->transform->position).mag();
+                            _m += max(0.0f, 1.0f - min(distanceToPointLight / light->range, 1.0f));
                         }
-                        _m = clamp<float>(_m, 0.0f, 0.3f);
+                        _m = fuck_std::clamp<float>(_m, 0.0f, 0.3f);
 
                         // Draw Object:
                         for (float lx = 0; lx < objectWidth; lx++)
@@ -1512,6 +1385,15 @@ private:
                     // the location in world space
                     olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
 
+                    //point light:
+                    float _m = 0.0f;
+                    for (const auto& light : pointLights)
+                    {
+                        float distanceToPointLight = (light->gameObject->transform->position - go->transform->position).mag();
+                        _m += max(0.0f, 1.0f - min(distanceToPointLight / light->range, 1.0f));
+                    }
+                    _m = fuck_std::clamp<float>(_m, 0.0f, 0.3f);
+
                     // Now iterate through the objects screen pixels
                     for (float y = 0; y < objectSize.y; y++)
                     {
@@ -1543,7 +1425,7 @@ private:
                                 if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                 if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
-                                Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, 0);
+                                Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, _m);
                                 // Draw the pixel taking into account the depth buffer
                                 DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
                             }
@@ -2119,7 +2001,7 @@ private:
         //fog:
         if (enableFog)
         {
-            Color24 fogColor(192, 192, 192);
+            Color24 fogColor = defaultFogColor;
             float fDistance = 1.0f;
             float fog = 0.0f;
 
@@ -2157,51 +2039,6 @@ private:
             pixel.r = fuck_std::clamp<float>(pixel.r * _d, 0, 255);
             pixel.g = fuck_std::clamp<float>(pixel.g * _d, 0, 255);
             pixel.b = fuck_std::clamp<float>(pixel.b * _d, 0, 255);
-        }
-
-        return pixel;
-
-        //fog:
-        if (enableFog)
-        {
-            Color24 fogColor(192, 192, 192);
-            float fDistance = 1.0f;
-            fDistance = 1.0f - std::min(distance / 15, 1.0f);
-            float fog = 1.0 - fDistance;
-            pixel.r = fDistance * pixel.r + fog * fogColor.r;
-            pixel.g = fDistance * pixel.g + fog * fogColor.g;
-            pixel.b = fDistance * pixel.b + fog * fogColor.b;
-        }
-
-        //distance:
-        if (renderBasedOnDistance)
-        {
-            float _d = 1.0f;
-            _d = 1.0f - std::min(distance / depth, 0.4f);
-            pixel.r = pixel.r * _d;
-            pixel.g = pixel.g * _d;
-            pixel.b = pixel.b * _d;
-        }
-
-        //point lights:
-        vf2d pixelPos = vf2d(mapPosX + sampleX, mapPosY + sampleY);
-        //遍历所有点光源组件:
-        for (auto& item : GM.gameObjects)
-        {
-            GameObject* go = item.second;
-
-            if (!go->active) continue;
-            if (go->remove) continue;
-
-            PointLight* pointLight = go->GetComponent<PointLight>();
-            if (pointLight != nullptr && pointLight->enable)
-            {
-                float distanceToPointLight = (go->transform->position - pixelPos).mag();
-                float _m = max(0.0f, 1.0f - min(distanceToPointLight / 7, 1.0f));
-                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
-                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
-                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
-            }
         }
 
         return pixel;
