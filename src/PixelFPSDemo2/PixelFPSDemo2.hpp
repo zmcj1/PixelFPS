@@ -91,7 +91,7 @@ private:
     vector<GameObject*> myBullets;
 
     //net ui:
-    const float beHitEffectLastTime = 0.75f;
+    const float beHitEffectLastTime = 0.35f;
     bool netBeHit = false;
     float beHitEffectTimer = 0.0f;
 
@@ -213,6 +213,16 @@ private:
     bool enableNav = false;
 
 private:
+    int year;
+    int month;
+    int day;
+    int dayInWeek;
+
+    //todo:
+    bool todayIsChristmas = false;
+    bool boxheadInConsole = false;
+
+private:
     //tool functions:
     void DisplaySprite(const wstring& path, int x, int y, int zoomPixelScaler)
     {
@@ -273,8 +283,9 @@ private:
         }
     }
 
-    void DrawPanel(Color32 color)
+    void DrawAlphaPanel(Color32 color)
     {
+        SetPixelMode(olc::Pixel::ALPHA);  // Enable Alpha transparency
         for (size_t i = 0; i < ScreenHeight(); i++)
         {
             for (size_t j = 0; j < ScreenWidth(); j++)
@@ -282,6 +293,7 @@ private:
                 Draw(j, i, Pixel(color.r, color.g, color.b, color.a));
             }
         }
+        SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
     }
 
 private:
@@ -869,6 +881,27 @@ private:
             }
 
             DrawString(50, 50, to_string(hitDamage));
+        }
+    }
+
+    void make_behit_hud()
+    {
+        //todo
+    }
+
+    void draw_behit_hud(float deltaTime)
+    {
+        if (this->netBeHit)
+        {
+            beHitEffectTimer += deltaTime;
+            //stop it
+            if (beHitEffectTimer >= beHitEffectLastTime)
+            {
+                beHitEffectTimer = 0.0f;
+                this->netBeHit = false;
+            }
+            //display:
+            DrawAlphaPanel(Color32(255, 0, 0, 100));
         }
     }
 
@@ -1654,22 +1687,6 @@ private:
         }
     }
 
-    void draw_behit_hud(float deltaTime)
-    {
-        if (this->netBeHit)
-        {
-            beHitEffectTimer += deltaTime;
-            //stop it
-            if (beHitEffectTimer >= beHitEffectLastTime)
-            {
-                beHitEffectTimer = 0.0f;
-                this->netBeHit = false;
-            }
-            //display:
-            DrawString(10, 30, "HP----------------------------------", Pixel(255, 0, 0));
-        }
-    }
-
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
 
     // Identifies side of cell
@@ -2058,16 +2075,6 @@ private:
         pixel.b = pixel.b * intensity;
         return pixel;
     }
-
-private:
-    int year;
-    int month;
-    int day;
-    int dayInWeek;
-
-    //todo:
-    bool todayIsChristmas = false;
-    bool boxheadInConsole = false;
 
 public:
     //this function is for Easter eggs:
