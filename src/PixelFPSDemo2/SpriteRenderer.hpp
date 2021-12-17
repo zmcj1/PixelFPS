@@ -12,8 +12,11 @@ class SpriteRenderer : public Component
     CLASS_DECLARATION(SpriteRenderer)
 
 public:
+    vf2d ObjectSize = vf2d(1, 1);
+    vf2d ObjectPos = vf2d(0, 0);
+
     OLCSprite* sprite;
-    
+
     SpriteRenderer() : Component()
     {
         this->sprite = nullptr;

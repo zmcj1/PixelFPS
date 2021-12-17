@@ -48,6 +48,13 @@ enum class GameMode
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
 private:
+    //object size:
+    vf2d bulletSize = vf2d(0.1f, 0.1f);
+    vf2d bulletPos = vf2d(1.0f, 4.0f);
+    vf2d explosionSize = vf2d(0.2f, 0.2f);
+    vf2d explosionPos = vf2d(0.0f, 1.6f);
+
+private:
     //game mode:
     GameMode gameMode = GameMode::SinglePlayer_SurvivalMode;
     WeaponEnum soloWeapon = WeaponEnum::DESERT_EAGLE;
@@ -97,7 +104,7 @@ private:
 
 private:
     //graphics setting:
-    bool useOldRaycastObject = true;
+    bool useOldRaycastObject = false;
 
 private:
     //shader setting:
@@ -701,11 +708,13 @@ private:
                 //add sprite:
                 SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
                 renderer->sprite = this->spriteBullet;
+                renderer->ObjectSize = this->bulletSize;
+                renderer->ObjectPos = this->bulletPos;
 
                 //make noise:
                 float noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
                 //bullet speed:
-                float bulletSpeed = 20;
+                float bulletSpeed = 30;
 
                 if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
                 {
@@ -714,6 +723,7 @@ private:
                         //play fire sound:
                         dePool->PlayOneShot(0.5f);
                     }
+                    bulletSpeed = 40;
                 }
                 if (weapon->weapon_enum == WeaponEnum::AK47)
                 {
@@ -822,7 +832,10 @@ private:
                 newBullet->AddComponent<PointLight>(2.0f);
 
                 //add sprite:
-                newBullet->AddComponent<SpriteRenderer>()->sprite = this->spriteBullet;
+                auto renderer = newBullet->AddComponent<SpriteRenderer>();
+                renderer->sprite = this->spriteBullet;
+                renderer->ObjectSize = this->bulletSize;
+                renderer->ObjectPos = this->bulletPos;
 
                 networkBullets[object.first].push_back(newBullet);
             }
@@ -959,6 +972,8 @@ private:
 
                         SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
                         renderer->sprite = this->spriteExplosion;
+                        renderer->ObjectSize = this->explosionSize;
+                        renderer->ObjectPos = this->explosionPos;
 
                         LifeController* life = explosion->AddComponent<LifeController>();
                         life->lifeTime = 0.25f;
@@ -1304,6 +1319,15 @@ private:
                     //draw object witch is in FOV
                     if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
                     {
+                        //point light:
+                        float _m = 0.0f;
+                        for (const auto& light : pointLights)
+                        {
+                            float distanceToPointLight = (light->gameObject->transform->position - go->transform->position).mag();
+                            _m += max(0.0f, 1.0f - min(distanceToPointLight / light->range, 1.0f));
+                        }
+                        _m = fuck_std::clamp<float>(_m, 0.0f, 0.3f);
+
                         // Work out its position on the floor...
                         olc::vf2d floorPoint;
 
@@ -1315,8 +1339,7 @@ private:
                         floorPoint.y = ScreenHeight() / 2.0f + ScreenHeight() / distanceFromPlayer;
 
                         // First we need the objects size...
-                        olc::vf2d objectSize = { 1, 1 };
-                        //olc::vf2d objectSize = { 0.1f, 1.0f };
+                        olc::vf2d objectSize = renderer->ObjectSize;
 
                         // ...which we can scale into world space (maintaining aspect ratio)...
                         objectSize *= 2.0f * ScreenHeight();
@@ -1327,7 +1350,8 @@ private:
                         // Second we need the objects top left position in screen space...
                         // ...which is relative to the objects size and assumes the middle of the object is
                         // the location in world space
-                        olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
+                        //olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
+                        olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y - renderer->ObjectPos.y * objectSize.y };
 
                         // Now iterate through the objects screen pixels
                         for (float y = 0; y < objectSize.y; y++)
@@ -1360,7 +1384,7 @@ private:
                                     if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                     if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
-                                    Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, 0);
+                                    Pixel pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, pixelColor, distanceFromPlayer, _m);
                                     // Draw the pixel taking into account the depth buffer
                                     DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
                                 }
@@ -2308,20 +2332,28 @@ public:
             }
         }
 
+        vf2d lampSize = vf2d(0.25, 1.25f);
+
         //add lamps:
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
-        lamp1->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+        auto s1 = lamp1->AddComponent<SpriteRenderer>();
+        s1->sprite = this->spriteLamp;
+        s1->ObjectSize = lampSize;
         lamp1->AddComponent<PointLight>(5.0f);
 
         GameObject* lamp2 = new GameObject();
         lamp2->transform->position = vf2d(7.5f, 7.5f);
-        lamp2->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+        auto s2 = lamp2->AddComponent<SpriteRenderer>();
+        s2->sprite = this->spriteLamp;
+        s2->ObjectSize = lampSize;
         lamp2->AddComponent<PointLight>(5.0f);
 
         GameObject* lamp3 = new GameObject();
         lamp3->transform->position = vf2d(10.5f, 3.5f);
-        lamp3->AddComponent<SpriteRenderer>()->sprite = this->spriteLamp;
+        auto s3 = lamp3->AddComponent<SpriteRenderer>();
+        s3->sprite = this->spriteLamp;
+        s3->ObjectSize = lampSize;
         lamp3->AddComponent<PointLight>(5.0f);
 
         //add players:
