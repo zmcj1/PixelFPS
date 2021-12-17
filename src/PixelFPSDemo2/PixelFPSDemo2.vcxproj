@@ -157,6 +157,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NetworkCollider.cpp" />
     <ClCompile Include="olcPixelGameEngine.cpp" />
+    <ClCompile Include="PNGRenderer.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
     <ClCompile Include="tool.cpp" />
@@ -179,6 +180,7 @@
     <ClInclude Include="olcPGEX_Network.h" />
     <ClInclude Include="PixelEditor.hpp" />
     <ClInclude Include="PixelFPSDemo2.hpp" />
+    <ClInclude Include="PNGRenderer.hpp" />
     <ClInclude Include="PointLight.hpp" />
     <ClInclude Include="Resources.hpp" />
     <ClInclude Include="sObject.hpp" />

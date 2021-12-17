@@ -18,6 +18,7 @@
 #include <thread> //thread support
 #include "NetworkCollider.hpp" //net collider
 #include "BMPRenderer.hpp" //bmp renderer
+#include "PNGRenderer.hpp" //png renderer
 #include "NetworkMessage.hpp" //net
 #include "FPS_Server.hpp" //net server
 
@@ -150,11 +151,19 @@ private:
 
 private:
     //BMP:
-    BMP* awp_bmp = nullptr;
-    BMP* m4a1_bmp = nullptr;
-    BMP* scope_bmp = nullptr;
-    BMP* GSG9_bmp = nullptr;
-    BMP* Zombie_bmp = nullptr;
+    //BMP* awp_bmp = nullptr;
+    //BMP* m4a1_bmp = nullptr;
+    //BMP* scope_bmp = nullptr;
+    //BMP* GSG9_bmp = nullptr;
+    //BMP* Zombie_bmp = nullptr;
+
+private:
+    olc::Sprite* ak_png = nullptr;
+    olc::Sprite* awp_png = nullptr;
+    olc::Sprite* m4a1_png = nullptr;
+    olc::Sprite* scope_png = nullptr;
+    olc::Sprite* GSG9_png = nullptr;
+    olc::Sprite* Zombie_png = nullptr;
 
 private:
     //map:
@@ -321,6 +330,13 @@ private:
                 Draw(posX + x, posY + y, pixel);
             }
         }
+    }
+
+    void DrawPNG(olc::Sprite* sprite, int posX, int posY, int zoomPixelScaler = 1, float _m = 0.0f)
+    {
+        SetPixelMode(olc::Pixel::ALPHA);  // Draw all pixels
+        DrawSprite(posX, posY, sprite, zoomPixelScaler);
+        SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
     }
 
     void DrawAlphaPanel(Color32 color)
@@ -940,15 +956,26 @@ private:
             }
 
             //change look:
+            //if (object.second.zs_PlayerType == ZS_PlayerType::Human)
+            //{
+            //    auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
+            //    renderer->bmp = GSG9_bmp;
+            //}
+            //else if (object.second.zs_PlayerType == ZS_PlayerType::Zombie)
+            //{
+            //    auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
+            //    renderer->bmp = Zombie_bmp;
+            //}
+
             if (object.second.zs_PlayerType == ZS_PlayerType::Human)
             {
-                auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
-                renderer->bmp = GSG9_bmp;
+                auto renderer = networkObjects[object.first]->GetComponent<PNGRenderer>();
+                renderer->sprite = GSG9_png;
             }
             else if (object.second.zs_PlayerType == ZS_PlayerType::Zombie)
             {
-                auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
-                renderer->bmp = Zombie_bmp;
+                auto renderer = networkObjects[object.first]->GetComponent<PNGRenderer>();
+                renderer->sprite = Zombie_png;
             }
 
             //add new bullets:
@@ -1525,6 +1552,98 @@ private:
                 }
             }
 
+            //png renderer:
+            PNGRenderer* png_renderer = go->GetComponent<PNGRenderer>();
+            if (png_renderer != nullptr && png_renderer->enable)
+            {
+                // Can object be seen?
+                float vecX = go->transform->position.x - playerX;
+                float vecY = go->transform->position.y - playerY;
+                float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
+
+                float eyeX = cosf(playerAngle);
+                float eyeY = sinf(playerAngle);
+                float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
+
+                //限制取值范围在+PI与-PI之间
+                //set limit : [-PI, PI]
+                if (objectAngle < -3.14159f)
+                    objectAngle += 2.0f * 3.14159f;
+                if (objectAngle > 3.14159f)
+                    objectAngle -= 2.0f * 3.14159f;
+
+                bool inPlayerFOV = fabs(objectAngle) < (FOV + 1.0f / distanceFromPlayer) / 2.0f;
+                //画在视野范围之内但是不要太近的物体, 不画超过视距的物体
+                //draw object witch is in FOV
+                if (inPlayerFOV && distanceFromPlayer >= 0.5f && distanceFromPlayer < depth)
+                {
+                    // Work out its position on the floor...
+                    olc::vf2d floorPoint;
+
+                    // Horizontal screen location is determined based on object angle relative to camera heading
+                    floorPoint.x = (objectAngle / FOV + 0.5f) * ScreenWidth();
+
+                    // Vertical screen location is projected distance
+                    //floorPoint.y = (ScreenHeight() / 2.0f) + (ScreenHeight() / distanceFromPlayer) / std::cos(objectAngle / 2.0f);
+                    floorPoint.y = ScreenHeight() / 2.0f + ScreenHeight() / distanceFromPlayer;
+
+                    // First we need the objects size...
+                    olc::vf2d objectSize = png_renderer->ObjectSize;
+
+                    // ...which we can scale into world space (maintaining aspect ratio)...
+                    objectSize *= 2.0f * ScreenHeight();
+
+                    // ...then project into screen space
+                    objectSize /= distanceFromPlayer;
+
+                    // Second we need the objects top left position in screen space...
+                    // ...which is relative to the objects size and assumes the middle of the object is
+                    // the location in world space
+                    olc::vf2d objectTopLeft = { floorPoint.x - objectSize.x / 2.0f, floorPoint.y - objectSize.y };
+
+                    //point light:
+                    float _m = 0.0f;
+                    for (const auto& light : pointLights)
+                    {
+                        float distanceToPointLight = (light->gameObject->transform->position - go->transform->position).mag();
+                        _m += max(0.0f, 1.0f - min(distanceToPointLight / light->range, 1.0f));
+                    }
+                    _m = fuck_std::clamp<float>(_m, 0.0f, 0.3f);
+
+                    // Now iterate through the objects screen pixels
+                    for (float y = 0; y < objectSize.y; y++)
+                    {
+                        for (float x = 0; x < objectSize.x; x++)
+                        {
+                            // Create a normalised sample coordinate
+                            float sampleX = x / objectSize.x;
+                            float sampleY = y / objectSize.y;
+
+                            // Calculate screen pixel location
+                            olc::vi2d a = { int(objectTopLeft.x + x), int(objectTopLeft.y + y) };
+
+                            // Check if location is actually on screen (to not go OOB on depth buffer)
+                            if (a.x >= 0 && a.x < ScreenWidth() && a.y >= 0 && a.y < ScreenHeight())
+                            {
+                                Pixel pixel = png_renderer->SampleColour(sampleX, sampleY);
+
+                                // Get pixel from a suitable texture
+                                float object_fHeading = 0.0f; //todo
+                                float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
+                                if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
+
+                                pixel = shade_object((int)go->transform->position.x, (int)go->transform->position.y, sampleX, sampleY, Color24(pixel.r, pixel.g, pixel.b), distanceFromPlayer, _m);
+                                // Draw the pixel taking into account the depth buffer
+                                DepthDraw(a.x, a.y, distanceFromPlayer, pixel);
+                            }
+                        }
+                    }
+                }
+            }
+
+            continue;
+
             //bmp renderer:
             BMPRenderer* bmp_renderer = go->GetComponent<BMPRenderer>();
             if (bmp_renderer != nullptr && bmp_renderer->enable)
@@ -1766,15 +1885,15 @@ private:
             }
             else if (weapon_current == WeaponEnum::AK47)
             {
-                drawPosX = 50 + int(weapon_Xcof * 4);
-                drawPosY = int(-120 - weapon_Ypos);
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
 
                 if (enableFlame)
                 {
-                    DisplaySprite(spriteExplosion, drawPosX + 95, drawPosY + 205, 2);
+                    //todo
                 }
 
-                DisplaySprite(spriteAK47, drawPosX, drawPosY, 1);
+                DrawPNG(this->ak_png, drawPosX, drawPosY, 1, _m);
             }
             else if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
             {
@@ -1793,7 +1912,7 @@ private:
                     //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
-                DrawBMP(this->m4a1_bmp, drawPosX, drawPosY, 1, _m);
+                DrawPNG(this->m4a1_png, drawPosX, drawPosY, 1, _m);
             }
             else if (weapon_current == WeaponEnum::AWP)
             {
@@ -1808,11 +1927,11 @@ private:
                 //draw scope/draw sniper:
                 if (weapons[(int)weapon_current]->openScope)
                 {
-                    DrawBMP(this->scope_bmp, 0, 0);
+                    DrawPNG(this->scope_png, 0, 0);
                 }
                 else
                 {
-                    DrawBMP(this->awp_bmp, drawPosX, drawPosY, 1, _m);
+                    DrawPNG(this->awp_png, drawPosX, drawPosY, 1, _m);
                 }
             }
         }
@@ -2435,18 +2554,25 @@ public:
         map += L"#..............##..............#";
         map += L"################################";
 
-        this->awp_bmp = new BMP();
-        this->m4a1_bmp = new BMP();
-        this->scope_bmp = new BMP();
-        this->GSG9_bmp = new BMP();
-        this->Zombie_bmp = new BMP();
+        //this->awp_bmp = new BMP();
+        //this->m4a1_bmp = new BMP();
+        //this->scope_bmp = new BMP();
+        //this->GSG9_bmp = new BMP();
+        //this->Zombie_bmp = new BMP();
 
         //load BMP:
-        this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
-        this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
-        this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
-        this->GSG9_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "Player.bmp"));
-        this->Zombie_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "zombie.bmp"));
+        //this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
+        //this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
+        //this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
+        //this->GSG9_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "Player.bmp"));
+        //this->Zombie_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "zombie.bmp"));
+
+        this->ak_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "ak.png"));
+        this->awp_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "awp.png"));
+        this->m4a1_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "m4a1.png"));
+        this->scope_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "scope.png"));
+        this->GSG9_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "player.png"));
+        this->Zombie_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "zombie.png"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -2647,9 +2773,9 @@ public:
                             GameObject* newPlayer = new GameObject();
                             newPlayer->transform->position = vf2d(desc.posX, desc.posY);
 
-                            BMPRenderer* newPlayer_bmpRenderer = newPlayer->AddComponent<BMPRenderer>();
-                            newPlayer_bmpRenderer->bmp = this->GSG9_bmp;
-                            newPlayer_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+                            PNGRenderer* newPlayer_pngRenderer = newPlayer->AddComponent<PNGRenderer>();
+                            newPlayer_pngRenderer->sprite = this->GSG9_png;
+                            newPlayer_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
 
@@ -2697,9 +2823,9 @@ public:
 
                             newPlayer->transform->position = vf2d(desc.posX, desc.posY);
 
-                            BMPRenderer* newPlayer_bmpRenderer = newPlayer->AddComponent<BMPRenderer>();
-                            newPlayer_bmpRenderer->bmp = this->GSG9_bmp;
-                            newPlayer_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+                            PNGRenderer* newPlayer_pngRenderer = newPlayer->AddComponent<PNGRenderer>();
+                            newPlayer_pngRenderer->sprite = this->GSG9_png;
+                            newPlayer_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
                             networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
 
@@ -2928,11 +3054,18 @@ public:
             //delete this->server; //disable this line avoid exception.
         }
 
-        delete this->awp_bmp;
-        delete this->m4a1_bmp;
-        delete this->scope_bmp;
-        delete this->GSG9_bmp;
-        delete this->Zombie_bmp;
+        //delete this->awp_bmp;
+        //delete this->m4a1_bmp;
+        //delete this->scope_bmp;
+        //delete this->GSG9_bmp;
+        //delete this->Zombie_bmp;
+
+        delete this->ak_png;
+        delete this->awp_png;
+        delete this->m4a1_png;
+        delete this->scope_png;
+        delete this->GSG9_png;
+        delete this->Zombie_png;
 
         delete this->spriteWall;
         delete this->spriteLamp;
