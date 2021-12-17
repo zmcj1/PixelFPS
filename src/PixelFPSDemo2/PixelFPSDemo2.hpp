@@ -166,6 +166,7 @@ private:
     olc::Sprite* scope_png = nullptr;
     olc::Sprite* GSG9_png = nullptr;
     olc::Sprite* Zombie_png = nullptr;
+    olc::Sprite* frontSight = nullptr;
 
 private:
     //map:
@@ -1995,6 +1996,11 @@ private:
 
             DrawString(bloodBarPosX + 25, bloodBarPosY + 1, to_string(this->playerHealth), Pixel(255, 255, 255));
         }
+
+        if (weapon_current != WeaponEnum::AWP)
+        {
+            DrawPNG(this->frontSight, 0, 0, 1);
+        }
     }
 
     vi2d get_random_available_pos()
@@ -2598,6 +2604,7 @@ public:
         this->scope_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "scope.png"));
         this->GSG9_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "player.png"));
         this->Zombie_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "zombie.png"));
+        this->frontSight = new olc::Sprite(Resources::GetPath("../../", "res/png/", "crosshair.png"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -3080,6 +3087,7 @@ public:
         delete this->scope_png;
         delete this->GSG9_png;
         delete this->Zombie_png;
+        delete this->frontSight;
 
         delete this->spriteWall;
         delete this->spriteLamp;
