@@ -29,7 +29,7 @@ enum class NetworkMessage : uint32_t
     Game_ZombieModeStart,
 };
 
-enum class NetworkType
+enum class NetworkType : uint32_t
 {
     None = 0,
     Host = 1,   //server + client
@@ -37,7 +37,7 @@ enum class NetworkType
 };
 
 //zombie survival mode player type:
-enum class ZS_PlayerType
+enum class ZS_PlayerType : uint32_t
 {
     Unknown = 0,
     Human,
@@ -70,6 +70,7 @@ public:
     float posX;
     float posY;
     int health;
+    ZS_PlayerType zs_PlayerType; //zombie mode only
     vector<NetBullet> bullets;
 
     std::vector<uint8_t> Serialize() const
@@ -93,6 +94,10 @@ public:
         buffer.resize(buffer.size() + sizeof(int));
         std::memcpy(buffer.data() + pointer, &health, sizeof(int));
         pointer += sizeof(int);
+
+        buffer.resize(buffer.size() + sizeof(uint32_t));
+        std::memcpy(buffer.data() + pointer, &zs_PlayerType, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
 
         //bullets:
         for (const NetBullet bullet : bullets)
@@ -131,6 +136,9 @@ public:
 
         std::memcpy(&health, buffer.data() + pointer, sizeof(int));
         pointer += sizeof(int);
+
+        std::memcpy(&zs_PlayerType, buffer.data() + pointer, sizeof(uint32_t));
+        pointer += sizeof(uint32_t);
 
         //bullets:
         int diff = buffer.size() - pointer;

@@ -18,7 +18,7 @@ public:
 private:
     int hostID = 0;
     int gameMode = 0;
-    int soloWeapon = 0;
+    int soloWeapon = 0;     //solo mode only
 
 private:
     std::unordered_map<uint32_t, PlayerNetData> playerNetDataDict;
