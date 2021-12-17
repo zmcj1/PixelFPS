@@ -158,7 +158,9 @@ private:
     //BMP* Zombie_bmp = nullptr;
 
 private:
+    olc::Sprite* de_png = nullptr;
     olc::Sprite* ak_png = nullptr;
+    olc::Sprite* aek_png = nullptr;
     olc::Sprite* awp_png = nullptr;
     olc::Sprite* m4a1_png = nullptr;
     olc::Sprite* scope_png = nullptr;
@@ -1873,15 +1875,15 @@ private:
             //draw weapon & draw muzzle flame
             if (weapon_current == WeaponEnum::DESERT_EAGLE)
             {
-                drawPosX = 140 + int(weapon_Xcof * 4);
-                drawPosY = int(60 - weapon_Ypos / 2);
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
 
                 if (enableFlame)
                 {
-                    DisplaySprite(spriteExplosion, drawPosX + 13, drawPosY + 38, 2);
+                    //todo
                 }
 
-                DisplaySprite(spriteDesertEagle, drawPosX, drawPosY, 1);
+                DrawPNG(this->de_png, drawPosX, drawPosY, 1, _m);
             }
             else if (weapon_current == WeaponEnum::AK47)
             {
@@ -1897,10 +1899,15 @@ private:
             }
             else if (weapon_current == WeaponEnum::AEK_971) //rifle aeksu 971
             {
-                drawPosX = 200 + int(weapon_Xcof * 4);
-                drawPosY = int(0 - weapon_Ypos / 2);
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
 
-                DisplaySprite(sptireWeapon_aek, drawPosX, drawPosY, 3);
+                if (enableFlame)
+                {
+                    //todo
+                }
+
+                DrawPNG(this->aek_png, drawPosX, drawPosY, 1, _m);
             }
             else if (weapon_current == WeaponEnum::M4A1)
             {
@@ -1909,7 +1916,6 @@ private:
 
                 if (enableFlame)
                 {
-                    //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
                 DrawPNG(this->m4a1_png, drawPosX, drawPosY, 1, _m);
@@ -1921,7 +1927,6 @@ private:
 
                 if (enableFlame)
                 {
-                    //DisplaySprite(spriteExplosion, drawPosX + 60, drawPosY + 148, 2);
                 }
 
                 //draw scope/draw sniper:
@@ -2567,7 +2572,9 @@ public:
         //this->GSG9_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "Player.bmp"));
         //this->Zombie_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "zombie.bmp"));
 
+        this->de_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "deagle.png"));
         this->ak_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "ak.png"));
+        this->aek_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "ak.png"));
         this->awp_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "awp.png"));
         this->m4a1_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "m4a1.png"));
         this->scope_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "scope.png"));
@@ -3060,7 +3067,9 @@ public:
         //delete this->GSG9_bmp;
         //delete this->Zombie_bmp;
 
+        delete this->de_png;
         delete this->ak_png;
+        delete this->aek_png;
         delete this->awp_png;
         delete this->m4a1_png;
         delete this->scope_png;
