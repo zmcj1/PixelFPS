@@ -49,8 +49,33 @@ class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<Network
 {
 private:
     //zombie mode:
-    const float zombieMaxHealth = 1000.0f;
+    float zombieMaxHealth = 1000.0f;
+    float zombieMoveSpeed = 5.0f;
+    ZS_PlayerType zsPlayerType = ZS_PlayerType::Human;
 
+    uint32_t InfectZombieRandom()
+    {
+        //dict => list:
+        vector<pair<uint32_t, PlayerNetData>> playerList;
+
+        //add all humans:
+        for (const auto& item : this->mapObjects)
+        {
+            if (item.second.zs_PlayerType == ZS_PlayerType::Human)
+            {
+                playerList.push_back(item);
+            }
+        }
+
+        //有幸存者:
+        if (playerList.size() > 0)
+        {
+            int randomIndex = Random::Range(0, playerList.size() - 1);
+            return playerList[randomIndex].first;
+        }
+
+        return 0;
+    }
 
 private:
     bool randomRespawnPos = true;
@@ -404,6 +429,62 @@ private:
         }
     }
 
+    void TurnToZombie()
+    {
+        this->playerHealth = this->zombieMaxHealth;
+        this->moveSpeed = this->zombieMoveSpeed;
+        this->zsPlayerType = ZS_PlayerType::Zombie;
+    }
+
+    void Respawn()
+    {
+        if (gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
+        {
+            if (zsPlayerType == ZS_PlayerType::Human)
+            {
+                this->playerHealth = this->fullHealth;
+            }
+            else if (zsPlayerType == ZS_PlayerType::Zombie)
+            {
+                this->playerHealth = this->zombieMaxHealth;
+            }
+        }
+        else
+        {
+            this->playerHealth = this->fullHealth;
+        }
+        this->playerAngle = 0.0f;
+
+        if (randomRespawnPos)
+        {
+            vi2d randomPos = get_random_available_pos();
+            this->playerX = randomPos.x + 0.5f;
+            this->playerY = randomPos.y + 0.5f;
+        }
+        else
+        {
+            this->playerX = 8.5f;
+            this->playerY = 14.7f;
+        }
+
+        beHitEffectTimer = 0.0f;
+        netBeHit = false;
+
+        if (networkType != NetworkType::None)
+        {
+            IRespawn iRespawn;
+            iRespawn.uniqueID = playerID;
+            iRespawn.health = playerHealth;
+            iRespawn.posX = playerX;
+            iRespawn.posY = playerY;
+
+            olc::net::message<NetworkMessage> msg;
+            msg.header.id = NetworkMessage::Game_IRespawn;
+            msg.AddBytes(iRespawn.Serialize());
+            Send(msg);
+        }
+    }
+
 private:
     void update_audio()
     {
@@ -638,6 +719,36 @@ private:
             this->netBeHit = true;
         }
 
+        //infect people randomly if you are host:
+        if (this->networkType == NetworkType::Host)
+        {
+            if (this->gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
+            {
+                if (GetKey(Key::I).bPressed)
+                {
+                    uint32_t randomID = InfectZombieRandom();
+                    //如果成功感染
+                    if (randomID != 0)
+                    {
+                        olc::net::message<NetworkMessage> msg;
+                        msg.header.id = NetworkMessage::Game_Zombie_Infect;
+
+                        ZombieInfect zombieInfect;
+                        zombieInfect.targetID = randomID;
+                        zombieInfect.uniqueID = this->playerID;
+                        msg.AddBytes(zombieInfect.Serialize());
+                        Send(msg);
+
+                        //如果自己尸变:
+                        if (randomID == playerID)
+                        {
+                            TurnToZombie();
+                        }
+                    }
+                }
+            }
+        }
+
         WeaponEnum beforeCurrentWeapon = weapon_current;
 
         //switch weapon:
@@ -826,6 +937,18 @@ private:
             if (object.first == playerID)
             {
                 continue; //网络行为不负责模拟自己
+            }
+
+            //change look:
+            if (object.second.zs_PlayerType == ZS_PlayerType::Human)
+            {
+                auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
+                renderer->bmp = GSG9_bmp;
+            }
+            else if (object.second.zs_PlayerType == ZS_PlayerType::Zombie)
+            {
+                auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
+                renderer->bmp = Zombie_bmp;
             }
 
             //add new bullets:
@@ -2659,6 +2782,17 @@ public:
                         ChangeGameMode(this->gameMode);
                     }
                     break;
+                    case NetworkMessage::Game_Zombie_Infect:
+                    {
+                        ZombieInfect zombieInfect;
+                        zombieInfect.Deserialize(msg.body);
+                        //如果自己被感染了:
+                        if (zombieInfect.targetID == this->playerID)
+                        {
+                            TurnToZombie();
+                        }
+                        break;
+                    }
                     }
                 }
 
@@ -2683,22 +2817,15 @@ public:
                 //sync health:
                 mapObjects[playerID].health = this->playerHealth;
 
+                //sync zs_playerType:
+                mapObjects[playerID].zs_PlayerType = this->zsPlayerType;
+
                 //send to server:
                 olc::net::message<NetworkMessage> msg;
                 msg.header.id = NetworkMessage::Game_UpdatePlayer;
                 //msg << mapObjects[playerID];
                 msg.AddBytes(mapObjects[playerID].Serialize());
                 Send(msg);
-
-                //test:
-                //PlayerNetData net_data;
-                //net_data.uniqueID = 1000;
-                //net_data.posX = 10;
-                //net_data.posY = 5;
-                //net_data.bullets.push_back(NetBullet(10, 5));
-                //auto arr = net_data.Serialize();
-                //net_data.Deserialize(arr);
-                //int xxxx = 0;
             }
         }
 
@@ -2748,40 +2875,12 @@ public:
         {
             Clear(Pixel(0, 0, 255));
             DrawString(10, 100, "You are dead! Press 'R' to respawn.");
+
             if (GetKey(Key::R).bPressed)
             {
-                this->playerHealth = this->fullHealth;
-                this->playerAngle = 0.0f;
-
-                if (randomRespawnPos)
-                {
-                    vi2d randomPos = get_random_available_pos();
-                    this->playerX = randomPos.x + 0.5f;
-                    this->playerY = randomPos.y + 0.5f;
-                }
-                else
-                {
-                    this->playerX = 8.5f;
-                    this->playerY = 14.7f;
-                }
-
-                beHitEffectTimer = 0.0f;
-                netBeHit = false;
-
-                if (networkType != NetworkType::None)
-                {
-                    IRespawn iRespawn;
-                    iRespawn.uniqueID = playerID;
-                    iRespawn.health = playerHealth;
-                    iRespawn.posX = playerX;
-                    iRespawn.posY = playerY;
-
-                    olc::net::message<NetworkMessage> msg;
-                    msg.header.id = NetworkMessage::Game_IRespawn;
-                    msg.AddBytes(iRespawn.Serialize());
-                    Send(msg);
-                }
+                Respawn();
             }
+
             return true;
         }
 
