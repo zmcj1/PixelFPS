@@ -12,6 +12,7 @@ enum class WeaponEnum
     KNIFE = 5,
     M4A1 = 6,
     M4A1_S = 7,
+    ZombieEvilClaw,
 };
 
 enum class WeaponType

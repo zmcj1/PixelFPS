@@ -51,7 +51,7 @@ class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<Network
 private:
     //zombie mode:
     float zombieMaxHealth = 1000.0f;
-    float zombieMoveSpeed = 5.0f;
+    float zombieMoveSpeed = 4.0f;
     ZS_PlayerType zsPlayerType = ZS_PlayerType::Human;
 
     uint32_t InfectZombieRandom()
@@ -167,6 +167,7 @@ private:
     olc::Sprite* GSG9_png = nullptr;
     olc::Sprite* Zombie_png = nullptr;
     olc::Sprite* frontSight = nullptr;
+    olc::Sprite* zombie_hand_png = nullptr;
 
 private:
     //map:
@@ -375,6 +376,28 @@ private:
     }
 
 private:
+    void TurnToHuman()
+    {
+
+    }
+
+    void TurnToZombie()
+    {
+        //clear all human weapons:
+        weapons.clear();
+
+        Weapon* claw = new Weapon(WeaponEnum::ZombieEvilClaw, WeaponType::Knife, nullptr);
+        claw->fire_interval = 1.5f;
+        claw->damage = 120.0f;
+        weapons.insert_or_assign((int)claw->weapon_enum, claw);
+
+        weapon_current = claw->weapon_enum;
+
+        this->playerHealth = this->zombieMaxHealth;
+        this->moveSpeed = this->zombieMoveSpeed;
+        this->zsPlayerType = ZS_PlayerType::Zombie;
+    }
+
     void ChangeGameMode(GameMode gameMode)
     {
         if (gameMode == GameMode::SinglePlayer_SurvivalMode)
@@ -457,21 +480,14 @@ private:
             Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
             weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
 
-            desertEagle->fire_interval = 0.45f;
-            desertEagle->damage = 125.5f;
+            desertEagle->fire_interval = 0.75f;
+            desertEagle->damage = 225.5f;
 
-            ak47->fire_interval = 0.35f;
-            ak47->damage = 105.7f;
+            ak47->fire_interval = 0.1f;
+            ak47->damage = 57.2f;
 
             weapon_current = WeaponEnum::AK47;
         }
-    }
-
-    void TurnToZombie()
-    {
-        this->playerHealth = this->zombieMaxHealth;
-        this->moveSpeed = this->zombieMoveSpeed;
-        this->zsPlayerType = ZS_PlayerType::Zombie;
     }
 
     void Respawn()
@@ -519,6 +535,21 @@ private:
             olc::net::message<NetworkMessage> msg;
             msg.header.id = NetworkMessage::Game_IRespawn;
             msg.AddBytes(iRespawn.Serialize());
+            Send(msg);
+        }
+    }
+
+    void Net_HitOther(uint32_t otherID)
+    {
+        if (networkType != NetworkType::None)
+        {
+            BulletHitInfo info;
+            info.myID = playerID;
+            info.otherPlayerID = otherID;
+            info.damage = weapons[(int)weapon_current]->damage;
+            olc::net::message<NetworkMessage> msg;
+            msg.header.id = NetworkMessage::Game_BulletHitOther;
+            msg.AddBytes(info.Serialize());
             Send(msg);
         }
     }
@@ -851,101 +882,141 @@ private:
         {
             if (weapon->CanFire())
             {
-                GameObject* bullet = new GameObject();
-
-                //set position:
-                bullet->transform->position = vf2d(playerX, playerY);
-
-                //add collider:
-                bullet->AddComponent<Collider>();
-
-                //add point light:
-                bullet->AddComponent<PointLight>(2.0f);
-
-                //add sprite:
-                SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
-                renderer->sprite = this->spriteBullet;
-                renderer->ObjectSize = this->bulletSize;
-                renderer->ObjectPos = this->bulletPos;
-
-                //make noise:
-                float noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
-                //bullet speed:
-                float bulletSpeed = 30;
-
-                if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
+                if (weapon->weapon_enum == WeaponEnum::ZombieEvilClaw)
                 {
-                    if (!muteAll)
+                    //近战武器攻击检测:
+                    for (const auto& ob : networkObjects)
                     {
-                        //play fire sound:
-                        dePool->PlayOneShot(0.5f);
-                    }
-                    bulletSpeed = 40;
-                }
-                if (weapon->weapon_enum == WeaponEnum::AK47)
-                {
-                    if (!muteAll)
-                    {
-                        //play fire sound:
-                        ak47Pool->PlayOneShot(0.5f);
+                        if (ob.first == playerID) continue; //不要检测自己
+                        if (!ob.second->active) continue; //不要鞭尸
+
+                        GameObject* otherGo = ob.second;
+
+                        float vecX = otherGo->transform->position.x - playerX;
+                        float vecY = otherGo->transform->position.y - playerY;
+                        float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
+
+                        float eyeX = cosf(playerAngle);
+                        float eyeY = sinf(playerAngle);
+                        float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
+
+                        //限制取值范围在+PI与-PI之间
+                        //set limit : [-PI, PI]
+                        if (objectAngle < -3.14159f)
+                            objectAngle += 2.0f * 3.14159f;
+                        if (objectAngle > 3.14159f)
+                            objectAngle -= 2.0f * 3.14159f;
+
+                        bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
+
+                        //hit:
+                        if (inPlayerFOV && distanceFromPlayer <= 2.5f)
+                        {
+                            //display:
+                            make_hit_hud(weapons[(int)weapon_current]->damage);
+
+                            Net_HitOther(ob.first);
+                        }
                     }
                 }
-                if (weapon->weapon_enum == WeaponEnum::AEK_971)
+                else
                 {
-                    if (!muteAll)
-                    {
-                        //play fire sound:
-                        aekBulletPool->PlayOneShot(0.5f);
-                    }
-                }
-                if (weapon->weapon_enum == WeaponEnum::M4A1)
-                {
-                    if (!muteAll)
-                    {
-                        //play fire sound:
-                        m4a1Pool->PlayOneShot(0.5f);
-                    }
-                    bulletSpeed = 32.0f;
-                    noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.07f;
-                }
-                if (weapon->weapon_enum == WeaponEnum::AWP)
-                {
-                    if (!muteAll)
-                    {
-                        //play fire sound:
-                        awpPool->PlayOneShot(0.5f);
-                    }
-                    bulletSpeed = 50.0f;
-                    if (weapon->openScope)
-                    {
-                        noise = 0.0f;
-                    }
-                    else
-                    {
-                        noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.2f;
-                    }
-                }
+                    GameObject* bullet = new GameObject();
 
-                float vx = cosf(playerAngle + noise) * bulletSpeed;
-                float vy = sinf(playerAngle + noise) * bulletSpeed;
+                    //set position:
+                    bullet->transform->position = vf2d(playerX, playerY);
 
-                //set velocity:
-                bullet->transform->velocity = vf2d(vx, vy);
+                    //add collider:
+                    bullet->AddComponent<Collider>();
 
-                //set muzzle flame timer:
-                if (!enableFlame)
-                {
-                    enableFlame = true;
-                }
+                    //add point light:
+                    bullet->AddComponent<PointLight>(2.0f);
 
-                //net:sync bullet:
-                if (this->networkType != NetworkType::None)
-                {
-                    myBullets.push_back(bullet);
-                    mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex, bullet->transform->position.x, bullet->transform->position.y));
+                    //add sprite:
+                    SpriteRenderer* renderer = bullet->AddComponent<SpriteRenderer>();
+                    renderer->sprite = this->spriteBullet;
+                    renderer->ObjectSize = this->bulletSize;
+                    renderer->ObjectPos = this->bulletPos;
 
-                    bullet->AddComponent<NetworkCollider>(this->playerID_BulletIndex);
-                    this->playerID_BulletIndex++;
+                    //make noise:
+                    float noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+                    //bullet speed:
+                    float bulletSpeed = 30;
+
+                    if (weapon->weapon_enum == WeaponEnum::DESERT_EAGLE)
+                    {
+                        if (!muteAll)
+                        {
+                            //play fire sound:
+                            dePool->PlayOneShot(0.5f);
+                        }
+                        bulletSpeed = 40;
+                    }
+                    if (weapon->weapon_enum == WeaponEnum::AK47)
+                    {
+                        if (!muteAll)
+                        {
+                            //play fire sound:
+                            ak47Pool->PlayOneShot(0.5f);
+                        }
+                    }
+                    if (weapon->weapon_enum == WeaponEnum::AEK_971)
+                    {
+                        if (!muteAll)
+                        {
+                            //play fire sound:
+                            aekBulletPool->PlayOneShot(0.5f);
+                        }
+                    }
+                    if (weapon->weapon_enum == WeaponEnum::M4A1)
+                    {
+                        if (!muteAll)
+                        {
+                            //play fire sound:
+                            m4a1Pool->PlayOneShot(0.5f);
+                        }
+                        bulletSpeed = 32.0f;
+                        noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.07f;
+                    }
+                    if (weapon->weapon_enum == WeaponEnum::AWP)
+                    {
+                        if (!muteAll)
+                        {
+                            //play fire sound:
+                            awpPool->PlayOneShot(0.5f);
+                        }
+                        bulletSpeed = 50.0f;
+                        if (weapon->openScope)
+                        {
+                            noise = 0.0f;
+                        }
+                        else
+                        {
+                            noise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.2f;
+                        }
+                    }
+
+                    float vx = cosf(playerAngle + noise) * bulletSpeed;
+                    float vy = sinf(playerAngle + noise) * bulletSpeed;
+
+                    //set velocity:
+                    bullet->transform->velocity = vf2d(vx, vy);
+
+                    //set muzzle flame timer:
+                    if (!enableFlame)
+                    {
+                        enableFlame = true;
+                    }
+
+                    //net:sync bullet:
+                    if (this->networkType != NetworkType::None)
+                    {
+                        myBullets.push_back(bullet);
+                        mapObjects[playerID].bullets.push_back(NetBullet(this->playerID_BulletIndex, bullet->transform->position.x, bullet->transform->position.y));
+
+                        bullet->AddComponent<NetworkCollider>(this->playerID_BulletIndex);
+                        this->playerID_BulletIndex++;
+                    }
                 }
             }
         }
@@ -976,18 +1047,6 @@ private:
             {
                 continue; //网络行为不负责模拟自己
             }
-
-            //change look:
-            //if (object.second.zs_PlayerType == ZS_PlayerType::Human)
-            //{
-            //    auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
-            //    renderer->bmp = GSG9_bmp;
-            //}
-            //else if (object.second.zs_PlayerType == ZS_PlayerType::Zombie)
-            //{
-            //    auto renderer = networkObjects[object.first]->GetComponent<BMPRenderer>();
-            //    renderer->bmp = Zombie_bmp;
-            //}
 
             if (object.second.zs_PlayerType == ZS_PlayerType::Human)
             {
@@ -1971,6 +2030,14 @@ private:
                     DrawPNG(this->awp_png, drawPosX, drawPosY, 1, _m);
                 }
             }
+            else if (weapon_current == WeaponEnum::ZombieEvilClaw)
+            {
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
+
+                DrawPNG(this->zombie_hand_png, drawPosX, drawPosY, 1, _m);
+            }
+
         }
 
         if (enableBloodBar)
@@ -2605,6 +2672,7 @@ public:
         this->GSG9_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "player.png"));
         this->Zombie_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "zombie.png"));
         this->frontSight = new olc::Sprite(Resources::GetPath("../../", "res/png/", "crosshair.png"));
+        this->zombie_hand_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "zombie_hand.png"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -3041,6 +3109,23 @@ public:
             receive_user_input(deltaTime);
         }
 
+        //vision:
+        if (this->gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
+        {
+            if (zsPlayerType == ZS_PlayerType::Human)
+            {
+                enableFog = true;
+                renderBasedOnDistance = true;
+                night = true;
+            }
+            else if (zsPlayerType == ZS_PlayerType::Zombie)
+            {
+                enableFog = false;
+                renderBasedOnDistance = true;
+                night = true;
+            }
+        }
+
         render_world(deltaTime);
 
         render_hud(deltaTime);
@@ -3088,6 +3173,7 @@ public:
         delete this->GSG9_png;
         delete this->Zombie_png;
         delete this->frontSight;
+        delete this->zombie_hand_png;
 
         delete this->spriteWall;
         delete this->spriteLamp;

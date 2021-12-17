@@ -23,7 +23,7 @@ networkRole = 1
 //1 = SinglePlayer_SurvivalMode
 //2 = MultiPlayer_SoloMode
 //3 = MultiPlayer_ZombieEscapeMode
-gameMode = 1
+gameMode = 3
 
 //ak47
 //aek971
