@@ -168,6 +168,7 @@ private:
     olc::Sprite* Zombie_png = nullptr;
     olc::Sprite* frontSight = nullptr;
     olc::Sprite* zombie_hand_png = nullptr;
+    olc::Sprite* knife_png = nullptr;
 
 private:
     //map:
@@ -480,11 +481,17 @@ private:
             Weapon* ak47 = new Weapon(WeaponEnum::AK47, WeaponType::Rifle, spriteAK47);
             weapons.insert_or_assign((int)ak47->weapon_enum, ak47);
 
+            Weapon* knife = new Weapon(WeaponEnum::KNIFE, WeaponType::Knife, nullptr);
+            weapons.insert_or_assign((int)knife->weapon_enum, knife);
+
             desertEagle->fire_interval = 0.75f;
             desertEagle->damage = 225.5f;
 
             ak47->fire_interval = 0.1f;
             ak47->damage = 57.2f;
+
+            knife->fire_interval = 1.5f;
+            knife->damage = 575.0f;
 
             weapon_current = WeaponEnum::AK47;
         }
@@ -551,6 +558,44 @@ private:
             msg.header.id = NetworkMessage::Game_BulletHitOther;
             msg.AddBytes(info.Serialize());
             Send(msg);
+        }
+    }
+
+    void Net_Knife_Detect()
+    {
+        //近战武器攻击检测:
+        for (const auto& ob : networkObjects)
+        {
+            if (ob.first == playerID) continue; //不要检测自己
+            if (!ob.second->active) continue; //不要鞭尸
+
+            GameObject* otherGo = ob.second;
+
+            float vecX = otherGo->transform->position.x - playerX;
+            float vecY = otherGo->transform->position.y - playerY;
+            float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
+
+            float eyeX = cosf(playerAngle);
+            float eyeY = sinf(playerAngle);
+            float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
+
+            //限制取值范围在+PI与-PI之间
+            //set limit : [-PI, PI]
+            if (objectAngle < -3.14159f)
+                objectAngle += 2.0f * 3.14159f;
+            if (objectAngle > 3.14159f)
+                objectAngle -= 2.0f * 3.14159f;
+
+            bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
+
+            //hit:
+            if (inPlayerFOV && distanceFromPlayer <= 2.5f)
+            {
+                //display:
+                make_hit_hud(weapons[(int)weapon_current]->damage);
+
+                Net_HitOther(ob.first);
+            }
         }
     }
 
@@ -823,15 +868,15 @@ private:
         //switch weapon:
         if (GetKey(Key::K1).bPressed)
         {
-            weapon_current = WeaponEnum::DESERT_EAGLE;
+            weapon_current = WeaponEnum::AK47;
         }
         if (GetKey(Key::K2).bPressed)
         {
-            weapon_current = WeaponEnum::AK47;
+            weapon_current = WeaponEnum::DESERT_EAGLE;
         }
         if (GetKey(Key::K3).bPressed)
         {
-            weapon_current = WeaponEnum::AEK_971;
+            weapon_current = WeaponEnum::KNIFE;
         }
         if (GetKey(Key::K4).bPressed)
         {
@@ -840,6 +885,10 @@ private:
         if (GetKey(Key::K5).bPressed)
         {
             weapon_current = WeaponEnum::AWP;
+        }
+        if (GetKey(Key::K6).bPressed)
+        {
+            weapon_current = WeaponEnum::AEK_971;
         }
 
         if (weapons.count((int)weapon_current) == 0)
@@ -884,40 +933,13 @@ private:
             {
                 if (weapon->weapon_enum == WeaponEnum::ZombieEvilClaw)
                 {
-                    //近战武器攻击检测:
-                    for (const auto& ob : networkObjects)
-                    {
-                        if (ob.first == playerID) continue; //不要检测自己
-                        if (!ob.second->active) continue; //不要鞭尸
-
-                        GameObject* otherGo = ob.second;
-
-                        float vecX = otherGo->transform->position.x - playerX;
-                        float vecY = otherGo->transform->position.y - playerY;
-                        float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
-
-                        float eyeX = cosf(playerAngle);
-                        float eyeY = sinf(playerAngle);
-                        float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
-
-                        //限制取值范围在+PI与-PI之间
-                        //set limit : [-PI, PI]
-                        if (objectAngle < -3.14159f)
-                            objectAngle += 2.0f * 3.14159f;
-                        if (objectAngle > 3.14159f)
-                            objectAngle -= 2.0f * 3.14159f;
-
-                        bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
-
-                        //hit:
-                        if (inPlayerFOV && distanceFromPlayer <= 2.5f)
-                        {
-                            //display:
-                            make_hit_hud(weapons[(int)weapon_current]->damage);
-
-                            Net_HitOther(ob.first);
-                        }
-                    }
+                    //todo: play animation
+                    Net_Knife_Detect();
+                }
+                else if (weapon->weapon_enum == WeaponEnum::KNIFE)
+                {
+                    //todo: play animation
+                    Net_Knife_Detect();
                 }
                 else
                 {
@@ -2037,6 +2059,13 @@ private:
 
                 DrawPNG(this->zombie_hand_png, drawPosX, drawPosY, 1, _m);
             }
+            else if (weapon_current == WeaponEnum::KNIFE)
+            {
+                drawPosX = int(weapon_Xcof * 2);
+                drawPosY = int(weapon_Ypos / 2);
+
+                DrawPNG(this->knife_png, drawPosX, drawPosY, 1, _m);
+            }
 
         }
 
@@ -2673,6 +2702,7 @@ public:
         this->Zombie_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "zombie.png"));
         this->frontSight = new olc::Sprite(Resources::GetPath("../../", "res/png/", "crosshair.png"));
         this->zombie_hand_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "zombie_hand.png"));
+        this->knife_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "knife.png"));
 
         //load sprites:
         this->spriteWall = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_wall1.spr");
@@ -3174,6 +3204,7 @@ public:
         delete this->Zombie_png;
         delete this->frontSight;
         delete this->zombie_hand_png;
+        delete this->knife_png;
 
         delete this->spriteWall;
         delete this->spriteLamp;
