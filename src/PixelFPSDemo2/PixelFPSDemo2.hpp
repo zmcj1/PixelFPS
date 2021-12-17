@@ -48,6 +48,9 @@ enum class GameMode
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
 private:
+    bool randomRespawnPos = true;
+
+private:
     //object size:
     vf2d bulletSize = vf2d(0.1f, 0.1f);
     vf2d bulletPos = vf2d(1.0f, 4.0f);
@@ -1711,6 +1714,24 @@ private:
         }
     }
 
+    vi2d get_random_available_pos()
+    {
+        vector<vi2d> positions;
+        for (size_t i = 0; i < mapHeight; i++)
+        {
+            for (size_t j = 0; j < mapWidth; j++)
+            {
+                //dont add walls:
+                if (map[mapWidth * i + j] != L'#')
+                {
+                    positions.push_back(vi2d(j, i));
+                }
+            }
+        }
+        uint randomIndex = Random::Range(0, positions.size() - 1);
+        return positions[randomIndex];
+    }
+
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
 
     // Identifies side of cell
@@ -2725,9 +2746,19 @@ public:
             if (GetKey(Key::R).bPressed)
             {
                 this->playerHealth = this->fullHealth;
-                this->playerX = 8.5f;
-                this->playerY = 14.7f;
                 this->playerAngle = 0.0f;
+
+                if (randomRespawnPos)
+                {
+                    vi2d randomPos = get_random_available_pos();
+                    this->playerX = randomPos.x + 0.5f;
+                    this->playerY = randomPos.y + 0.5f;
+                }
+                else
+                {
+                    this->playerX = 8.5f;
+                    this->playerY = 14.7f;
+                }
 
                 beHitEffectTimer = 0.0f;
                 netBeHit = false;
