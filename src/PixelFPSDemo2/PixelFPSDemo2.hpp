@@ -336,9 +336,28 @@ private:
 
     void DrawPNG(olc::Sprite* sprite, int posX, int posY, int zoomPixelScaler = 1, float _m = 0.0f)
     {
+        Sprite* copySprite = sprite->Duplicate();
+
+        for (size_t y = 0; y < sprite->height; y++)
+        {
+            for (size_t x = 0; x < sprite->width; x++)
+            {
+                Pixel pixel = sprite->GetPixel(x, y);
+
+                pixel.r = fuck_std::clamp<float>(pixel.r * (1 + _m), 0, 255);
+                pixel.g = fuck_std::clamp<float>(pixel.g * (1 + _m), 0, 255);
+                pixel.b = fuck_std::clamp<float>(pixel.b * (1 + _m), 0, 255);
+
+                copySprite->SetPixel(x, y, pixel);
+            }
+        }
+
         SetPixelMode(olc::Pixel::ALPHA);  // Draw all pixels
-        DrawSprite(posX, posY, sprite, zoomPixelScaler);
+        DrawSprite(posX, posY, copySprite, zoomPixelScaler);
         SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
+
+        delete copySprite;
+        copySprite = nullptr;
     }
 
     void DrawAlphaPanel(Color32 color)
@@ -1629,6 +1648,17 @@ private:
                             {
                                 Pixel pixel = png_renderer->SampleColour(sampleX, sampleY);
 
+                                //treat pure white pixel as alpha transparency.
+                                if (pixel.r == 255 && pixel.g == 255 && pixel.b == 255)
+                                {
+                                    continue;
+                                }
+                                //treat pure black pixel as alpha transparency.
+                                if (pixel.r == 0 && pixel.g == 0 && pixel.b == 0)
+                                {
+                                    continue;
+                                }
+
                                 // Get pixel from a suitable texture
                                 float object_fHeading = 0.0f; //todo
                                 float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
@@ -1746,6 +1776,7 @@ private:
             }
 
         }
+
     }
 
     void render_hud(float deltaTime)
@@ -2641,22 +2672,16 @@ public:
         //add players:
         //GameObject* player1 = new GameObject();
         //player1->transform->position = vf2d(8.5f, 14.7f);
-        //BMPRenderer* player1_bmpRenderer = player1->AddComponent<BMPRenderer>();
-        //player1_bmpRenderer->bmp = this->GSG9_bmp;
-        //player1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+        //PNGRenderer* player1_pngRenderer = player1->AddComponent<PNGRenderer>();
+        //player1_pngRenderer->sprite = this->GSG9_png;
+        //player1_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
         //add zombies:
         //GameObject* zombie1 = new GameObject();
         //zombie1->transform->position = vf2d(6, 16);
-        //BMPRenderer* zombie1_bmpRenderer = zombie1->AddComponent<BMPRenderer>();
-        //zombie1_bmpRenderer->bmp = this->Zombie_bmp;
-        //zombie1_bmpRenderer->ObjectSize = vf2d(1.5f, 0.7f);
-
-        //GameObject* zombie2 = new GameObject();
-        //zombie2->transform->position = vf2d(8, 16);
-        //BMPRenderer* zombie2_bmpRenderer = zombie2->AddComponent<BMPRenderer>();
-        //zombie2_bmpRenderer->bmp = this->Zombie_bmp;
-        //zombie2_bmpRenderer->ObjectSize = vf2d(2.5f, 1.15f);
+        //PNGRenderer* zombie1_pngRenderer = zombie1->AddComponent<PNGRenderer>();
+        //zombie1_pngRenderer->sprite = this->Zombie_png;
+        //zombie1_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
 
         if (networkType != NetworkType::Client)
         {
