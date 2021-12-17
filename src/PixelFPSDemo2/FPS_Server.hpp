@@ -157,12 +157,19 @@ public:
             break;
         }
         case NetworkMessage::Game_HostChooseMode:
+        {
             HostChoose hostChoose;
             hostChoose.Deserialize(msg.body);
             this->gameMode = hostChoose.gameMode;
             this->hostID = hostChoose.uniqueID;
             this->soloWeapon = hostChoose.soloWeapon;
             break;
+        }
+        case NetworkMessage::Game_Zombie_Infect:
+        {
+            MessageAllClients(msg, client);
+            break;
+        }
         }
     }
 };
