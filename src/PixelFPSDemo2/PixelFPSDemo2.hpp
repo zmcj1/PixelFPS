@@ -2590,19 +2590,6 @@ public:
         map += L"#..............##..............#";
         map += L"################################";
 
-        //this->awp_bmp = new BMP();
-        //this->m4a1_bmp = new BMP();
-        //this->scope_bmp = new BMP();
-        //this->GSG9_bmp = new BMP();
-        //this->Zombie_bmp = new BMP();
-
-        //load BMP:
-        //this->awp_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "awp.bmp"));
-        //this->m4a1_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "m4a1.bmp"));
-        //this->scope_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "scope.bmp"));
-        //this->GSG9_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "Player.bmp"));
-        //this->Zombie_bmp->ReadFromFile(Resources::GetPath("../../", "res/bmp/", "zombie.bmp"));
-
         this->de_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "deagle.png"));
         this->ak_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "ak.png"));
         this->aek_png = new olc::Sprite(Resources::GetPath("../../", "res/png/", "ak.png"));
@@ -2622,7 +2609,6 @@ public:
         this->spriteBullet = Resources::Load<OLCSprite>(L"../../", L"res/", L"fps_bullet.spr");
         this->spriteDesertEagle = Resources::Load<OLCSprite>(L"../../", L"res/", L"deagle.spr");
         this->spriteAK47 = Resources::Load<OLCSprite>(L"../../", L"res/", L"ak47.spr");
-        //this->spriteM4A1 = Resources::Load<OLCSprite>(L"../../", L"res/", L"M4A1.spr");
 
         //load audios:
         if (!muteAll)
@@ -3085,12 +3071,6 @@ public:
             delete this->serverThread;
             //delete this->server; //disable this line avoid exception.
         }
-
-        //delete this->awp_bmp;
-        //delete this->m4a1_bmp;
-        //delete this->scope_bmp;
-        //delete this->GSG9_bmp;
-        //delete this->Zombie_bmp;
 
         delete this->de_png;
         delete this->ak_png;
