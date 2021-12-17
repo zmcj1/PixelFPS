@@ -490,15 +490,21 @@ private:
             Weapon* knife = new Weapon(WeaponEnum::KNIFE, WeaponType::Knife, nullptr);
             weapons.insert_or_assign((int)knife->weapon_enum, knife);
 
+            Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
+            weapons.insert_or_assign((int)awp->weapon_enum, awp);
+
             desertEagle->fire_interval = 0.75f;
-            desertEagle->damage = 225.5f;
+            desertEagle->damage = 125.5f;
 
             ak47->fire_interval = 0.1f;
-            ak47->damage = 57.2f;
+            ak47->damage = 50.0f;
 
             knife->fire_interval = 1.5f;
-            knife->damage = 575.0f;
+            knife->damage = 275.0f;
             knife->range = 2.6f;
+
+            awp->fire_interval = 2.0f;
+            awp->damage = 265.4f;
 
             weapon_current = WeaponEnum::AK47;
         }
@@ -2093,7 +2099,7 @@ private:
             else if (weapon_current == WeaponEnum::ZombieEvilClaw)
             {
                 drawPosX = int(weapon_Xcof * 2);
-                drawPosY = int(weapon_Ypos / 2);
+                drawPosY = int(weapon_Ypos / 2) + 55;
 
                 DrawPNG(this->zombie_hand_png, drawPosX, drawPosY, 1, _m);
             }
