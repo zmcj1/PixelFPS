@@ -148,9 +148,13 @@ private:
     int bloodBarPosX = 20;
     int bloodBarPosY = 150;
 
+    //bobbing effect:
     float weapon_Ypos = 1.0f;
     float weapon_Xcof = 1.0f;
     bool bobbing_side = false;
+
+    float bobbing_timer = 0.0f;
+    const float bobbing_interval = 0.015f;
 
     //muzzle flame:
     bool enableFlame = false;
@@ -426,6 +430,33 @@ private:
         }
     }
 
+    void weapon_bobbing(float deltaTime)
+    {
+        bobbing_timer += deltaTime;
+
+        if (bobbing_timer >= bobbing_interval)
+        {
+            bobbing_timer = 0.0f;
+
+            if (bobbing_side)
+            {
+                weapon_Xcof += 0.3f;
+                if (weapon_Xcof >= 3.5f)
+                {
+                    bobbing_side = false;
+                }
+            }
+            else
+            {
+                weapon_Xcof -= 0.3f;
+                if (weapon_Xcof <= -3.5f)
+                {
+                    bobbing_side = true;
+                }
+            }
+        }
+    }
+
     void receive_user_input(float deltaTime)
     {
         if (!enableMouse)
@@ -453,22 +484,7 @@ private:
                     playerY -= y;
                 }
 
-                if (bobbing_side)
-                {
-                    weapon_Xcof += 0.3f;
-                    if (weapon_Xcof >= 3.5f)
-                    {
-                        bobbing_side = false;
-                    }
-                }
-                else
-                {
-                    weapon_Xcof -= 0.3f;
-                    if (weapon_Xcof <= -3.5f)
-                    {
-                        bobbing_side = true;
-                    }
-                }
+                weapon_bobbing(deltaTime);
             }
 
             //movement backward
@@ -541,22 +557,7 @@ private:
                     playerY -= y;
                 }
 
-                if (bobbing_side)
-                {
-                    weapon_Xcof += 0.3f;
-                    if (weapon_Xcof >= 3.5f)
-                    {
-                        bobbing_side = false;
-                    }
-                }
-                else
-                {
-                    weapon_Xcof -= 0.3f;
-                    if (weapon_Xcof <= -3.5f)
-                    {
-                        bobbing_side = true;
-                    }
-                }
+                weapon_bobbing(deltaTime);
             }
 
             //movement backward
