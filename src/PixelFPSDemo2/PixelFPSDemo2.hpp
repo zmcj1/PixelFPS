@@ -52,6 +52,11 @@ private:
     //zombie mode:
     float zombieMaxHealth = 1000.0f;
     float zombieMoveSpeed = 4.0f;
+    float zombieBehitMoveSpeed = 1.0f;
+
+    bool slowZombie = false;
+    float zombieBehitTimer = 0.0f;
+    float zombieBehitInterval = 0.5f;
     ZS_PlayerType zsPlayerType = ZS_PlayerType::Human;
 
     uint32_t InfectZombieRandom()
@@ -390,6 +395,7 @@ private:
         Weapon* claw = new Weapon(WeaponEnum::ZombieEvilClaw, WeaponType::Knife, nullptr);
         claw->fire_interval = 1.5f;
         claw->damage = 120.0f;
+        claw->range = 3.0f;
         weapons.insert_or_assign((int)claw->weapon_enum, claw);
 
         weapon_current = claw->weapon_enum;
@@ -492,6 +498,7 @@ private:
 
             knife->fire_interval = 1.5f;
             knife->damage = 575.0f;
+            knife->range = 2.6f;
 
             weapon_current = WeaponEnum::AK47;
         }
@@ -567,7 +574,7 @@ private:
         for (const auto& ob : networkObjects)
         {
             if (ob.first == playerID) continue; //不要检测自己
-            if (!ob.second->active) continue; //不要鞭尸
+            if (!ob.second->active) continue;   //不要鞭尸
 
             GameObject* otherGo = ob.second;
 
@@ -589,12 +596,43 @@ private:
             bool inPlayerFOV = fabs(objectAngle) < FOV / 2.0f;
 
             //hit:
-            if (inPlayerFOV && distanceFromPlayer <= 2.5f)
+            if (inPlayerFOV && distanceFromPlayer <= weapons[(int)weapon_current]->range)
             {
                 //display:
                 make_hit_hud(weapons[(int)weapon_current]->damage);
 
                 Net_HitOther(ob.first);
+            }
+        }
+    }
+
+    void StartSlowZombie()
+    {
+        this->slowZombie = true;
+        this->zombieBehitTimer = 0.0f;
+    }
+
+    void UpdateSlowZombie(float deltaTime)
+    {
+        if (networkType != NetworkType::None)
+        {
+            if (zsPlayerType == ZS_PlayerType::Zombie)
+            {
+                if (this->slowZombie)
+                {
+                    this->moveSpeed = this->zombieBehitMoveSpeed;
+
+                    this->zombieBehitTimer += deltaTime;
+                    if (this->zombieBehitTimer > zombieBehitInterval)
+                    {
+                        this->zombieBehitTimer = 0.0f;
+                        this->slowZombie = false;
+                    }
+                }
+                else
+                {
+                    this->moveSpeed = this->zombieMoveSpeed;
+                }
             }
         }
     }
@@ -2977,6 +3015,15 @@ public:
                             //set behit ui:
                             this->netBeHit = true;
 
+                            //if im zombie:
+                            if (this->gameMode == GameMode::MultiPlayer_ZombieEscapeMode)
+                            {
+                                if (this->zsPlayerType == ZS_PlayerType::Zombie)
+                                {
+                                    StartSlowZombie();
+                                }
+                            }
+
                             //dead:
                             if (this->playerHealth <= 0)
                             {
@@ -3094,6 +3141,8 @@ public:
 
         //update game:
         update_network(deltaTime);
+
+        UpdateSlowZombie(deltaTime);
 
         //update audio:
         update_audio();

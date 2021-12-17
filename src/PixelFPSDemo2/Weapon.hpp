@@ -38,6 +38,7 @@ public:
     //properties
     float fire_interval = 0.5f; //just a default value
     float damage = 10.0f;
+    float range = 2.5f; //for knife
 
 public:
     WeaponEnum weapon_enum;
