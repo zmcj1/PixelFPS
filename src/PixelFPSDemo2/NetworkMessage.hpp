@@ -48,9 +48,9 @@ enum class ZS_PlayerType : uint32_t
 struct NetBullet
 {
 public:
-    uint32_t id;
-    float x;
-    float y;
+    uint32_t id = 0;
+    float x = 0;
+    float y = 0;
 
     NetBullet()
     {

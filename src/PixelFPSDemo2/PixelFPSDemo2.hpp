@@ -155,14 +155,6 @@ private:
     bool lightGround = true; //turn off by defualt, who can optimize it?
 
 private:
-    //BMP:
-    //BMP* awp_bmp = nullptr;
-    //BMP* m4a1_bmp = nullptr;
-    //BMP* scope_bmp = nullptr;
-    //BMP* GSG9_bmp = nullptr;
-    //BMP* Zombie_bmp = nullptr;
-
-private:
     olc::Sprite* de_png = nullptr;
     olc::Sprite* ak_png = nullptr;
     olc::Sprite* aek_png = nullptr;
