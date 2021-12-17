@@ -48,6 +48,11 @@ enum class GameMode
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
 private:
+    //zombie mode:
+    const float zombieMaxHealth = 1000.0f;
+
+
+private:
     bool randomRespawnPos = true;
 
 private:

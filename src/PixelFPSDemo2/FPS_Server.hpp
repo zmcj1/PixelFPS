@@ -83,7 +83,6 @@ public:
         case NetworkMessage::Client_RegisterWithServer:
         {
             PlayerNetData desc;
-            //msg >> desc;
             desc.Deserialize(msg.body);
 
             desc.uniqueID = client->GetID();
@@ -91,13 +90,12 @@ public:
 
             olc::net::message<NetworkMessage> msgSendID;
             msgSendID.header.id = NetworkMessage::Client_AssignID;
-            //msgSendID << desc.uniqueID;
             msgSendID.AddUInt32(desc.uniqueID);
             MessageClient(client, msgSendID);
 
+            //告诉所有玩家，新玩家进来了
             olc::net::message<NetworkMessage> msgAddPlayer;
             msgAddPlayer.header.id = NetworkMessage::Game_AddPlayer;
-            //msgAddPlayer << desc;
             msgAddPlayer.AddBytes(desc.Serialize());
             MessageAllClients(msgAddPlayer);
 
@@ -129,11 +127,14 @@ public:
                 MessageClient(client, msgChooseMode);
             }
 
+            //告诉该玩家其他玩家的存在
             for (const auto& player : playerNetDataDict)
             {
+                //不要再重复发送消息给相同客户端:
+                if (player.first == desc.uniqueID) continue;
+
                 olc::net::message<NetworkMessage> msgAddOtherPlayers;
                 msgAddOtherPlayers.header.id = NetworkMessage::Game_AddPlayer;
-                //msgAddOtherPlayers << player.second;
                 msgAddOtherPlayers.AddBytes(player.second.Serialize());
                 MessageClient(client, msgAddOtherPlayers);
             }

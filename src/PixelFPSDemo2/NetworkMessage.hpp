@@ -36,6 +36,14 @@ enum class NetworkType
     Client = 2, //client
 };
 
+//zombie survival mode player type:
+enum class ZS_PlayerType
+{
+    Unknown = 0,
+    Human,
+    Zombie,
+};
+
 struct NetBullet
 {
 public:
