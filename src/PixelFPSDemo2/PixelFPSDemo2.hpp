@@ -51,8 +51,8 @@ class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<Network
 private:
     //zombie mode:
     float zombieMaxHealth = 1000.0f;
-    float zombieMoveSpeed = 4.0f;
-    float zombieBehitMoveSpeed = 2.0f;
+    float zombieMoveSpeed = 3.5f;
+    float zombieBehitMoveSpeed = zombieMoveSpeed / 2;
 
     bool slowZombie = false;
     float zombieBehitTimer = 0.0f;
@@ -485,18 +485,18 @@ private:
             Weapon* awp = new Weapon(WeaponEnum::AWP, WeaponType::Sniper, nullptr);
             weapons.insert_or_assign((int)awp->weapon_enum, awp);
 
-            desertEagle->fire_interval = 0.75f;
-            desertEagle->damage = 125.5f;
+            desertEagle->fire_interval = 0.65f;
+            desertEagle->damage = 155.5f;
 
-            ak47->fire_interval = 0.1f;
-            ak47->damage = 25.5f;
+            ak47->fire_interval = 0.12f;
+            ak47->damage = 38.5f;
 
             knife->fire_interval = 1.75f;
             knife->damage = 275.0f;
             knife->range = 2.6f;
 
-            awp->fire_interval = 2.0f;
-            awp->damage = 225.4f;
+            awp->fire_interval = 1.25f;
+            awp->damage = 325.4f;
 
             weapon_current = WeaponEnum::AK47;
         }
