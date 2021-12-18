@@ -1215,140 +1215,58 @@ private:
         }
     }
 
-    void update_world(float deltaTime)
+    void update_physics(GameObject* go, float deltaTime)
     {
-        for (auto& item : GM.gameObjects)
+        //update physics:
+        go->transform->position += go->transform->velocity * deltaTime;
+
+        //collision detect:
+        Collider* collider = go->GetComponent<Collider>();
+        if (collider != nullptr && collider->enable)
         {
-            GameObject* go = item.second;
+            ////超出界限或者撞墙
+            //if (go->transform->position.x < 0 || go->transform->position.x > mapWidth - 1 ||
+            //    go->transform->position.y < 0 || go->transform->position.y > mapHeight - 1 ||
+            //    map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
+            //{
+            //}
+            ////继续运动
+            //else
+            //{
+            //}
 
-            if (!go->active) continue;
-            if (go->remove) continue;
 
-            //lifetime detect:
-            LifeController* life = go->GetComponent<LifeController>();
-            if (life != nullptr && life->enable)
+            // Check if object is inside wall - set flag for removing
+            if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
+                go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
             {
-                life->lifeTime -= deltaTime;
-                if (life->lifeTime <= 0)
+                //collsion with walls:
+                if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
                 {
                     go->remove = true;
-                    continue;
-                }
-            }
 
-            //update physics:
-            go->transform->position += go->transform->velocity * deltaTime;
-
-            //collision detect:
-            Collider* collider = go->GetComponent<Collider>();
-            if (collider != nullptr && collider->enable)
-            {
-                // Check if object is inside wall - set flag for removing
-                if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
-                    go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
-                {
-                    //collsion with walls:
-                    if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
+                    if (!muteAll)
                     {
-                        go->remove = true;
-
-                        if (!muteAll)
-                        {
-                            //play explosion sound:
-                            explosionPool->PlayOneShot();
-                        }
-
-                        //instantiate explosion:
-                        //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
-                        GameObject* explosion = new GameObject();
-                        explosion->transform->position =
-                            go->transform->position - go->transform->velocity * deltaTime;
-
-                        PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
-                        pl->attenuation = 3.0f;
-
-                        SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
-                        renderer->sprite = this->spriteExplosion;
-                        renderer->ObjectSize = this->explosionSize;
-                        renderer->ObjectPos = this->explosionPos;
-
-                        LifeController* life = explosion->AddComponent<LifeController>();
-                        life->lifeTime = 0.25f;
-
-                        if (networkType != NetworkType::None)
-                        {
-                            NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                            if (net_collider != nullptr && net_collider->enable)
-                            {
-                                int removeIndex = -1;
-                                for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                                {
-                                    if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                    {
-                                        removeIndex = _i;
-                                    }
-                                }
-                                if (removeIndex != -1)
-                                {
-                                    myBullets.erase(myBullets.begin() + removeIndex);
-                                    mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                                }
-                            }
-                        }
+                        //play explosion sound:
+                        explosionPool->PlayOneShot();
                     }
 
-                    //collsion with other objects:
-                    if (this->networkType != NetworkType::None)
-                    {
-                        for (const auto& ob : networkObjects)
-                        {
-                            if (ob.first == playerID) continue; //不要检测自己
-                            if (!ob.second->active) continue; //不要鞭尸
+                    //instantiate explosion:
+                    //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
+                    GameObject* explosion = new GameObject();
+                    explosion->transform->position =
+                        go->transform->position - go->transform->velocity * deltaTime;
 
-                            int bx = (int)go->transform->position.x;
-                            int by = (int)go->transform->position.y;
+                    PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
+                    pl->attenuation = 3.0f;
 
-                            //if hit:
-                            if ((int)ob.second->transform->position.x == bx && (int)ob.second->transform->position.y == by)
-                            {
-                                go->remove = true;
+                    SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
+                    renderer->sprite = this->spriteExplosion;
+                    renderer->ObjectSize = this->explosionSize;
+                    renderer->ObjectPos = this->explosionPos;
 
-                                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                                if (net_collider != nullptr && net_collider->enable)
-                                {
-                                    int removeIndex = -1;
-                                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                                    {
-                                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                        {
-                                            removeIndex = _i;
-                                        }
-                                    }
-                                    if (removeIndex != -1)
-                                    {
-                                        myBullets.erase(myBullets.begin() + removeIndex);
-                                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                                    }
-                                }
-
-                                //display:
-                                make_hit_hud(weapons[(int)weapon_current]->damage);
-
-                                BulletHitInfo info;
-                                info.myID = playerID;
-                                info.otherPlayerID = ob.first;
-                                info.damage = weapons[(int)weapon_current]->damage;
-                                olc::net::message<NetworkMessage> msg;
-                                msg.header.id = NetworkMessage::Game_BulletHitOther;
-                                msg.AddBytes(info.Serialize());
-                                Send(msg);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    go->remove = true;
+                    LifeController* life = explosion->AddComponent<LifeController>();
+                    life->lifeTime = 0.25f;
 
                     if (networkType != NetworkType::None)
                     {
@@ -1371,6 +1289,104 @@ private:
                         }
                     }
                 }
+
+                //collsion with other objects:
+                if (this->networkType != NetworkType::None)
+                {
+                    for (const auto& ob : networkObjects)
+                    {
+                        if (ob.first == playerID) continue; //不要检测自己
+                        if (!ob.second->active) continue; //不要鞭尸
+
+                        int bx = (int)go->transform->position.x;
+                        int by = (int)go->transform->position.y;
+
+                        //if hit:
+                        if ((int)ob.second->transform->position.x == bx && (int)ob.second->transform->position.y == by)
+                        {
+                            go->remove = true;
+
+                            NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                            if (net_collider != nullptr && net_collider->enable)
+                            {
+                                int removeIndex = -1;
+                                for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                                {
+                                    if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                                    {
+                                        removeIndex = _i;
+                                    }
+                                }
+                                if (removeIndex != -1)
+                                {
+                                    myBullets.erase(myBullets.begin() + removeIndex);
+                                    mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                                }
+                            }
+
+                            //display:
+                            make_hit_hud(weapons[(int)weapon_current]->damage);
+
+                            BulletHitInfo info;
+                            info.myID = playerID;
+                            info.otherPlayerID = ob.first;
+                            info.damage = weapons[(int)weapon_current]->damage;
+                            olc::net::message<NetworkMessage> msg;
+                            msg.header.id = NetworkMessage::Game_BulletHitOther;
+                            msg.AddBytes(info.Serialize());
+                            Send(msg);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                go->remove = true;
+
+                if (networkType != NetworkType::None)
+                {
+                    NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                    if (net_collider != nullptr && net_collider->enable)
+                    {
+                        int removeIndex = -1;
+                        for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                        {
+                            if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                            {
+                                removeIndex = _i;
+                            }
+                        }
+                        if (removeIndex != -1)
+                        {
+                            myBullets.erase(myBullets.begin() + removeIndex);
+                            mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void update_world(float deltaTime)
+    {
+        //detect collision:
+        for (auto& item : GM.gameObjects)
+        {
+            GameObject* go = item.second;
+
+            if (!go->active) continue;
+            if (go->remove) continue;
+
+            //lifetime detect:
+            LifeController* life = go->GetComponent<LifeController>();
+            if (life != nullptr && life->enable)
+            {
+                life->lifeTime -= deltaTime;
+                if (life->lifeTime <= 0)
+                {
+                    go->remove = true;
+                    continue;
+                }
             }
 
             //灯光衰减:
@@ -1383,6 +1399,8 @@ private:
                     pointLightCom->range = 0.0f;
                 }
             }
+
+            update_physics(go, deltaTime);
 
         }
     }

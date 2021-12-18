@@ -54,6 +54,9 @@
     <ClCompile Include="PNGRenderer.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="Rigidbody.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -126,6 +129,9 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="PNGRenderer.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="Rigidbody.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>

@@ -159,6 +159,7 @@
     <ClCompile Include="olcPixelGameEngine.cpp" />
     <ClCompile Include="PNGRenderer.cpp" />
     <ClCompile Include="PointLight.cpp" />
+    <ClCompile Include="Rigidbody.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
     <ClCompile Include="tool.cpp" />
     <ClCompile Include="Transform.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="PNGRenderer.hpp" />
     <ClInclude Include="PointLight.hpp" />
     <ClInclude Include="Resources.hpp" />
+    <ClInclude Include="Rigidbody.hpp" />
     <ClInclude Include="sObject.hpp" />
     <ClInclude Include="SpriteRenderer.hpp" />
     <ClInclude Include="tool.hpp" />
