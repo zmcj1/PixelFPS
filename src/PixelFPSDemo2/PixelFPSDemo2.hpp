@@ -21,6 +21,7 @@
 #include "PNGRenderer.hpp" //png renderer
 #include "NetworkMessage.hpp" //net
 #include "FPS_Server.hpp" //net server
+#include "Rigidbody.hpp"
 
 inline void serverTask(FPSServer* server)
 {
@@ -174,9 +175,31 @@ private:
     int mapHeight = 32;
 
     //player:
+    GameObject* player = nullptr;   // player game object
+
+    float defaultPlayerX = 8.5f;
+    float defaultPlayerY = 14.7f;
+    float defaultPlayerAngle = 0.0f;
+
+    float GetPlayerX()
+    {
+        return player->transform->position.x;
+    }
+
+    float GetPlayerY()
+    {
+        return player->transform->position.y;
+    }
+
+    float GetPlayerAngle()
+    {
+        return player->transform->angle;
+    }
+
     float playerX = 8.5f;           // Player Start Position
     float playerY = 14.7f;
     float playerAngle = 0.0f;       // Player Start Rotation(in rad)
+
     float moveSpeed = 2.5f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
@@ -1215,88 +1238,123 @@ private:
         }
     }
 
+    void update_active_collider(Collider* collider, GameObject* go, float deltaTime)
+    {
+        //Potential Position:
+        vf2d nextPos = go->transform->position + go->transform->velocity * deltaTime;
+
+        //collide with other colliders:
+        if (collider->collideWithObjects)
+        {
+            for (auto& item : GM.gameObjects)
+            {
+                //不要自己与自己发生碰撞
+                if (go->id == item.first) continue;
+
+                GameObject* OtherGO = item.second;
+
+                if (!OtherGO->active) continue;
+                if (OtherGO->remove) continue;
+
+                Collider* OtherCollider = OtherGO->GetComponent<Collider>();
+                if (OtherCollider != nullptr && OtherCollider->enable && OtherCollider->collideWithObjects)
+                {
+                    float m = (go->transform->position - OtherGO->transform->position).mag2();
+                    float r = (collider->radius + OtherCollider->radius) * (collider->radius + OtherCollider->radius);
+                    if (m <= r)
+                    {
+                        float distanceToOtherCollider = sqrt(m);
+                        float overlap = collider->radius + OtherCollider->radius - distanceToOtherCollider;
+
+                        vf2d movement = (OtherGO->transform->position - go->transform->position) / distanceToOtherCollider * overlap;
+
+                        nextPos -= movement;
+
+                        if (OtherCollider->canBeMoved)
+                        {
+                            OtherGO->transform->position += movement;
+                        }
+                    }
+                }
+            }
+        }
+
+        go->transform->position = nextPos;
+    }
+
     void update_physics(GameObject* go, float deltaTime)
     {
         //update physics:
-        go->transform->position += go->transform->velocity * deltaTime;
+        //go->transform->position += go->transform->velocity * deltaTime;
 
         //collision detect:
         Collider* collider = go->GetComponent<Collider>();
         if (collider != nullptr && collider->enable)
         {
-            ////超出界限或者撞墙
-            //if (go->transform->position.x < 0 || go->transform->position.x > mapWidth - 1 ||
-            //    go->transform->position.y < 0 || go->transform->position.y > mapHeight - 1 ||
-            //    map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
-            //{
-            //}
-            ////继续运动
-            //else
-            //{
-            //}
+            update_active_collider(collider, go, deltaTime);
 
+            return;
 
-            // Check if object is inside wall - set flag for removing
-            if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
-                go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
+            //超出界限或者撞墙
+            if (go->transform->position.x < 0 || go->transform->position.x > mapWidth - 1 ||
+                go->transform->position.y < 0 || go->transform->position.y > mapHeight - 1 ||
+                map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
             {
-                //collsion with walls:
-                if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
+                go->remove = true;
+
+                if (!muteAll)
                 {
-                    go->remove = true;
+                    //play explosion sound:
+                    explosionPool->PlayOneShot();
+                }
 
-                    if (!muteAll)
+                //instantiate explosion:
+                //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
+                GameObject* explosion = new GameObject();
+                explosion->transform->position = go->transform->position - go->transform->velocity * deltaTime;
+
+                PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
+                pl->attenuation = 3.0f;
+
+                SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
+                renderer->sprite = this->spriteExplosion;
+                renderer->ObjectSize = this->explosionSize;
+                renderer->ObjectPos = this->explosionPos;
+
+                LifeController* life = explosion->AddComponent<LifeController>();
+                life->lifeTime = 0.25f;
+
+                if (networkType != NetworkType::None)
+                {
+                    NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                    if (net_collider != nullptr && net_collider->enable)
                     {
-                        //play explosion sound:
-                        explosionPool->PlayOneShot();
-                    }
-
-                    //instantiate explosion:
-                    //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
-                    GameObject* explosion = new GameObject();
-                    explosion->transform->position =
-                        go->transform->position - go->transform->velocity * deltaTime;
-
-                    PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
-                    pl->attenuation = 3.0f;
-
-                    SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
-                    renderer->sprite = this->spriteExplosion;
-                    renderer->ObjectSize = this->explosionSize;
-                    renderer->ObjectPos = this->explosionPos;
-
-                    LifeController* life = explosion->AddComponent<LifeController>();
-                    life->lifeTime = 0.25f;
-
-                    if (networkType != NetworkType::None)
-                    {
-                        NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                        if (net_collider != nullptr && net_collider->enable)
+                        int removeIndex = -1;
+                        for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
                         {
-                            int removeIndex = -1;
-                            for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                            if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
                             {
-                                if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                {
-                                    removeIndex = _i;
-                                }
+                                removeIndex = _i;
                             }
-                            if (removeIndex != -1)
-                            {
-                                myBullets.erase(myBullets.begin() + removeIndex);
-                                mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                            }
+                        }
+                        if (removeIndex != -1)
+                        {
+                            myBullets.erase(myBullets.begin() + removeIndex);
+                            mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
                         }
                     }
                 }
-
+            }
+            //继续运动
+            else
+            {
                 //collsion with other objects:
                 if (this->networkType != NetworkType::None)
                 {
                     for (const auto& ob : networkObjects)
                     {
                         if (ob.first == playerID) continue; //不要检测自己
-                        if (!ob.second->active) continue; //不要鞭尸
+                        if (!ob.second->active) continue;   //不要鞭尸
 
                         int bx = (int)go->transform->position.x;
                         int by = (int)go->transform->position.y;
@@ -1339,31 +1397,6 @@ private:
                     }
                 }
             }
-            else
-            {
-                go->remove = true;
-
-                if (networkType != NetworkType::None)
-                {
-                    NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                    if (net_collider != nullptr && net_collider->enable)
-                    {
-                        int removeIndex = -1;
-                        for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                        {
-                            if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                            {
-                                removeIndex = _i;
-                            }
-                        }
-                        if (removeIndex != -1)
-                        {
-                            myBullets.erase(myBullets.begin() + removeIndex);
-                            mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -1400,8 +1433,8 @@ private:
                 }
             }
 
+            //更新物理:
             update_physics(go, deltaTime);
-
         }
     }
 
@@ -2792,27 +2825,33 @@ public:
 
         vf2d lampSize = vf2d(0.25, 1.25f);
 
+        //create Player:
+        this->player = new GameObject();
+        this->player->transform->position.x = defaultPlayerX;
+        this->player->transform->position.y = defaultPlayerY;
+        this->player->transform->angle = defaultPlayerAngle;
+
         //add lamps:
-        GameObject* lamp1 = new GameObject();
-        lamp1->transform->position = vf2d(8.5f, 8.5f);
-        auto s1 = lamp1->AddComponent<SpriteRenderer>();
-        s1->sprite = this->spriteLamp;
-        s1->ObjectSize = lampSize;
-        lamp1->AddComponent<PointLight>(5.0f);
-
-        GameObject* lamp2 = new GameObject();
-        lamp2->transform->position = vf2d(7.5f, 7.5f);
-        auto s2 = lamp2->AddComponent<SpriteRenderer>();
-        s2->sprite = this->spriteLamp;
-        s2->ObjectSize = lampSize;
-        lamp2->AddComponent<PointLight>(5.0f);
-
-        GameObject* lamp3 = new GameObject();
-        lamp3->transform->position = vf2d(10.5f, 3.5f);
-        auto s3 = lamp3->AddComponent<SpriteRenderer>();
-        s3->sprite = this->spriteLamp;
-        s3->ObjectSize = lampSize;
-        lamp3->AddComponent<PointLight>(5.0f);
+        //GameObject* lamp1 = new GameObject();
+        //lamp1->transform->position = vf2d(8.5f, 8.5f);
+        //auto s1 = lamp1->AddComponent<SpriteRenderer>();
+        //s1->sprite = this->spriteLamp;
+        //s1->ObjectSize = lampSize;
+        //lamp1->AddComponent<PointLight>(5.0f);
+        //
+        //GameObject* lamp2 = new GameObject();
+        //lamp2->transform->position = vf2d(7.5f, 7.5f);
+        //auto s2 = lamp2->AddComponent<SpriteRenderer>();
+        //s2->sprite = this->spriteLamp;
+        //s2->ObjectSize = lampSize;
+        //lamp2->AddComponent<PointLight>(5.0f);
+        //
+        //GameObject* lamp3 = new GameObject();
+        //lamp3->transform->position = vf2d(10.5f, 3.5f);
+        //auto s3 = lamp3->AddComponent<SpriteRenderer>();
+        //s3->sprite = this->spriteLamp;
+        //s3->ObjectSize = lampSize;
+        //lamp3->AddComponent<PointLight>(5.0f);
 
         //add players:
         //GameObject* player1 = new GameObject();
