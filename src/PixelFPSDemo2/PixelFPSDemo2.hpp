@@ -177,9 +177,9 @@ private:
     //player:
     GameObject* player = nullptr;   // player game object
 
-    float defaultPlayerX = 8.5f;
-    float defaultPlayerY = 14.7f;
-    float defaultPlayerAngle = 0.0f;
+    float defaultPlayerX = 8.5f;    // Player Start X Position
+    float defaultPlayerY = 14.7f;   // Player Start Y Position
+    float defaultPlayerAngle = 0.0f;// Player Start Rotation Angle (in rad)
 
     float GetPlayerX()
     {
@@ -196,9 +196,20 @@ private:
         return player->transform->angle;
     }
 
-    float playerX = 8.5f;           // Player Start Position
-    float playerY = 14.7f;
-    float playerAngle = 0.0f;       // Player Start Rotation(in rad)
+    void SetPlayerX(float x)
+    {
+        player->transform->position.x = x;
+    }
+
+    void SetPlayerY(float y)
+    {
+        player->transform->position.y = y;
+    }
+
+    void SetPlayerAngle(float angle)
+    {
+        player->transform->angle = angle;
+    }
 
     float moveSpeed = 2.5f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
@@ -276,15 +287,6 @@ private:
     AudioPool* ak47Pool = nullptr;
     AudioPool* m4a1Pool = nullptr;
     AudioPool* awpPool = nullptr;
-
-    //obstacles:
-    std::vector<Vector2> obstacles;
-    //for AI:
-    //NOTE, sObject and listObjects can't interact normally with Navigation system.
-    //So, im writing a new system.
-    sObject* simple_ai;
-    float nav_timer = 0;
-    bool enableNav = false;
 
 private:
     int year;
@@ -542,18 +544,19 @@ private:
         {
             this->playerHealth = this->fullHealth;
         }
-        this->playerAngle = 0.0f;
+
+        SetPlayerAngle(defaultPlayerAngle);
 
         if (randomRespawnPos)
         {
             vi2d randomPos = get_random_available_pos();
-            this->playerX = randomPos.x + 0.5f;
-            this->playerY = randomPos.y + 0.5f;
+            SetPlayerX(randomPos.x + 0.5f);
+            SetPlayerY(randomPos.y + 0.5f);
         }
         else
         {
-            this->playerX = 8.5f;
-            this->playerY = 14.7f;
+            SetPlayerX(defaultPlayerX);
+            SetPlayerY(defaultPlayerY);
         }
 
         beHitEffectTimer = 0.0f;
@@ -564,8 +567,8 @@ private:
             IRespawn iRespawn;
             iRespawn.uniqueID = playerID;
             iRespawn.health = playerHealth;
-            iRespawn.posX = playerX;
-            iRespawn.posY = playerY;
+            iRespawn.posX = GetPlayerX();
+            iRespawn.posY = GetPlayerY();
 
             olc::net::message<NetworkMessage> msg;
             msg.header.id = NetworkMessage::Game_IRespawn;
@@ -599,12 +602,12 @@ private:
 
             GameObject* otherGo = ob.second;
 
-            float vecX = otherGo->transform->position.x - playerX;
-            float vecY = otherGo->transform->position.y - playerY;
+            float vecX = otherGo->transform->position.x - GetPlayerX();
+            float vecY = otherGo->transform->position.y - GetPlayerY();
             float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-            float eyeX = cosf(playerAngle);
-            float eyeY = sinf(playerAngle);
+            float eyeX = cosf(GetPlayerAngle());
+            float eyeY = sinf(GetPlayerAngle());
             float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
             //限制取值范围在+PI与-PI之间
@@ -745,69 +748,47 @@ private:
             //rotation
             if (GetKey(Key::A).bHeld)
             {
-                playerAngle -= rotateSpeed * deltaTime;
+                SetPlayerAngle(GetPlayerAngle() - rotateSpeed * deltaTime);
             }
             if (GetKey(Key::D).bHeld)
             {
-                playerAngle += rotateSpeed * deltaTime;
+                SetPlayerAngle(GetPlayerAngle() + rotateSpeed * deltaTime);
             }
+
+            //movement:
+            vf2d targetDir = vf2d(0, 0);
 
             //movement forward
             if (GetKey(Key::W).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += x;
-                playerY += y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= x;
-                    playerY -= y;
-                }
-
+                targetDir.x += cosf(GetPlayerAngle());
+                targetDir.y += sinf(GetPlayerAngle());
                 weapon_bobbing(deltaTime);
             }
-
             //movement backward
             if (GetKey(Key::S).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= x;
-                playerY -= y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += x;
-                    playerY += y;
-                }
+                targetDir.x -= cosf(GetPlayerAngle());
+                targetDir.y -= sinf(GetPlayerAngle());
             }
-
             //strafe left
             if (GetKey(Key::Q).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += y;
-                playerY -= x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= y;
-                    playerY += x;
-                }
+                targetDir.x += sinf(GetPlayerAngle());
+                targetDir.y -= cosf(GetPlayerAngle());
             }
-
             //strafe right
             if (GetKey(Key::E).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= y;
-                playerY += x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += y;
-                    playerY -= x;
-                }
+                targetDir.x -= sinf(GetPlayerAngle());
+                targetDir.y += cosf(GetPlayerAngle());
+            }
+
+            if (targetDir.x != 0 || targetDir.y != 0)
+            {
+                vf2d addPos = targetDir.norm() * moveSpeed * deltaTime;
+                SetPlayerX(GetPlayerX() + addPos.x);
+                SetPlayerY(GetPlayerY() + addPos.y);
             }
         }
         else
@@ -815,72 +796,49 @@ private:
             Input::CheckMouseAxis();
             int diffX = Input::GetMouseAxis(MouseAxis::MOUSE_X);
 
-            //clamp:
             HWND foreWindow = GetForegroundWindow();
             if (foreWindow == this->__gameWindow)
             {
                 clamp_mouse_in_client();
             }
 
-            //rotate:
-            playerAngle += diffX * rotateSpeed * deltaTime * mouseSpeed;
+            //rotation:
+            SetPlayerAngle(GetPlayerAngle() + diffX * rotateSpeed * deltaTime * mouseSpeed);
+
+            //movement:
+            vf2d targetDir = vf2d(0, 0);
 
             //movement forward
             if (GetKey(Key::W).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += x;
-                playerY += y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= x;
-                    playerY -= y;
-                }
-
+                targetDir.x += cosf(GetPlayerAngle());
+                targetDir.y += sinf(GetPlayerAngle());
                 weapon_bobbing(deltaTime);
             }
-
             //movement backward
             if (GetKey(Key::S).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= x;
-                playerY -= y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += x;
-                    playerY += y;
-                }
+                targetDir.x -= cosf(GetPlayerAngle());
+                targetDir.y -= sinf(GetPlayerAngle());
             }
-
             //strafe left
             if (GetKey(Key::A).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += y;
-                playerY -= x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= y;
-                    playerY += x;
-                }
+                targetDir.x += sinf(GetPlayerAngle());
+                targetDir.y -= cosf(GetPlayerAngle());
             }
-
             //strafe right
             if (GetKey(Key::D).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= y;
-                playerY += x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += y;
-                    playerY -= x;
-                }
+                targetDir.x -= sinf(GetPlayerAngle());
+                targetDir.y += cosf(GetPlayerAngle());
+            }
+
+            if (targetDir.x != 0 || targetDir.y != 0)
+            {
+                vf2d addPos = targetDir.norm() * moveSpeed * deltaTime;
+                SetPlayerX(GetPlayerX() + addPos.x);
+                SetPlayerY(GetPlayerY() + addPos.y);
             }
         }
 
@@ -1005,7 +963,7 @@ private:
                     GameObject* bullet = new GameObject();
 
                     //set position:
-                    bullet->transform->position = vf2d(playerX, playerY);
+                    bullet->transform->position = vf2d(GetPlayerX(), GetPlayerY());
 
                     //add collider:
                     bullet->AddComponent<Collider>();
@@ -1077,8 +1035,8 @@ private:
                         }
                     }
 
-                    float vx = cosf(playerAngle + noise) * bulletSpeed;
-                    float vy = sinf(playerAngle + noise) * bulletSpeed;
+                    float vx = cosf(GetPlayerAngle() + noise) * bulletSpeed;
+                    float vy = sinf(GetPlayerAngle() + noise) * bulletSpeed;
 
                     //set velocity:
                     bullet->transform->velocity = vf2d(vx, vy);
@@ -1463,8 +1421,8 @@ private:
         //raycast:
         for (int x = 0; x < ScreenWidth(); x++)
         {
-            float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
-            float diffAngle = playerAngle - rayAngle;
+            float rayAngle = (GetPlayerAngle() - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
+            float diffAngle = GetPlayerAngle() - rayAngle;
 
             float distanceToWall = 0.0f;
             bool hitWall = false;
@@ -1492,9 +1450,9 @@ private:
                 }
                 return false;
             };
-            if (raycastDDA({ playerX, playerY }, { eyeX, eyeY }, checkFunc, hitInfo))
+            if (raycastDDA({ GetPlayerX(), GetPlayerY() }, { eyeX, eyeY }, checkFunc, hitInfo))
             {
-                distanceToWall = (hitInfo.hitPos - vf2d(playerX, playerY)).mag();
+                distanceToWall = (hitInfo.hitPos - vf2d(GetPlayerX(), GetPlayerY())).mag();
                 sampleX = hitInfo.sampleX;
             }
             else
@@ -1518,7 +1476,7 @@ private:
                 if (y <= ceiling)
                 {
                     float planeZ = (ScreenHeight() / 2.0f) / ((ScreenHeight() / 2.0f) - y);
-                    vf2d planePoint = vf2d(playerX, playerY) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
+                    vf2d planePoint = vf2d(GetPlayerX(), GetPlayerY()) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
 
                     // Work out which planar tile we are in
                     int planeTileX = int(planePoint.x);
@@ -1558,7 +1516,7 @@ private:
                 else
                 {
                     float planeZ = (ScreenHeight() / 2.0f) / (y - (ScreenHeight() / 2.0f));
-                    vf2d planePoint = vf2d(playerX, playerY) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
+                    vf2d planePoint = vf2d(GetPlayerX(), GetPlayerY()) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
 
                     // Work out which planar tile we are in
                     int planeTileX = int(planePoint.x);
@@ -1587,12 +1545,12 @@ private:
             if (renderer != nullptr && renderer->enable)
             {
                 // Can object be seen?
-                float vecX = go->transform->position.x - playerX;
-                float vecY = go->transform->position.y - playerY;
+                float vecX = go->transform->position.x - GetPlayerX();
+                float vecY = go->transform->position.y - GetPlayerY();
                 float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float eyeX = cosf(playerAngle);
-                float eyeY = sinf(playerAngle);
+                float eyeX = cosf(GetPlayerAngle());
+                float eyeY = sinf(GetPlayerAngle());
                 float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
                 //限制取值范围在+PI与-PI之间
@@ -1728,7 +1686,7 @@ private:
 
                                     // Get pixel from a suitable texture
                                     float object_fHeading = 0.0f; //todo
-                                    float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                    float niceAngle = GetPlayerAngle() - object_fHeading + 3.14159f / 4.0f;
                                     if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                     if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
@@ -1747,12 +1705,12 @@ private:
             if (png_renderer != nullptr && png_renderer->enable)
             {
                 // Can object be seen?
-                float vecX = go->transform->position.x - playerX;
-                float vecY = go->transform->position.y - playerY;
+                float vecX = go->transform->position.x - GetPlayerX();
+                float vecY = go->transform->position.y - GetPlayerY();
                 float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float eyeX = cosf(playerAngle);
-                float eyeY = sinf(playerAngle);
+                float eyeX = cosf(GetPlayerAngle());
+                float eyeY = sinf(GetPlayerAngle());
                 float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
                 //限制取值范围在+PI与-PI之间
@@ -1830,7 +1788,7 @@ private:
 
                                 // Get pixel from a suitable texture
                                 float object_fHeading = 0.0f; //todo
-                                float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                float niceAngle = GetPlayerAngle() - object_fHeading + 3.14159f / 4.0f;
                                 if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                 if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
@@ -1850,12 +1808,12 @@ private:
             if (bmp_renderer != nullptr && bmp_renderer->enable)
             {
                 // Can object be seen?
-                float vecX = go->transform->position.x - playerX;
-                float vecY = go->transform->position.y - playerY;
+                float vecX = go->transform->position.x - GetPlayerX();
+                float vecY = go->transform->position.y - GetPlayerY();
                 float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float eyeX = cosf(playerAngle);
-                float eyeY = sinf(playerAngle);
+                float eyeX = cosf(GetPlayerAngle());
+                float eyeY = sinf(GetPlayerAngle());
                 float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
                 //限制取值范围在+PI与-PI之间
@@ -1930,7 +1888,7 @@ private:
 
                                 // Get pixel from a suitable texture
                                 float object_fHeading = 0.0f; //todo
-                                float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                float niceAngle = GetPlayerAngle() - object_fHeading + 3.14159f / 4.0f;
                                 if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                 if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
@@ -1967,7 +1925,7 @@ private:
         }
 
         //draw player dot on the map
-        Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
+        Draw((int)GetPlayerX(), (int)GetPlayerY(), Pixel(255, 255, 255));
 
         //draw health bar
         if (enableBloodBar && false)
@@ -2068,7 +2026,7 @@ private:
             float _m = 0.0f;
             for (PointLight* pointLight : pointLights)
             {
-                float distanceToPointLight = (pointLight->gameObject->transform->position - vf2d(playerX, playerY)).mag();
+                float distanceToPointLight = (pointLight->gameObject->transform->position - vf2d(GetPlayerX(), GetPlayerY())).mag();
                 _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
             }
 
@@ -2891,22 +2849,6 @@ public:
 
         this->depthBuffer = new float[ScreenWidth() * ScreenHeight()];
 
-        //set obstacles:
-        if (this->enableNav)
-        {
-            for (int y = 0; y < mapHeight; y++)
-            {
-                for (int x = 0; x < mapWidth; x++)
-                {
-                    if (this->map[y * mapWidth + x] == L'#')
-                    {
-                        obstacles.push_back({ x, y });
-                    }
-                }
-            }
-            simple_ai = new sObject(2, 2, this->spriteFlower);
-        }
-
         return true;
     }
 
@@ -2945,8 +2887,8 @@ public:
                         PlayerNetData defaultPlayerNetData;
 
                         defaultPlayerNetData.health = playerHealth;
-                        defaultPlayerNetData.posX = playerX;
-                        defaultPlayerNetData.posY = playerY;
+                        defaultPlayerNetData.posX = GetPlayerX();
+                        defaultPlayerNetData.posY = GetPlayerY();
 
                         //msg << defaultPlayerNetData;
                         msg.AddBytes(defaultPlayerNetData.Serialize());
@@ -3155,8 +3097,8 @@ public:
                 }
 
                 //sync our position to other clients:
-                mapObjects[playerID].posX = playerX;
-                mapObjects[playerID].posY = playerY;
+                mapObjects[playerID].posX = GetPlayerX();
+                mapObjects[playerID].posY = GetPlayerY();
 
                 //sync bullets positon:
                 for (int i = 0; i < mapObjects[playerID].bullets.size(); i++)
@@ -3201,24 +3143,6 @@ public:
 
         //update audio:
         update_audio();
-
-        //ai nav:
-        if (enableNav)
-        {
-            nav_timer += deltaTime;
-            if (nav_timer >= 1.0f)
-            {
-                nav_timer = 0;
-                auto sr = Navigation::Navigate({ (int)simple_ai->x, (int)simple_ai->y }, { (int)playerX, (int)playerY }, SearchDirection::Eight, 100, obstacles, SearchMethod::DFS);
-                if (sr.success)
-                {
-                    auto tar_vec = sr.path[1].position - sr.path[0].position;
-                    simple_ai->x += tar_vec.x;
-                    simple_ai->y += tar_vec.y;
-                    fuck_std::debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
-                }
-            }
-        }
 
         //update physics & collision detect:
         update_world(deltaTime);
