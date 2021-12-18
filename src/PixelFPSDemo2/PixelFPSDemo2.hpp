@@ -52,7 +52,7 @@ private:
     //zombie mode:
     float zombieMaxHealth = 1000.0f;
     float zombieMoveSpeed = 4.0f;
-    float zombieBehitMoveSpeed = 1.0f;
+    float zombieBehitMoveSpeed = 2.0f;
 
     bool slowZombie = false;
     float zombieBehitTimer = 0.0f;
@@ -489,14 +489,14 @@ private:
             desertEagle->damage = 125.5f;
 
             ak47->fire_interval = 0.1f;
-            ak47->damage = 50.0f;
+            ak47->damage = 25.5f;
 
-            knife->fire_interval = 1.5f;
+            knife->fire_interval = 1.75f;
             knife->damage = 275.0f;
             knife->range = 2.6f;
 
             awp->fire_interval = 2.0f;
-            awp->damage = 265.4f;
+            awp->damage = 225.4f;
 
             weapon_current = WeaponEnum::AK47;
         }
