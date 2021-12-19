@@ -1348,7 +1348,7 @@ private:
                         if (distanceToOtherCollider > 0)
                         {
                             //在强制移动发生之前给予一次判断机会:
-                            if (!IgnoreObjectCollision(go, OtherGO) || OtherCollider->isTrigger)
+                            if (!IgnoreObjectCollision(go, OtherGO) || OtherCollider->isTrigger /*|| collider->isTrigger*/)
                             {
                                 vf2d movement = (OtherGO->transform->position - go->transform->position) / distanceToOtherCollider * overlap;
 
