@@ -21,6 +21,8 @@
 #include "PNGRenderer.hpp" //png renderer
 #include "NetworkMessage.hpp" //net
 #include "FPS_Server.hpp" //net server
+#include "Rigidbody.hpp"
+#include "NetworkID.hpp"
 
 inline void serverTask(FPSServer* server)
 {
@@ -49,9 +51,14 @@ enum class GameMode
 class PixelFPSDemo2 : public PixelGameEngine, olc::net::client_interface<NetworkMessage>
 {
 private:
+    //global deltaTime:
+    float DeltaTime = 0.0f;
+    float PlayerModelRadius = 0.2f;
+
+private:
     //zombie mode:
     float zombieMaxHealth = 1000.0f;
-    float zombieMoveSpeed = 3.5f;
+    float zombieMoveSpeed = 6.0f;
     float zombieBehitMoveSpeed = zombieMoveSpeed / 2;
 
     bool slowZombie = false;
@@ -174,10 +181,43 @@ private:
     int mapHeight = 32;
 
     //player:
-    float playerX = 8.5f;           // Player Start Position
-    float playerY = 14.7f;
-    float playerAngle = 0.0f;       // Player Start Rotation(in rad)
-    float moveSpeed = 2.5f;         // Walking Speed
+    GameObject* player = nullptr;   // player game object
+
+    float defaultPlayerX = 8.5f;    // Player Start X Position
+    float defaultPlayerY = 14.7f;   // Player Start Y Position
+    float defaultPlayerAngle = 0.0f;// Player Start Rotation Angle (in rad)
+
+    float GetPlayerX()
+    {
+        return player->transform->position.x;
+    }
+
+    float GetPlayerY()
+    {
+        return player->transform->position.y;
+    }
+
+    float GetPlayerAngle()
+    {
+        return player->transform->angle;
+    }
+
+    void SetPlayerX(float x)
+    {
+        player->transform->position.x = x;
+    }
+
+    void SetPlayerY(float y)
+    {
+        player->transform->position.y = y;
+    }
+
+    void SetPlayerAngle(float angle)
+    {
+        player->transform->angle = angle;
+    }
+
+    float moveSpeed = 4.5f;         // Walking Speed
     float rotateSpeed = 3.14159f;   // Rotating Speed (1 sec 180 degrees)
 
     // enable mouse rotate:
@@ -253,15 +293,6 @@ private:
     AudioPool* ak47Pool = nullptr;
     AudioPool* m4a1Pool = nullptr;
     AudioPool* awpPool = nullptr;
-
-    //obstacles:
-    std::vector<Vector2> obstacles;
-    //for AI:
-    //NOTE, sObject and listObjects can't interact normally with Navigation system.
-    //So, im writing a new system.
-    sObject* simple_ai;
-    float nav_timer = 0;
-    bool enableNav = false;
 
 private:
     int year;
@@ -385,9 +416,9 @@ private:
         weapons.clear();
 
         Weapon* claw = new Weapon(WeaponEnum::ZombieEvilClaw, WeaponType::Knife, nullptr);
-        claw->fire_interval = 1.5f;
-        claw->damage = 120.0f;
-        claw->range = 3.0f;
+        claw->fire_interval = 1.05f;
+        claw->damage = 75.0f;
+        claw->range = 2.2f;
         weapons.insert_or_assign((int)claw->weapon_enum, claw);
 
         weapon_current = claw->weapon_enum;
@@ -519,18 +550,19 @@ private:
         {
             this->playerHealth = this->fullHealth;
         }
-        this->playerAngle = 0.0f;
+
+        SetPlayerAngle(defaultPlayerAngle);
 
         if (randomRespawnPos)
         {
             vi2d randomPos = get_random_available_pos();
-            this->playerX = randomPos.x + 0.5f;
-            this->playerY = randomPos.y + 0.5f;
+            SetPlayerX(randomPos.x + 0.5f);
+            SetPlayerY(randomPos.y + 0.5f);
         }
         else
         {
-            this->playerX = 8.5f;
-            this->playerY = 14.7f;
+            SetPlayerX(defaultPlayerX);
+            SetPlayerY(defaultPlayerY);
         }
 
         beHitEffectTimer = 0.0f;
@@ -541,8 +573,8 @@ private:
             IRespawn iRespawn;
             iRespawn.uniqueID = playerID;
             iRespawn.health = playerHealth;
-            iRespawn.posX = playerX;
-            iRespawn.posY = playerY;
+            iRespawn.posX = GetPlayerX();
+            iRespawn.posY = GetPlayerY();
 
             olc::net::message<NetworkMessage> msg;
             msg.header.id = NetworkMessage::Game_IRespawn;
@@ -576,12 +608,12 @@ private:
 
             GameObject* otherGo = ob.second;
 
-            float vecX = otherGo->transform->position.x - playerX;
-            float vecY = otherGo->transform->position.y - playerY;
+            float vecX = otherGo->transform->position.x - GetPlayerX();
+            float vecY = otherGo->transform->position.y - GetPlayerY();
             float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-            float eyeX = cosf(playerAngle);
-            float eyeY = sinf(playerAngle);
+            float eyeX = cosf(GetPlayerAngle());
+            float eyeY = sinf(GetPlayerAngle());
             float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
             //限制取值范围在+PI与-PI之间
@@ -722,69 +754,47 @@ private:
             //rotation
             if (GetKey(Key::A).bHeld)
             {
-                playerAngle -= rotateSpeed * deltaTime;
+                SetPlayerAngle(GetPlayerAngle() - rotateSpeed * deltaTime);
             }
             if (GetKey(Key::D).bHeld)
             {
-                playerAngle += rotateSpeed * deltaTime;
+                SetPlayerAngle(GetPlayerAngle() + rotateSpeed * deltaTime);
             }
+
+            //movement:
+            vf2d targetDir = vf2d(0, 0);
 
             //movement forward
             if (GetKey(Key::W).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += x;
-                playerY += y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= x;
-                    playerY -= y;
-                }
-
+                targetDir.x += cosf(GetPlayerAngle());
+                targetDir.y += sinf(GetPlayerAngle());
                 weapon_bobbing(deltaTime);
             }
-
             //movement backward
             if (GetKey(Key::S).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= x;
-                playerY -= y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += x;
-                    playerY += y;
-                }
+                targetDir.x -= cosf(GetPlayerAngle());
+                targetDir.y -= sinf(GetPlayerAngle());
             }
-
             //strafe left
             if (GetKey(Key::Q).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += y;
-                playerY -= x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= y;
-                    playerY += x;
-                }
+                targetDir.x += sinf(GetPlayerAngle());
+                targetDir.y -= cosf(GetPlayerAngle());
             }
-
             //strafe right
             if (GetKey(Key::E).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= y;
-                playerY += x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += y;
-                    playerY -= x;
-                }
+                targetDir.x -= sinf(GetPlayerAngle());
+                targetDir.y += cosf(GetPlayerAngle());
+            }
+
+            if (targetDir.x != 0 || targetDir.y != 0)
+            {
+                vf2d addPos = targetDir.norm() * moveSpeed * deltaTime;
+                SetPlayerX(GetPlayerX() + addPos.x);
+                SetPlayerY(GetPlayerY() + addPos.y);
             }
         }
         else
@@ -792,72 +802,49 @@ private:
             Input::CheckMouseAxis();
             int diffX = Input::GetMouseAxis(MouseAxis::MOUSE_X);
 
-            //clamp:
             HWND foreWindow = GetForegroundWindow();
             if (foreWindow == this->__gameWindow)
             {
                 clamp_mouse_in_client();
             }
 
-            //rotate:
-            playerAngle += diffX * rotateSpeed * deltaTime * mouseSpeed;
+            //rotation:
+            SetPlayerAngle(GetPlayerAngle() + diffX * rotateSpeed * deltaTime * mouseSpeed);
+
+            //movement:
+            vf2d targetDir = vf2d(0, 0);
 
             //movement forward
             if (GetKey(Key::W).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += x;
-                playerY += y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= x;
-                    playerY -= y;
-                }
-
+                targetDir.x += cosf(GetPlayerAngle());
+                targetDir.y += sinf(GetPlayerAngle());
                 weapon_bobbing(deltaTime);
             }
-
             //movement backward
             if (GetKey(Key::S).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= x;
-                playerY -= y;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += x;
-                    playerY += y;
-                }
+                targetDir.x -= cosf(GetPlayerAngle());
+                targetDir.y -= sinf(GetPlayerAngle());
             }
-
             //strafe left
             if (GetKey(Key::A).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX += y;
-                playerY -= x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX -= y;
-                    playerY += x;
-                }
+                targetDir.x += sinf(GetPlayerAngle());
+                targetDir.y -= cosf(GetPlayerAngle());
             }
-
             //strafe right
             if (GetKey(Key::D).bHeld)
             {
-                float x = ::cosf(playerAngle) * moveSpeed * deltaTime;
-                float y = ::sinf(playerAngle) * moveSpeed * deltaTime;
-                playerX -= y;
-                playerY += x;
-                if (this->map.c_str()[(int)playerY * mapWidth + (int)playerX] == L'#')
-                {
-                    playerX += y;
-                    playerY -= x;
-                }
+                targetDir.x -= sinf(GetPlayerAngle());
+                targetDir.y += cosf(GetPlayerAngle());
+            }
+
+            if (targetDir.x != 0 || targetDir.y != 0)
+            {
+                vf2d addPos = targetDir.norm() * moveSpeed * deltaTime;
+                SetPlayerX(GetPlayerX() + addPos.x);
+                SetPlayerY(GetPlayerY() + addPos.y);
             }
         }
 
@@ -980,12 +967,16 @@ private:
                 else
                 {
                     GameObject* bullet = new GameObject();
+                    bullet->tag = "bullet";
 
                     //set position:
-                    bullet->transform->position = vf2d(playerX, playerY);
+                    bullet->transform->position = vf2d(GetPlayerX(), GetPlayerY());
 
                     //add collider:
-                    bullet->AddComponent<Collider>();
+                    Collider* bulletCollider = bullet->AddComponent<Collider>();
+                    bulletCollider->radius = 0.025f;
+                    bulletCollider->collideWithObjects = true;
+                    bulletCollider->collideWithScenery = true;
 
                     //add point light:
                     bullet->AddComponent<PointLight>(2.0f);
@@ -1054,8 +1045,8 @@ private:
                         }
                     }
 
-                    float vx = cosf(playerAngle + noise) * bulletSpeed;
-                    float vy = sinf(playerAngle + noise) * bulletSpeed;
+                    float vx = cosf(GetPlayerAngle() + noise) * bulletSpeed;
+                    float vy = sinf(GetPlayerAngle() + noise) * bulletSpeed;
 
                     //set velocity:
                     bullet->transform->velocity = vf2d(vx, vy);
@@ -1215,8 +1206,248 @@ private:
         }
     }
 
+    bool IsLocationSolid(int cellX, int cellY)
+    {
+        return cellX < 0 || cellX > mapWidth - 1 || cellY < 0 || cellY > mapHeight - 1 || map[cellY * mapWidth + cellX] == L'#';
+    }
+
+    bool IgnoreObjectCollision(GameObject* go, GameObject* otherGO)
+    {
+        return (go->tag == "bullet" && otherGO->tag == "player") || (go->tag == "player" && otherGO->tag == "bullet");
+    }
+
+    void HandleObjectVSObject(GameObject* go, GameObject* otherGO)
+    {
+        //如果是子弹, 不能攻击玩家本身
+        if (go->tag == "bullet" && otherGO->tag != "player")
+        {
+            go->remove = true;
+
+            //handle net msg:
+            if (this->networkType != NetworkType::None)
+            {
+                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                if (net_collider != nullptr && net_collider->enable)
+                {
+                    int removeIndex = -1;
+                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                    {
+                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                        {
+                            removeIndex = _i;
+                        }
+                    }
+                    if (removeIndex != -1)
+                    {
+                        myBullets.erase(myBullets.begin() + removeIndex);
+                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                    }
+                }
+
+                NetworkID* netID = otherGO->GetComponent<NetworkID>();
+                if (netID != nullptr)
+                {
+                    //display:
+                    make_hit_hud(weapons[(int)weapon_current]->damage);
+
+                    //send msg:
+                    BulletHitInfo info;
+                    info.myID = playerID;
+                    info.otherPlayerID = netID->ID;
+                    info.damage = weapons[(int)weapon_current]->damage;
+                    olc::net::message<NetworkMessage> msg;
+                    msg.header.id = NetworkMessage::Game_BulletHitOther;
+                    msg.AddBytes(info.Serialize());
+                    Send(msg);
+                }
+            }
+        }
+    }
+
+    void HandleObjectVsScenery(GameObject* go, int cellX, int cellY)
+    {
+        //如果是子弹
+        if (go->tag == "bullet")
+        {
+            go->remove = true;
+
+            if (!muteAll)
+            {
+                //play explosion sound:
+                explosionPool->PlayOneShot();
+            }
+
+            //instantiate explosion:
+            //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
+            GameObject* explosion = new GameObject();
+            explosion->transform->position = go->transform->position - go->transform->velocity * DeltaTime;
+
+            PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
+            pl->attenuation = 3.0f;
+
+            SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
+            renderer->sprite = this->spriteExplosion;
+            renderer->ObjectSize = this->explosionSize;
+            renderer->ObjectPos = this->explosionPos;
+
+            LifeController* life = explosion->AddComponent<LifeController>();
+            life->lifeTime = 0.25f;
+
+            if (networkType != NetworkType::None)
+            {
+                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
+                if (net_collider != nullptr && net_collider->enable)
+                {
+                    int removeIndex = -1;
+                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
+                    {
+                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
+                        {
+                            removeIndex = _i;
+                        }
+                    }
+                    if (removeIndex != -1)
+                    {
+                        myBullets.erase(myBullets.begin() + removeIndex);
+                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
+                    }
+                }
+            }
+        }
+    }
+
+    void update_active_collider(Collider* collider, GameObject* go, float deltaTime)
+    {
+        //Potential Position:
+        vf2d nextPos = go->transform->position + go->transform->velocity * deltaTime;
+
+        //collide with other colliders:
+        if (collider->collideWithObjects)
+        {
+            for (auto& item : GM.gameObjects)
+            {
+                //不要自己与自己发生碰撞:
+                if (go->id == item.first) continue;
+                GameObject* OtherGO = item.second;
+                //不与未激活的游戏物体碰撞:
+                if (!OtherGO->active) continue;
+                if (OtherGO->remove) continue;
+
+                Collider* OtherCollider = OtherGO->GetComponent<Collider>();
+                if (OtherCollider != nullptr && OtherCollider->enable && OtherCollider->collideWithObjects)
+                {
+                    float m = (go->transform->position - OtherGO->transform->position).mag2();
+                    float r = (collider->radius + OtherCollider->radius) * (collider->radius + OtherCollider->radius);
+                    //发生碰撞:
+                    if (m <= r)
+                    {
+                        float distanceToOtherCollider = sqrt(m);
+                        float overlap = collider->radius + OtherCollider->radius - distanceToOtherCollider;
+
+                        //防止除0:
+                        if (distanceToOtherCollider > 0)
+                        {
+                            //在强制移动发生之前给予一次判断机会:
+                            if (!IgnoreObjectCollision(go, OtherGO) || OtherCollider->isTrigger)
+                            {
+                                vf2d movement = (OtherGO->transform->position - go->transform->position) / distanceToOtherCollider * overlap;
+
+                                nextPos -= movement;
+                                if (OtherCollider->canBeMoved)
+                                {
+                                    OtherGO->transform->position += movement;
+                                }
+                            }
+                            HandleObjectVSObject(go, OtherGO);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!go->active) return;
+        if (go->remove) return;
+
+        //collide with walls:
+        if (collider->collideWithScenery)
+        {
+            // ...Determine an area of cells to check for collision. We use a region
+            // to account for diagonal collisions, and corner collisions.
+            // it's like rectangle VS circle
+            olc::vi2d currentCell = go->transform->position;
+            olc::vi2d targetCell = nextPos;
+            olc::vi2d areaTopLeft = { std::min(currentCell.x, targetCell.x) - 1, std::min(currentCell.y, targetCell.y) - 1 };
+            olc::vi2d areaBottomRight = { std::max(currentCell.x, targetCell.x) + 1, std::max(currentCell.y, targetCell.y) + 1 };
+
+            // Iterate through each cell in test area
+            olc::vi2d cell;
+            for (cell.y = areaTopLeft.y; cell.y <= areaBottomRight.y; cell.y++)
+            {
+                for (cell.x = areaTopLeft.x; cell.x <= areaBottomRight.x; cell.x++)
+                {
+                    // Check if the cell is actually solid...
+                    olc::vf2d cellMiddle = olc::vf2d(float(cell.x) + 0.5f, float(cell.y) + 0.5f);
+                    if (IsLocationSolid(cellMiddle.x, cellMiddle.y))
+                    {
+                        // ...it is! So work out nearest point to future player position, around perimeter
+                        // of cell rectangle. We can test the distance to this point to see if we have
+                        // collided.
+                        olc::vf2d nearestPoint;
+                        // Inspired by this (very clever btw) 
+                        // https://stackoverflow.com/questions/45370692/circle-rectangle-collision-response
+                        nearestPoint.x = std::max(float(cell.x), std::min(nextPos.x, float(cell.x + 1)));
+                        nearestPoint.y = std::max(float(cell.y), std::min(nextPos.y, float(cell.y + 1)));
+
+                        // But modified to work :P
+                        olc::vf2d rayToNearest = nearestPoint - nextPos;
+                        float overlap = collider->radius - rayToNearest.mag();
+                        if (std::isnan(overlap)) overlap = 0;// Thanks Dandistine!
+
+                        // If overlap is positive, then a collision has occurred, so we displace backwards by the 
+                        // overlap amount. The potential position is then tested against other tiles in the area
+                        // therefore "statically" resolving the collision
+                        //发生碰撞:
+                        if (overlap > 0)
+                        {
+                            // Statically resolve the collision
+                            nextPos -= rayToNearest.norm() * overlap;
+
+                            // Notify system that a collision has occurred
+                            HandleObjectVsScenery(go, cell.x, cell.y);
+
+                            //olc::rcw::Engine::CellSide side = olc::rcw::Engine::CellSide::Bottom;
+                            //if (vNearestPoint.x == float(vCell.x)) side = olc::rcw::Engine::CellSide::West;
+                            //if (vNearestPoint.x == float(vCell.x + 1)) side = olc::rcw::Engine::CellSide::East;
+                            //if (vNearestPoint.y == float(vCell.y)) side = olc::rcw::Engine::CellSide::North;
+                            //if (vNearestPoint.y == float(vCell.y + 1)) side = olc::rcw::Engine::CellSide::South;
+                            //HandleObjectVsScenery(object, vCell.x, vCell.y, side, vNearestPoint.x - float(vCell.x), vNearestPoint.y - float(vCell.y));
+                        }
+                    }
+                }
+            }
+        }
+
+        go->transform->position = nextPos;
+    }
+
+    void update_physics(GameObject* go, float deltaTime)
+    {
+        //collision detect:
+        Collider* collider = go->GetComponent<Collider>();
+        if (collider != nullptr && collider->enable)
+        {
+            update_active_collider(collider, go, deltaTime);
+        }
+        else
+        {
+            //update physics:
+            go->transform->position += go->transform->velocity * deltaTime;
+        }
+    }
+
     void update_world(float deltaTime)
     {
+        //detect collision:
         for (auto& item : GM.gameObjects)
         {
             GameObject* go = item.second;
@@ -1236,143 +1467,6 @@ private:
                 }
             }
 
-            //update physics:
-            go->transform->position += go->transform->velocity * deltaTime;
-
-            //collision detect:
-            Collider* collider = go->GetComponent<Collider>();
-            if (collider != nullptr && collider->enable)
-            {
-                // Check if object is inside wall - set flag for removing
-                if (go->transform->position.x >= 0 && go->transform->position.x < mapWidth &&
-                    go->transform->position.y >= 0 && go->transform->position.y < mapHeight)
-                {
-                    //collsion with walls:
-                    if (map[(int)go->transform->position.y * mapWidth + (int)go->transform->position.x] == L'#')
-                    {
-                        go->remove = true;
-
-                        if (!muteAll)
-                        {
-                            //play explosion sound:
-                            explosionPool->PlayOneShot();
-                        }
-
-                        //instantiate explosion:
-                        //这里创建新的游戏物体会不会导致遍历出现问题？需要进行测试
-                        GameObject* explosion = new GameObject();
-                        explosion->transform->position =
-                            go->transform->position - go->transform->velocity * deltaTime;
-
-                        PointLight* pl = explosion->AddComponent<PointLight>(3.0f);
-                        pl->attenuation = 3.0f;
-
-                        SpriteRenderer* renderer = explosion->AddComponent<SpriteRenderer>();
-                        renderer->sprite = this->spriteExplosion;
-                        renderer->ObjectSize = this->explosionSize;
-                        renderer->ObjectPos = this->explosionPos;
-
-                        LifeController* life = explosion->AddComponent<LifeController>();
-                        life->lifeTime = 0.25f;
-
-                        if (networkType != NetworkType::None)
-                        {
-                            NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                            if (net_collider != nullptr && net_collider->enable)
-                            {
-                                int removeIndex = -1;
-                                for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                                {
-                                    if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                    {
-                                        removeIndex = _i;
-                                    }
-                                }
-                                if (removeIndex != -1)
-                                {
-                                    myBullets.erase(myBullets.begin() + removeIndex);
-                                    mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                                }
-                            }
-                        }
-                    }
-
-                    //collsion with other objects:
-                    if (this->networkType != NetworkType::None)
-                    {
-                        for (const auto& ob : networkObjects)
-                        {
-                            if (ob.first == playerID) continue; //不要检测自己
-                            if (!ob.second->active) continue; //不要鞭尸
-
-                            int bx = (int)go->transform->position.x;
-                            int by = (int)go->transform->position.y;
-
-                            //if hit:
-                            if ((int)ob.second->transform->position.x == bx && (int)ob.second->transform->position.y == by)
-                            {
-                                go->remove = true;
-
-                                NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                                if (net_collider != nullptr && net_collider->enable)
-                                {
-                                    int removeIndex = -1;
-                                    for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                                    {
-                                        if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                        {
-                                            removeIndex = _i;
-                                        }
-                                    }
-                                    if (removeIndex != -1)
-                                    {
-                                        myBullets.erase(myBullets.begin() + removeIndex);
-                                        mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                                    }
-                                }
-
-                                //display:
-                                make_hit_hud(weapons[(int)weapon_current]->damage);
-
-                                BulletHitInfo info;
-                                info.myID = playerID;
-                                info.otherPlayerID = ob.first;
-                                info.damage = weapons[(int)weapon_current]->damage;
-                                olc::net::message<NetworkMessage> msg;
-                                msg.header.id = NetworkMessage::Game_BulletHitOther;
-                                msg.AddBytes(info.Serialize());
-                                Send(msg);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    go->remove = true;
-
-                    if (networkType != NetworkType::None)
-                    {
-                        NetworkCollider* net_collider = go->GetComponent<NetworkCollider>();
-                        if (net_collider != nullptr && net_collider->enable)
-                        {
-                            int removeIndex = -1;
-                            for (size_t _i = 0; _i < mapObjects[playerID].bullets.size(); _i++)
-                            {
-                                if (mapObjects[playerID].bullets[_i].id == net_collider->networkID)
-                                {
-                                    removeIndex = _i;
-                                }
-                            }
-                            if (removeIndex != -1)
-                            {
-                                myBullets.erase(myBullets.begin() + removeIndex);
-                                mapObjects[playerID].bullets.erase(mapObjects[playerID].bullets.begin() + removeIndex);
-                            }
-                        }
-                    }
-                }
-            }
-
             //灯光衰减:
             PointLight* pointLightCom = go->GetComponent<PointLight>();
             if (pointLightCom != nullptr && pointLightCom->enable)
@@ -1384,6 +1478,8 @@ private:
                 }
             }
 
+            //更新物理:
+            update_physics(go, deltaTime);
         }
     }
 
@@ -1412,8 +1508,8 @@ private:
         //raycast:
         for (int x = 0; x < ScreenWidth(); x++)
         {
-            float rayAngle = (playerAngle - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
-            float diffAngle = playerAngle - rayAngle;
+            float rayAngle = (GetPlayerAngle() - FOV / 2.0f) + ((float)x / ScreenWidth()) * FOV;
+            float diffAngle = GetPlayerAngle() - rayAngle;
 
             float distanceToWall = 0.0f;
             bool hitWall = false;
@@ -1441,9 +1537,9 @@ private:
                 }
                 return false;
             };
-            if (raycastDDA({ playerX, playerY }, { eyeX, eyeY }, checkFunc, hitInfo))
+            if (raycastDDA({ GetPlayerX(), GetPlayerY() }, { eyeX, eyeY }, checkFunc, hitInfo))
             {
-                distanceToWall = (hitInfo.hitPos - vf2d(playerX, playerY)).mag();
+                distanceToWall = (hitInfo.hitPos - vf2d(GetPlayerX(), GetPlayerY())).mag();
                 sampleX = hitInfo.sampleX;
             }
             else
@@ -1467,7 +1563,7 @@ private:
                 if (y <= ceiling)
                 {
                     float planeZ = (ScreenHeight() / 2.0f) / ((ScreenHeight() / 2.0f) - y);
-                    vf2d planePoint = vf2d(playerX, playerY) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
+                    vf2d planePoint = vf2d(GetPlayerX(), GetPlayerY()) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
 
                     // Work out which planar tile we are in
                     int planeTileX = int(planePoint.x);
@@ -1507,7 +1603,7 @@ private:
                 else
                 {
                     float planeZ = (ScreenHeight() / 2.0f) / (y - (ScreenHeight() / 2.0f));
-                    vf2d planePoint = vf2d(playerX, playerY) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
+                    vf2d planePoint = vf2d(GetPlayerX(), GetPlayerY()) + vf2d(eyeX, eyeY) * planeZ * 2.0f / cos(diffAngle);
 
                     // Work out which planar tile we are in
                     int planeTileX = int(planePoint.x);
@@ -1536,12 +1632,12 @@ private:
             if (renderer != nullptr && renderer->enable)
             {
                 // Can object be seen?
-                float vecX = go->transform->position.x - playerX;
-                float vecY = go->transform->position.y - playerY;
+                float vecX = go->transform->position.x - GetPlayerX();
+                float vecY = go->transform->position.y - GetPlayerY();
                 float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float eyeX = cosf(playerAngle);
-                float eyeY = sinf(playerAngle);
+                float eyeX = cosf(GetPlayerAngle());
+                float eyeY = sinf(GetPlayerAngle());
                 float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
                 //限制取值范围在+PI与-PI之间
@@ -1677,7 +1773,7 @@ private:
 
                                     // Get pixel from a suitable texture
                                     float object_fHeading = 0.0f; //todo
-                                    float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                    float niceAngle = GetPlayerAngle() - object_fHeading + 3.14159f / 4.0f;
                                     if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                     if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
@@ -1696,12 +1792,12 @@ private:
             if (png_renderer != nullptr && png_renderer->enable)
             {
                 // Can object be seen?
-                float vecX = go->transform->position.x - playerX;
-                float vecY = go->transform->position.y - playerY;
+                float vecX = go->transform->position.x - GetPlayerX();
+                float vecY = go->transform->position.y - GetPlayerY();
                 float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float eyeX = cosf(playerAngle);
-                float eyeY = sinf(playerAngle);
+                float eyeX = cosf(GetPlayerAngle());
+                float eyeY = sinf(GetPlayerAngle());
                 float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
                 //限制取值范围在+PI与-PI之间
@@ -1779,7 +1875,7 @@ private:
 
                                 // Get pixel from a suitable texture
                                 float object_fHeading = 0.0f; //todo
-                                float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                float niceAngle = GetPlayerAngle() - object_fHeading + 3.14159f / 4.0f;
                                 if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                 if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
@@ -1799,12 +1895,12 @@ private:
             if (bmp_renderer != nullptr && bmp_renderer->enable)
             {
                 // Can object be seen?
-                float vecX = go->transform->position.x - playerX;
-                float vecY = go->transform->position.y - playerY;
+                float vecX = go->transform->position.x - GetPlayerX();
+                float vecY = go->transform->position.y - GetPlayerY();
                 float distanceFromPlayer = sqrtf(vecX * vecX + vecY * vecY);
 
-                float eyeX = cosf(playerAngle);
-                float eyeY = sinf(playerAngle);
+                float eyeX = cosf(GetPlayerAngle());
+                float eyeY = sinf(GetPlayerAngle());
                 float objectAngle = atan2f(vecY, vecX) - atan2f(eyeY, eyeX);
 
                 //限制取值范围在+PI与-PI之间
@@ -1879,7 +1975,7 @@ private:
 
                                 // Get pixel from a suitable texture
                                 float object_fHeading = 0.0f; //todo
-                                float niceAngle = playerAngle - object_fHeading + 3.14159f / 4.0f;
+                                float niceAngle = GetPlayerAngle() - object_fHeading + 3.14159f / 4.0f;
                                 if (niceAngle < 0) niceAngle += 2.0f * 3.14159f;
                                 if (niceAngle > 2.0f * 3.14159f) niceAngle -= 2.0f * 3.14159f;
 
@@ -1916,7 +2012,7 @@ private:
         }
 
         //draw player dot on the map
-        Draw((int)playerX, (int)playerY, Pixel(255, 255, 255));
+        Draw((int)GetPlayerX(), (int)GetPlayerY(), Pixel(255, 255, 255));
 
         //draw health bar
         if (enableBloodBar && false)
@@ -2017,7 +2113,7 @@ private:
             float _m = 0.0f;
             for (PointLight* pointLight : pointLights)
             {
-                float distanceToPointLight = (pointLight->gameObject->transform->position - vf2d(playerX, playerY)).mag();
+                float distanceToPointLight = (pointLight->gameObject->transform->position - vf2d(GetPlayerX(), GetPlayerY())).mag();
                 _m += max(0.0f, 1.0f - min(distanceToPointLight / pointLight->range, 1.0f));
             }
 
@@ -2151,6 +2247,29 @@ private:
         }
         uint randomIndex = Random::Range(0, positions.size() - 1);
         return positions[randomIndex];
+    }
+
+    void CreateNetworkObject(uint32_t id, float posX, float posY)
+    {
+        GameObject* newPlayer = new GameObject();
+        newPlayer->transform->position = vf2d(posX, posY);
+
+        NetworkID* netID = newPlayer->AddComponent<NetworkID>();
+        netID->ID = id;
+
+        Collider* collider = newPlayer->AddComponent<Collider>();
+        collider->radius = this->PlayerModelRadius;
+        collider->collideWithObjects = true;
+        collider->isTrigger = true;
+
+        PNGRenderer* newPlayer_pngRenderer = newPlayer->AddComponent<PNGRenderer>();
+        newPlayer_pngRenderer->sprite = this->GSG9_png;
+        newPlayer_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+
+        networkObjects.insert_or_assign(id, newPlayer);
+
+        //add cache:
+        networkObjectPositions.insert_or_assign(id, vf2d(posX, posY));
     }
 
     typedef bool (*CheckFunc)(int x, int y, int width, int height, const std::wstring& map);
@@ -2774,6 +2893,19 @@ public:
 
         vf2d lampSize = vf2d(0.25, 1.25f);
 
+        //create Player:
+        this->player = new GameObject();
+        this->player->tag = "player";
+        //set transform:
+        this->player->transform->position.x = defaultPlayerX;
+        this->player->transform->position.y = defaultPlayerY;
+        this->player->transform->angle = defaultPlayerAngle;
+        //set collider:
+        Collider* player_collider = this->player->AddComponent<Collider>();
+        player_collider->radius = this->PlayerModelRadius;
+        player_collider->collideWithObjects = true;
+        player_collider->collideWithScenery = true;
+
         //add lamps:
         GameObject* lamp1 = new GameObject();
         lamp1->transform->position = vf2d(8.5f, 8.5f);
@@ -2798,10 +2930,17 @@ public:
 
         //add players:
         //GameObject* player1 = new GameObject();
-        //player1->transform->position = vf2d(8.5f, 14.7f);
+        //player1->transform->position = vf2d(7.5f, 16.7f);
+        ////set renderer:
         //PNGRenderer* player1_pngRenderer = player1->AddComponent<PNGRenderer>();
         //player1_pngRenderer->sprite = this->GSG9_png;
         //player1_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
+        ////set collider:
+        //Collider* collider1 = player1->AddComponent<Collider>();
+        //collider1->radius = 0.3f;
+        //collider1->collideWithObjects = true;
+        //collider1->collideWithScenery = true;
+        //collider1->canBeMoved = true;
 
         //add zombies:
         //GameObject* zombie1 = new GameObject();
@@ -2834,22 +2973,6 @@ public:
 
         this->depthBuffer = new float[ScreenWidth() * ScreenHeight()];
 
-        //set obstacles:
-        if (this->enableNav)
-        {
-            for (int y = 0; y < mapHeight; y++)
-            {
-                for (int x = 0; x < mapWidth; x++)
-                {
-                    if (this->map[y * mapWidth + x] == L'#')
-                    {
-                        obstacles.push_back({ x, y });
-                    }
-                }
-            }
-            simple_ai = new sObject(2, 2, this->spriteFlower);
-        }
-
         return true;
     }
 
@@ -2857,6 +2980,7 @@ public:
     bool OnUserUpdate(float fElapsedTime) override
     {
         float deltaTime = fElapsedTime;
+        this->DeltaTime = deltaTime;
 
         Debug::OutputLine(to_wstring(GM.gameObjects.size()));
 
@@ -2888,8 +3012,8 @@ public:
                         PlayerNetData defaultPlayerNetData;
 
                         defaultPlayerNetData.health = playerHealth;
-                        defaultPlayerNetData.posX = playerX;
-                        defaultPlayerNetData.posY = playerY;
+                        defaultPlayerNetData.posX = GetPlayerX();
+                        defaultPlayerNetData.posY = GetPlayerY();
 
                         //msg << defaultPlayerNetData;
                         msg.AddBytes(defaultPlayerNetData.Serialize());
@@ -2929,17 +3053,7 @@ public:
                         //clone player, dont add repeat player, and dont add ourself.
                         if (networkObjects.count(desc.uniqueID) == 0 && desc.uniqueID != playerID)
                         {
-                            GameObject* newPlayer = new GameObject();
-                            newPlayer->transform->position = vf2d(desc.posX, desc.posY);
-
-                            PNGRenderer* newPlayer_pngRenderer = newPlayer->AddComponent<PNGRenderer>();
-                            newPlayer_pngRenderer->sprite = this->GSG9_png;
-                            newPlayer_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
-
-                            networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
-
-                            //add cache:
-                            networkObjectPositions.insert_or_assign(desc.uniqueID, vf2d(desc.posX, desc.posY));
+                            CreateNetworkObject(desc.uniqueID, desc.posX, desc.posY);
                         }
 
                         if (desc.uniqueID == playerID)
@@ -2978,21 +3092,7 @@ public:
                         //if dont exsists, add it.
                         if (networkObjects.count(desc.uniqueID) == 0)
                         {
-                            GameObject* newPlayer = new GameObject();
-
-                            newPlayer->transform->position = vf2d(desc.posX, desc.posY);
-
-                            PNGRenderer* newPlayer_pngRenderer = newPlayer->AddComponent<PNGRenderer>();
-                            newPlayer_pngRenderer->sprite = this->GSG9_png;
-                            newPlayer_pngRenderer->ObjectSize = vf2d(1.5f, 0.7f);
-
-                            networkObjects.insert_or_assign(desc.uniqueID, newPlayer);
-
-                            //add cache:
-                            networkObjectPositions.insert_or_assign(desc.uniqueID, vf2d(desc.posX, desc.posY));
-
-                            //bullet:
-                            networkBullets.insert_or_assign(desc.uniqueID, vector<GameObject*>());
+                            CreateNetworkObject(desc.uniqueID, desc.posX, desc.posY);
                         }
 
                         //sync object position:
@@ -3098,8 +3198,8 @@ public:
                 }
 
                 //sync our position to other clients:
-                mapObjects[playerID].posX = playerX;
-                mapObjects[playerID].posY = playerY;
+                mapObjects[playerID].posX = GetPlayerX();
+                mapObjects[playerID].posY = GetPlayerY();
 
                 //sync bullets positon:
                 for (int i = 0; i < mapObjects[playerID].bullets.size(); i++)
@@ -3144,24 +3244,6 @@ public:
 
         //update audio:
         update_audio();
-
-        //ai nav:
-        if (enableNav)
-        {
-            nav_timer += deltaTime;
-            if (nav_timer >= 1.0f)
-            {
-                nav_timer = 0;
-                auto sr = Navigation::Navigate({ (int)simple_ai->x, (int)simple_ai->y }, { (int)playerX, (int)playerY }, SearchDirection::Eight, 100, obstacles, SearchMethod::DFS);
-                if (sr.success)
-                {
-                    auto tar_vec = sr.path[1].position - sr.path[0].position;
-                    simple_ai->x += tar_vec.x;
-                    simple_ai->y += tar_vec.y;
-                    fuck_std::debug_output_vector2(::vi2d(simple_ai->x, simple_ai->y));
-                }
-            }
-        }
 
         //update physics & collision detect:
         update_world(deltaTime);

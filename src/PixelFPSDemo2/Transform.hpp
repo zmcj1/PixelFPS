@@ -12,6 +12,7 @@ class Transform : public Component
 public:
     vf2d position;
     vf2d velocity;
+    float angle = 0.0f;
 
 public:
     Transform() : Component()
