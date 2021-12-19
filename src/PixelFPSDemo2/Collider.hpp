@@ -20,6 +20,12 @@ public:
     //是否与其他Collider发生碰撞
     bool collideWithObjects = false;
 
+    //是否与墙面发生碰撞
+    bool collideWithScenery = false;
+
     //是否可以被其他碰撞体移动
     bool canBeMoved = false;
+
+    //是否是触发器:
+    bool isTrigger = false;
 };

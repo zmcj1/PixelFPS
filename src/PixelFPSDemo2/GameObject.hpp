@@ -20,6 +20,8 @@ public:
 
     string name;
 
+    string tag;
+
     bool active;
 
     GameObject* parent;

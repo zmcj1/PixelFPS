@@ -57,6 +57,9 @@
     <ClCompile Include="Rigidbody.cpp">
       <Filter>CPP</Filter>
     </ClCompile>
+    <ClCompile Include="NetworkID.cpp">
+      <Filter>CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sObject.hpp">
@@ -132,6 +135,9 @@
       <Filter>HPP</Filter>
     </ClInclude>
     <ClInclude Include="Rigidbody.hpp">
+      <Filter>HPP</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkID.hpp">
       <Filter>HPP</Filter>
     </ClInclude>
   </ItemGroup>
